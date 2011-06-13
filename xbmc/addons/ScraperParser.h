@@ -23,8 +23,8 @@
  */
 
 #include <vector>
-#include "StdString.h"
-#include "addons/IAddon.h"
+#include "utils/StdString.h"
+#include "IAddon.h"
 
 #define MAX_SCRAPER_BUFFERS 20
 

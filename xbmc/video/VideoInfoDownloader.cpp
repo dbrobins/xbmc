@@ -24,7 +24,6 @@
 #include "utils/HTMLUtil.h"
 #include "utils/XMLUtils.h"
 #include "utils/RegExp.h"
-#include "utils/ScraperParser.h"
 #include "NfoFile.h"
 #include "dialogs/GUIDialogProgress.h"
 #include "dialogs/GUIDialogOK.h"

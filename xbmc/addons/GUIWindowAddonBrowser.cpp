@@ -44,7 +44,7 @@
 #include "settings/Settings.h"
 #include "utils/StringUtils.h"
 #include "Application.h"
-#include "AddonDatabase.h"
+#include "addons/AddonDatabase.h"
 #include "settings/AdvancedSettings.h"
 #include "storage/MediaManager.h"
 #include "settings/GUISettings.h"

@@ -11,6 +11,7 @@ SRCS=Addon.cpp \
      PluginSource.cpp \
      Repository.cpp \
      Scraper.cpp \
+     ScraperParser.cpp \
      ScreenSaver.cpp \
      Service.cpp \
      Skin.cpp \

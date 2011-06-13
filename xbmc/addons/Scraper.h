@@ -22,7 +22,7 @@
 #include "addons/Addon.h"
 #include "XBDateTime.h"
 #include "utils/ScraperUrl.h"
-#include "utils/ScraperParser.h"
+#include "ScraperParser.h"
 #include "video/Episode.h"
 
 class CAlbum;

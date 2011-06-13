@@ -38,7 +38,6 @@ SRCS=AlarmClock.cpp \
      RegExp.cpp \
      RingBuffer.cpp \
      RssReader.cpp \
-     ScraperParser.cpp \
      ScraperUrl.cpp \
      Splash.cpp \
      ssrc.cpp \

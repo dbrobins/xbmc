@@ -26,7 +26,7 @@
 #include "settings/Settings.h"
 #include "addons/Addon.h"
 #include "addons/AddonManager.h"
-#include "AddonDatabase.h"
+#include "addons/AddonDatabase.h"
 
 using namespace XFILE;
 using namespace ADDON;

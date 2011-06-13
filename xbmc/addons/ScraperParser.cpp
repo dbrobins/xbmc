@@ -22,13 +22,13 @@
 #include "ScraperParser.h"
 
 #include "addons/AddonManager.h"
-#include "RegExp.h"
-#include "HTMLUtil.h"
+#include "utils/RegExp.h"
+#include "utils/HTMLUtil.h"
 #include "addons/Scraper.h"
 #include "URL.h"
 #include "Util.h"
-#include "log.h"
-#include "CharsetConverter.h"
+#include "utils/log.h"
+#include "utils/CharsetConverter.h"
 
 #include <sstream>
 #include <cstring>

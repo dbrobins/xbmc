@@ -22,7 +22,7 @@
 #include "GUIDialogAddonInfo.h"
 #include "dialogs/GUIDialogYesNo.h"
 #include "addons/AddonManager.h"
-#include "AddonDatabase.h"
+#include "addons/AddonDatabase.h"
 #include "FileItem.h"
 #include "filesystem/SpecialProtocol.h"
 #include "GUIDialogAddonSettings.h"

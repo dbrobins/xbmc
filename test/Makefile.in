@@ -1,0 +1,14 @@
+.PHONY: all
+
+all: test
+
+SRCS=test.cpp
+CLEAN_FILES=
+CXXFLAGS+=-std=c++0x
+
+include ../Makefile.include
+-include $(patsubst %.cpp,%.P,$(patsubst %.c,%.P,$(SRCS)))
+
+test: $(OBJS) ../libxbmc.so
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(OBJS) ../libxbmc.so
+

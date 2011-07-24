@@ -17,6 +17,9 @@ print("s2 has type {} id {} name {} ver {} desc:\n{}".
 x = s.extra_info
 print(dict(x))
 
+y = s.settings
+print(dict(y))
+
 # what operations are possible?
 # - don't allow e.g. GetVideoDetails on Scraper objects;
 # allow it on the items returned back... even just by access? (demand load attribute)

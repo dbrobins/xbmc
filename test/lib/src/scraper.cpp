@@ -17,6 +17,16 @@
 using namespace std;
 using namespace ADDON;
 
+
+// Python type objects
+
+static PyTypeObject ptoTyp = { PyObject_HEAD_INIT(NULL) };  // type constants
+static PyTypeObject ptoMps = { PyObject_HEAD_INIT(NULL) };  // string map
+static PyTypeObject ptoSet = { PyObject_HEAD_INIT(NULL) };  // settings
+static PyTypeObject ptoDep = { PyObject_HEAD_INIT(NULL) };  // dependencies
+static PyTypeObject ptoScr = { PyObject_HEAD_INIT(NULL) };  // scraper
+
+
 // Empty object
 // - used by type container (ptoTyp)
 struct EmO
@@ -35,8 +45,9 @@ struct ScrO
 struct MpsO
 {
   PyObject_HEAD
-  PyObject *pscro;
-  InfoMap *pmp;
+  ScrO *pscro;
+  const InfoMap *pmp;
+  InfoMap::const_iterator i;
 };
 
 // Python settings object
@@ -381,6 +392,11 @@ static PyObject *scr_get_f_has_settings(ScrO *pscro, void *)
 
 
 
+static PyObject *scr_get_mps_extra_info(ScrO *pscro, void *)
+{
+  return (PyObject *)PyObject_CallFunctionObjArgs((PyObject *)&ptoMps, pscro, NULL);
+}
+
 static PyGetSetDef pgsScr[] = {
 
   {"type", (getter)scr_get_i_type, NULL, "Scraper type, from Type enumeration", NULL},
@@ -404,18 +420,81 @@ static PyGetSetDef pgsScr[] = {
   {"lang", (getter)scr_get_s_lang, NULL, "Scraper language", NULL},
   {"has_settings", (getter)scr_get_f_has_settings, NULL, "True if scraper has custom settings", NULL},
 
+  {"extra_info", (getter)scr_get_mps_extra_info, NULL, "Extra info dictionary", NULL},
   {NULL}  /* Sentinel */
 };
 
 
-// Python type objects
+// String map (std::map<CStdString, CStdString>) object implementation
 
-static PyTypeObject ptoTyp = { PyObject_HEAD_INIT(NULL) };  // type constants
-static PyTypeObject ptoMps = { PyObject_HEAD_INIT(NULL) };  // string map
-static PyTypeObject ptoSet = { PyObject_HEAD_INIT(NULL) };  // settings
-static PyTypeObject ptoDep = { PyObject_HEAD_INIT(NULL) };  // dependencies
-static PyTypeObject ptoScr = { PyObject_HEAD_INIT(NULL) };  // scraper
+static int mps_init(MpsO *pmpso, PyObject *args, PyObject *kwds)
+{
+  if (kwds && PyDict_Size(kwds))
+  {
+    PyErr_SetString(PyExc_TypeError, "unexpected keyword argument");
+    return -1;
+  }
 
+  ScrO *pscro = NULL;
+  if (!PyArg_ParseTuple(args, "O", &pscro))
+  {
+    PyErr_SetString(PyExc_TypeError, "scraper object required");
+      return -1;
+  }
+
+  Py_INCREF(pscro);
+  pmpso->pscro = pscro;
+  pmpso->pmp = &pscro->psc->ExtraInfo();
+  return 0;
+}
+
+static void mps_dealloc(MpsO *pmpso)
+{
+  Py_XDECREF(pmpso->pscro);
+  pmpso->~MpsO();
+}
+
+static PyObject *mps_iter(MpsO *pmpso)
+{
+  pmpso->i = pmpso->pmp->begin();
+  Py_INCREF(pmpso);
+  return (PyObject *)pmpso;
+}
+
+static PyObject *mps_iternext(MpsO *pmpso)
+{
+  if (pmpso->i == pmpso->pmp->end())
+    return NULL;
+  const CStdString &sKey = pmpso->i->first;
+  ++pmpso->i;
+  return PyString_FromStringAndSize(sKey, sKey.size());
+}
+
+static Py_ssize_t mps_length(MpsO *pmpso)
+{
+  return pmpso->pmp->size();
+}
+
+static PyObject *mps_subscript(MpsO *pmpso, PyObject *key)
+{
+  const char *s = PyString_AsString(key);
+  if (!s)
+    return NULL;
+  InfoMap::const_iterator i = pmpso->pmp->find(s);
+  if (i == pmpso->pmp->end())
+    Py_RETURN_NONE;
+  return PyString_FromStringAndSize(i->second, i->second.size());
+}
+
+PyMappingMethods pmmMps =
+{
+  (lenfunc)mps_length,
+  (binaryfunc)mps_subscript,
+  NULL  // no assignment
+};
+
+
+// Module initialization
 
 PyMODINIT_FUNC
 initscraper()
@@ -428,7 +507,12 @@ initscraper()
   ptoTyp.tp_flags = Py_TPFLAGS_IS_ABSTRACT;
 
   InitPto(ptoMps, "xbmc.scraper.StringMap", sizeof(MpsO), "Immutable string map");
-  ptoMps.tp_flags = Py_TPFLAGS_IS_ABSTRACT;//XXX
+  ptoMps.tp_flags |= Py_TPFLAGS_HAVE_ITER;
+  ptoMps.tp_init = (initproc)mps_init;
+  ptoMps.tp_dealloc = (destructor)mps_dealloc;
+  ptoMps.tp_as_mapping = &pmmMps;
+  ptoMps.tp_iter = (getiterfunc)mps_iter;
+  ptoMps.tp_iternext = (iternextfunc)mps_iternext;
 
   InitPto(ptoSet, "xbmc.scraper.Settings", sizeof(SetO), "Addon settings");
   ptoSet.tp_flags = Py_TPFLAGS_IS_ABSTRACT;//XXX

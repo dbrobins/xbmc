@@ -74,6 +74,7 @@ namespace ADDON
   class AddonVersion;
   typedef std::map<CStdString, std::pair<const AddonVersion, bool> > ADDONDEPS;
   typedef std::map<CStdString, CStdString> InfoMap;
+  typedef std::map<CStdString, CStdString> SETTINGS;
   class AddonProps;
 
   class IAddon : public boost::enable_shared_from_this<IAddon>
@@ -107,6 +108,7 @@ namespace ADDON
     virtual void SaveSettings() =0;
     virtual void UpdateSetting(const CStdString& key, const CStdString& value) =0;
     virtual CStdString GetSetting(const CStdString& key) =0;
+    virtual const SETTINGS &GetSettings() =0;
     virtual TiXmlElement* GetSettingsXML() =0;
     virtual CStdString GetString(uint32_t id) =0;
     virtual const ADDONDEPS &GetDeps() const =0;

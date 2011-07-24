@@ -135,6 +135,9 @@ public:
    */
   virtual CStdString GetSetting(const CStdString& key);
 
+  // fetch all settings for addon
+  virtual const SETTINGS &GetSettings();
+
   TiXmlElement* GetSettingsXML();
   virtual CStdString GetString(uint32_t id);
 
@@ -227,7 +230,7 @@ private:
   CStdString  m_profile;
   bool        m_enabled;
   CLocalizeStrings  m_strings;
-  std::map<CStdString, CStdString> m_settings;
+  SETTINGS m_settings;
 };
 
 class CAddonLibrary : public CAddon

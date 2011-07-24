@@ -1,8 +1,9 @@
 // Implements xbmc.lib.scraper
 //
 // *** GENERATED CODE DO NOT EDIT ***
+## (applies to the .cpp file, not the .in file...)
 //
-
+<%namespace file="defs.mako" import="*"/>
 
 #include "Python.h"
 #include "structmember.h"
@@ -202,208 +203,41 @@ static PyMethodDef pmdScr[] = {
   {NULL}  /* Sentinel */
 };
 
-
-
-
-static PyObject *scr_get_i_type(ScrO *pscro, void *)
-{
-  return PyInt_FromLong(pscro->psc->Type());
-}
-
-
-
-
-static PyObject *scr_get_s_id(ScrO *pscro, void *)
-{
-  CStdString s = pscro->psc->ID();
-  return PyString_FromStringAndSize(s, s.size());
-}
-
-
-
-
-static PyObject *scr_get_s_name(ScrO *pscro, void *)
-{
-  CStdString s = pscro->psc->Name();
-  return PyString_FromStringAndSize(s, s.size());
-}
-
-
-
-
-static PyObject *scr_get_f_enabled(ScrO *pscro, void *)
-{
-  return PyBool_FromLong(pscro->psc->Enabled());
-}
-
-
-
-
-static PyObject *scr_get_f_active(ScrO *pscro, void *)
-{
-  return PyBool_FromLong(pscro->psc->IsInUse());
-}
-
-
-
-
-static PyObject *scr_get_ver_ver(ScrO *pscro, void *)
-{
-  // not comparable (maybe later?); just a simple string
-  fprintf(stderr, "get version [%s]\n", pscro->psc->Version().c_str());
-  return PyString_FromString(pscro->psc->Version().c_str());
-}
-
-
-
-
-static PyObject *scr_get_ver_min_ver(ScrO *pscro, void *)
-{
-  // not comparable (maybe later?); just a simple string
-  fprintf(stderr, "get version [%s]\n", pscro->psc->MinVersion().c_str());
-  return PyString_FromString(pscro->psc->MinVersion().c_str());
-}
-
-
-
-
-static PyObject *scr_get_s_summary(ScrO *pscro, void *)
-{
-  CStdString s = pscro->psc->Summary();
-  return PyString_FromStringAndSize(s, s.size());
-}
-
-
-
-
-static PyObject *scr_get_s_desc(ScrO *pscro, void *)
-{
-  CStdString s = pscro->psc->Description();
-  return PyString_FromStringAndSize(s, s.size());
-}
-
-
-
-
-static PyObject *scr_get_s_path(ScrO *pscro, void *)
-{
-  CStdString s = pscro->psc->Path();
-  return PyString_FromStringAndSize(s, s.size());
-}
-
-
-
-
-static PyObject *scr_get_s_profile(ScrO *pscro, void *)
-{
-  CStdString s = pscro->psc->Profile();
-  return PyString_FromStringAndSize(s, s.size());
-}
-
-
-
-
-static PyObject *scr_get_s_lib_path(ScrO *pscro, void *)
-{
-  CStdString s = pscro->psc->LibPath();
-  return PyString_FromStringAndSize(s, s.size());
-}
-
-
-
-
-static PyObject *scr_get_s_changelog(ScrO *pscro, void *)
-{
-  CStdString s = pscro->psc->ChangeLog();
-  return PyString_FromStringAndSize(s, s.size());
-}
-
-
-
-
-static PyObject *scr_get_s_fanart(ScrO *pscro, void *)
-{
-  CStdString s = pscro->psc->FanArt();
-  return PyString_FromStringAndSize(s, s.size());
-}
-
-
-
-
-static PyObject *scr_get_s_author(ScrO *pscro, void *)
-{
-  CStdString s = pscro->psc->Author();
-  return PyString_FromStringAndSize(s, s.size());
-}
-
-
-
-
-static PyObject *scr_get_s_icon(ScrO *pscro, void *)
-{
-  CStdString s = pscro->psc->Icon();
-  return PyString_FromStringAndSize(s, s.size());
-}
-
-
-
-
-static PyObject *scr_get_i_rating(ScrO *pscro, void *)
-{
-  return PyInt_FromLong(pscro->psc->Stars());
-}
-
-
-
-
-static PyObject *scr_get_s_disclaimer(ScrO *pscro, void *)
-{
-  CStdString s = pscro->psc->Disclaimer();
-  return PyString_FromStringAndSize(s, s.size());
-}
-
-
-
-
-static PyObject *scr_get_s_lang(ScrO *pscro, void *)
-{
-  CStdString s = pscro->psc->Language();
-  return PyString_FromStringAndSize(s, s.size());
-}
-
-
-
-
-static PyObject *scr_get_f_has_settings(ScrO *pscro, void *)
-{
-  return PyBool_FromLong(pscro->psc->HasSettings());
-}
-
-
+<%
+add_get('type', 'Type', 'int', "Scraper type, from Type enumeration")
+add_get('id', 'ID', 'CStdString', "Scraper id (dotted pseudo-domain)")
+add_get('name', 'Name', 'CStdString', "Scraper display name")
+add_get('enabled', 'Enabled', 'bool', "True if scraper is currently enabled")
+add_get('active', 'IsInUse', 'bool', "True if scraper is currently running")
+add_get('ver', 'Version', 'AddonVersion', "Scraper version (NOT COMPARABLE)")
+add_get('min_ver', 'MinVersion', 'AddonVersion', "Minimum compatible version")
+add_get('summary', 'Summary', 'CStdString', "Scraper summary")
+add_get('desc', 'Description', 'CStdString', "Scraper description")
+add_get('path', 'Path', 'CStdString', "Path to scraper files")
+add_get('profile', 'Profile', 'CStdString', "Path to profile-local data")
+add_get('lib_path', 'LibPath', 'CStdString', "Path to addon library")
+add_get('changelog', 'ChangeLog', 'CStdString', "Scraper change log")
+add_get('fanart', 'FanArt', 'CStdString', "Fan art path")
+add_get('author', 'Author', 'CStdString', "Scraper developer")
+add_get('icon', 'Icon', 'CStdString', "Path to scraper icon")
+add_get('rating', 'Stars', 'int', "Rating (0-5 stars)")
+add_get('disclaimer', 'Disclaimer', 'CStdString', "Disclaimer text")
+add_get('lang', 'Language', 'CStdString', "Scraper language")
+add_get('has_settings', 'HasSettings', 'bool', "True if scraper has custom settings")
+
+# settings can be a dict - but we need to overload stuff
+# why aren't HasSettings and GetSettings const? A: because they load settings
+#void UpdateSetting(const CStdString& key, const CStdString& value)
+#CStdString GetSetting(const CStdString& key)
+#void SaveSettings()  // if we allow update, we should allow save...
+#
+# -- a std::map str -> str; should also be a dict - except a non-iterable one...
+#InfoMap &ExtraInfo
+#ADDONDEPS &GetDeps()  // map of id (str) to pair<AddonVer, 'optional' flag>
+%>
 
 static PyGetSetDef pgsScr[] = {
-
-  {"type", (getter)scr_get_i_type, NULL, "Scraper type, from Type enumeration", NULL},
-  {"id", (getter)scr_get_s_id, NULL, "Scraper id (dotted pseudo-domain)", NULL},
-  {"name", (getter)scr_get_s_name, NULL, "Scraper display name", NULL},
-  {"enabled", (getter)scr_get_f_enabled, NULL, "True if scraper is currently enabled", NULL},
-  {"active", (getter)scr_get_f_active, NULL, "True if scraper is currently running", NULL},
-  {"ver", (getter)scr_get_ver_ver, NULL, "Scraper version (NOT COMPARABLE)", NULL},
-  {"min_ver", (getter)scr_get_ver_min_ver, NULL, "Minimum compatible version", NULL},
-  {"summary", (getter)scr_get_s_summary, NULL, "Scraper summary", NULL},
-  {"desc", (getter)scr_get_s_desc, NULL, "Scraper description", NULL},
-  {"path", (getter)scr_get_s_path, NULL, "Path to scraper files", NULL},
-  {"profile", (getter)scr_get_s_profile, NULL, "Path to profile-local data", NULL},
-  {"lib_path", (getter)scr_get_s_lib_path, NULL, "Path to addon library", NULL},
-  {"changelog", (getter)scr_get_s_changelog, NULL, "Scraper change log", NULL},
-  {"fanart", (getter)scr_get_s_fanart, NULL, "Fan art path", NULL},
-  {"author", (getter)scr_get_s_author, NULL, "Scraper developer", NULL},
-  {"icon", (getter)scr_get_s_icon, NULL, "Path to scraper icon", NULL},
-  {"rating", (getter)scr_get_i_rating, NULL, "Rating (0-5 stars)", NULL},
-  {"disclaimer", (getter)scr_get_s_disclaimer, NULL, "Disclaimer text", NULL},
-  {"lang", (getter)scr_get_s_lang, NULL, "Scraper language", NULL},
-  {"has_settings", (getter)scr_get_f_has_settings, NULL, "True if scraper has custom settings", NULL},
-
+${getdefs()}
   {NULL}  /* Sentinel */
 };
 
@@ -449,11 +283,9 @@ initscraper()
   }
 
   // Type.T scraper type enumeration
-  PyDict_SetItemString(ptoTyp.tp_dict, "ALBUMS", PyInt_FromLong(ADDON_SCRAPER_ALBUMS));
-  PyDict_SetItemString(ptoTyp.tp_dict, "ARTISTS", PyInt_FromLong(ADDON_SCRAPER_ARTISTS));
-  PyDict_SetItemString(ptoTyp.tp_dict, "MOVIES", PyInt_FromLong(ADDON_SCRAPER_MOVIES));
-  PyDict_SetItemString(ptoTyp.tp_dict, "MUSICVIDEOS", PyInt_FromLong(ADDON_SCRAPER_MUSICVIDEOS));
-  PyDict_SetItemString(ptoTyp.tp_dict, "TVSHOWS", PyInt_FromLong(ADDON_SCRAPER_TVSHOWS));
+  % for t in 'ALBUMS', 'ARTISTS', 'MOVIES', 'MUSICVIDEOS', 'TVSHOWS':
+  PyDict_SetItemString(ptoTyp.tp_dict, "${t}", PyInt_FromLong(ADDON_SCRAPER_${t}));
+  % endfor
 
   PyObject *mod = Py_InitModule("scraper", NULL);
   if (mod == NULL)

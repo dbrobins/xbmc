@@ -2,7 +2,7 @@
 
 export EXTRA_COMPILE=$(CXXFLAGS) $(DEFINES) $(INCLUDES)
 
-.PHONY: all build install
+.PHONY: all build install clean
 
 all: install
 
@@ -14,9 +14,12 @@ include ../../Makefile.include
 clean:
 	$(PYTHON) setup.py clean -a
 
-build:
+src/scraper.cpp: src/scraper.cpp.in src/defs.mako
+	src/generate.py $< > $@
+
+build: src/scraper.cpp
 	$(PYTHON) setup.py build
 
-install:
+install: src/scraper.cpp
 	$(PYTHON) setup.py install
 

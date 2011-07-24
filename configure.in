@@ -1462,7 +1462,9 @@ OUTPUT_FILES="Makefile \
     tools/Linux/xbmc.sh \
     tools/Linux/xbmc-standalone.sh \
     tools/TexturePacker/Makefile \
-    tools/EventClients/Clients/OSXRemote/Makefile"
+    tools/EventClients/Clients/OSXRemote/Makefile \
+    test/Makefile \
+    test/lib/setup.py"
 
 # Line below is used so we can use AM_INIT_AUTOMAKE. The corresponding
 # .dummy.am does nothing.

@@ -27,7 +27,6 @@ static PyObject *${name}(ScrO *pscro, void *)
 static PyObject *${name}(ScrO *pscro, void *)
 {
   // not comparable (maybe later?); just a simple string
-  fprintf(stderr, "get version [%s]\n", pscro->psc->${cpp}().c_str());
   return PyString_FromString(pscro->psc->${cpp}().c_str());
 }
 </%def>
@@ -60,6 +59,6 @@ getset = []
 
 <%def name="getdefs()">
 % for i in getset:
-  {"${i['py']}", (getter)${i['fn']}, NULL, "${i['doc']}", NULL},
+  {(char *)"${i['py']}", (getter)${i['fn']}, NULL, (char *)"${i['doc']}", NULL},
 % endfor
 </%def>

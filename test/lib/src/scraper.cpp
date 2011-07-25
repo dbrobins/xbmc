@@ -28,44 +28,45 @@ static PyTypeObject ptoScr = { PyObject_HEAD_INIT(NULL) };  // scraper
 
 
 // Empty object
-// - used by type container (ptoTyp)
 struct EmO
 {
   PyObject_HEAD
 };
 
 // Python scraper object
-struct ScrO
+struct ScrO : EmO
 {
-  PyObject_HEAD
   ScraperPtr psc;
 };
 
-// Python immutable string map
-struct MpsO
+// Base type for sub-objects with pointer to scraper
+struct ScrB : EmO
 {
-  PyObject_HEAD
+  ~ScrB() { Py_XDECREF(pscro); }
   ScrO *pscro;
-  const InfoMap *pmp;
-  InfoMap::const_iterator i;
+};
+
+// Base type for map
+template <class T>
+struct MpsB : ScrB
+{
+  const T *pmp;
+  typename T::const_iterator i;
+};
+
+// Python immutable string map
+struct MpsO : MpsB<InfoMap>
+{
 };
 
 // Python settings object
-// NOTE: must remain binary compatible with MpsO!
-struct SetO
+struct SetO : MpsB<SETTINGS>
 {
-  PyObject_HEAD
-  ScrO *pscro;
-  const SETTINGS *pset;
-  SETTINGS::const_iterator i;
 };
 
 // Python dependencies object
-struct DepO
+struct DepO : MpsB<ADDONDEPS>
 {
-  PyObject_HEAD
-  PyObject *pscro;
-  ADDONDEPS *pdep;
 };
 
 
@@ -137,10 +138,12 @@ static int scr_init(ScrO *pscro, PyObject *args, PyObject *kwds)
   return 0;
 }
 
-static void scr_dealloc(ScrO *pscro)
+template <class T>
+static void foo_dealloc(T *pt)
 {
-  pscro->~ScrO();
+  pt->~T();
 }
+#define pfn_dealloc(T) (void (*)(T *))(foo_dealloc)
 
 static PyObject *scr_nfo_url(ScrO *pscro, PyObject *ppyo)
 {
@@ -263,7 +266,6 @@ static PyObject *scr_get_f_active(ScrO *pscro, void *)
 static PyObject *scr_get_ver_ver(ScrO *pscro, void *)
 {
   // not comparable (maybe later?); just a simple string
-  fprintf(stderr, "get version [%s]\n", pscro->psc->Version().c_str());
   return PyString_FromString(pscro->psc->Version().c_str());
 }
 
@@ -273,7 +275,6 @@ static PyObject *scr_get_ver_ver(ScrO *pscro, void *)
 static PyObject *scr_get_ver_min_ver(ScrO *pscro, void *)
 {
   // not comparable (maybe later?); just a simple string
-  fprintf(stderr, "get version [%s]\n", pscro->psc->MinVersion().c_str());
   return PyString_FromString(pscro->psc->MinVersion().c_str());
 }
 
@@ -404,69 +405,69 @@ static PyObject *scr_get_set_settings(ScrO *pscro, void *)
   return (PyObject *)PyObject_CallFunctionObjArgs((PyObject *)&ptoSet, pscro, NULL);
 }
 
+static PyObject *scr_get_dep_deps(ScrO *pscro, void *)
+{
+  return (PyObject *)PyObject_CallFunctionObjArgs((PyObject *)&ptoDep, pscro, NULL);
+}
+
 static PyGetSetDef pgsScr[] = {
 
-  {"type", (getter)scr_get_i_type, NULL, "Scraper type, from Type enumeration", NULL},
-  {"id", (getter)scr_get_s_id, NULL, "Scraper id (dotted pseudo-domain)", NULL},
-  {"name", (getter)scr_get_s_name, NULL, "Scraper display name", NULL},
-  {"enabled", (getter)scr_get_f_enabled, NULL, "True if scraper is currently enabled", NULL},
-  {"active", (getter)scr_get_f_active, NULL, "True if scraper is currently running", NULL},
-  {"ver", (getter)scr_get_ver_ver, NULL, "Scraper version (NOT COMPARABLE)", NULL},
-  {"min_ver", (getter)scr_get_ver_min_ver, NULL, "Minimum compatible version", NULL},
-  {"summary", (getter)scr_get_s_summary, NULL, "Scraper summary", NULL},
-  {"desc", (getter)scr_get_s_desc, NULL, "Scraper description", NULL},
-  {"path", (getter)scr_get_s_path, NULL, "Path to scraper files", NULL},
-  {"profile", (getter)scr_get_s_profile, NULL, "Path to profile-local data", NULL},
-  {"lib_path", (getter)scr_get_s_lib_path, NULL, "Path to addon library", NULL},
-  {"changelog", (getter)scr_get_s_changelog, NULL, "Scraper change log", NULL},
-  {"fanart", (getter)scr_get_s_fanart, NULL, "Fan art path", NULL},
-  {"author", (getter)scr_get_s_author, NULL, "Scraper developer", NULL},
-  {"icon", (getter)scr_get_s_icon, NULL, "Path to scraper icon", NULL},
-  {"rating", (getter)scr_get_i_rating, NULL, "Rating (0-5 stars)", NULL},
-  {"disclaimer", (getter)scr_get_s_disclaimer, NULL, "Disclaimer text", NULL},
-  {"lang", (getter)scr_get_s_lang, NULL, "Scraper language", NULL},
-  {"has_settings", (getter)scr_get_f_has_settings, NULL, "True if scraper has custom settings", NULL},
+  {(char *)"type", (getter)scr_get_i_type, NULL, (char *)"Scraper type, from Type enumeration", NULL},
+  {(char *)"id", (getter)scr_get_s_id, NULL, (char *)"Scraper id (dotted pseudo-domain)", NULL},
+  {(char *)"name", (getter)scr_get_s_name, NULL, (char *)"Scraper display name", NULL},
+  {(char *)"enabled", (getter)scr_get_f_enabled, NULL, (char *)"True if scraper is currently enabled", NULL},
+  {(char *)"active", (getter)scr_get_f_active, NULL, (char *)"True if scraper is currently running", NULL},
+  {(char *)"ver", (getter)scr_get_ver_ver, NULL, (char *)"Scraper version (NOT COMPARABLE)", NULL},
+  {(char *)"min_ver", (getter)scr_get_ver_min_ver, NULL, (char *)"Minimum compatible version", NULL},
+  {(char *)"summary", (getter)scr_get_s_summary, NULL, (char *)"Scraper summary", NULL},
+  {(char *)"desc", (getter)scr_get_s_desc, NULL, (char *)"Scraper description", NULL},
+  {(char *)"path", (getter)scr_get_s_path, NULL, (char *)"Path to scraper files", NULL},
+  {(char *)"profile", (getter)scr_get_s_profile, NULL, (char *)"Path to profile-local data", NULL},
+  {(char *)"lib_path", (getter)scr_get_s_lib_path, NULL, (char *)"Path to addon library", NULL},
+  {(char *)"changelog", (getter)scr_get_s_changelog, NULL, (char *)"Scraper change log", NULL},
+  {(char *)"fanart", (getter)scr_get_s_fanart, NULL, (char *)"Fan art path", NULL},
+  {(char *)"author", (getter)scr_get_s_author, NULL, (char *)"Scraper developer", NULL},
+  {(char *)"icon", (getter)scr_get_s_icon, NULL, (char *)"Path to scraper icon", NULL},
+  {(char *)"rating", (getter)scr_get_i_rating, NULL, (char *)"Rating (0-5 stars)", NULL},
+  {(char *)"disclaimer", (getter)scr_get_s_disclaimer, NULL, (char *)"Disclaimer text", NULL},
+  {(char *)"lang", (getter)scr_get_s_lang, NULL, (char *)"Scraper language", NULL},
+  {(char *)"has_settings", (getter)scr_get_f_has_settings, NULL, (char *)"True if scraper has custom settings", NULL},
 
-  {"extra_info", (getter)scr_get_mps_extra_info, NULL, "Extra info dictionary", NULL},
-  {"settings", (getter)scr_get_set_settings, NULL, "Addon settings", NULL},
+  {(char *)"extra_info", (getter)scr_get_mps_extra_info, NULL, (char *)"Extra info dictionary", NULL},
+  {(char *)"settings", (getter)scr_get_set_settings, NULL, (char *)"Addon settings", NULL},
+  {(char *)"deps", (getter)scr_get_dep_deps, NULL, (char *)"Addon dependencies", NULL},
   {NULL}  /* Sentinel */
 };
 
 
-// String map (std::map<CStdString, CStdString>) object implementation
+// String map object implementation
 
-static ScrO *ScroMapInit(PyObject *args, PyObject *kwds)
+static bool FInitScrb(ScrB *pscrb, PyObject *args, PyObject *kwds)
 {
   if (kwds && PyDict_Size(kwds))
   {
     PyErr_SetString(PyExc_TypeError, "unexpected keyword argument");
-    return NULL;
+    return false;
   }
 
   ScrO *pscro = NULL;
   if (!PyArg_ParseTuple(args, "O", &pscro))
   {
     PyErr_SetString(PyExc_TypeError, "scraper object required");
-      return NULL;
+      return false;
   }
+
   Py_INCREF(pscro);
-  return pscro;
+  pscrb->pscro = pscro;
+  return true;
 }
 
 static int mps_init(MpsO *pmpso, PyObject *args, PyObject *kwds)
 {
-  ScrO *pscro = ScroMapInit(args, kwds);
-  if (pscro == NULL)
+  if (!FInitScrb(pmpso, args, kwds))
     return -1;
-  pmpso->pscro = pscro;
-  pmpso->pmp = &pscro->psc->ExtraInfo();
+  pmpso->pmp = &pmpso->pscro->psc->ExtraInfo();
   return 0;
-}
-
-static void mps_dealloc(MpsO *pmpso)
-{
-  Py_XDECREF(pmpso->pscro);
-  pmpso->~MpsO();
 }
 
 static PyObject *mps_iter(MpsO *pmpso)
@@ -520,11 +521,9 @@ static PyMappingMethods pmmMps =
 
 static int set_init(SetO *pseto, PyObject *args, PyObject *kwds)
 {
-  ScrO *pscro = ScroMapInit(args, kwds);
-  if (pscro == NULL)
+  if (!FInitScrb(pseto, args, kwds))
     return -1;
-  pseto->pscro = pscro;
-  pseto->pset = &pscro->psc->GetSettings();
+  pseto->pmp = &pseto->pscro->psc->GetSettings();
   return 0;
 }
 
@@ -560,6 +559,71 @@ static PyMethodDef pmdSet[] = {
 };
 
 
+// Dependencies object implementation
+
+static int dep_init(DepO *pdepo, PyObject *args, PyObject *kwds)
+{
+  if (!FInitScrb(pdepo, args, kwds))
+    return -1;
+  pdepo->pmp = &pdepo->pscro->psc->GetDeps();
+  return 0;
+}
+
+static PyObject *dep_iter(DepO *pdepo)
+{
+  pdepo->i = pdepo->pmp->begin();
+  Py_INCREF(pdepo);
+  return (PyObject *)pdepo;
+}
+
+static PyObject *PyoDepVal(const ADDONREQ &areq)
+{
+  PyObject *tup = PyTuple_New(2);
+  PyTuple_SetItem(tup, 0, PyString_FromString(areq.first.c_str()));
+  PyTuple_SetItem(tup, 1, PyBool_FromLong(areq.second));
+  return tup;
+}
+
+static PyObject *dep_iternext(DepO *pdepo)
+{
+  if (pdepo->i == pdepo->pmp->end())
+    return NULL;
+  const CStdString &sKey = pdepo->i->first;
+  const ADDONREQ &areq = pdepo->i->second;
+  ++pdepo->i;
+  PyObject *tup = PyTuple_New(2);
+  PyTuple_SetItem(tup, 0, PyString_FromStringAndSize(sKey, sKey.size()));
+  PyTuple_SetItem(tup, 1, PyoDepVal(areq));
+  return tup;
+}
+
+static Py_ssize_t dep_length(DepO *pdepo)
+{
+  return pdepo->pmp->size();
+}
+
+static PyObject *dep_subscript(DepO *pdepo, PyObject *key)
+{
+  const char *s = PyString_AsString(key);
+  if (!s)
+    return NULL;
+  ADDONDEPS::const_iterator i = pdepo->pmp->find(s);
+  if (i == pdepo->pmp->end())
+  {
+    PyErr_SetObject(PyExc_KeyError, key);
+    return NULL;
+  }
+  return PyoDepVal(i->second);
+}
+
+static PyMappingMethods pmmDep =
+{
+  (lenfunc)dep_length,
+  (binaryfunc)dep_subscript,
+  NULL  // no assignment
+};
+
+
 // Module initialization
 
 PyMODINIT_FUNC
@@ -575,7 +639,7 @@ initscraper()
   InitPto(ptoMps, "xbmc.scraper.StringMap", sizeof(MpsO), "Immutable string map");
   ptoMps.tp_flags |= Py_TPFLAGS_HAVE_ITER;
   ptoMps.tp_init = (initproc)mps_init;
-  ptoMps.tp_dealloc = (destructor)mps_dealloc;
+  ptoMps.tp_dealloc = (destructor)pfn_dealloc(MpsO);
   ptoMps.tp_as_mapping = &pmmMps;
   ptoMps.tp_iter = (getiterfunc)mps_iter;
   ptoMps.tp_iternext = (iternextfunc)mps_iternext;
@@ -583,18 +647,23 @@ initscraper()
   InitPto(ptoSet, "xbmc.scraper.Settings", sizeof(SetO), "Addon settings");
   ptoSet.tp_flags |= Py_TPFLAGS_HAVE_ITER;
   ptoSet.tp_init = (initproc)set_init;
-  ptoSet.tp_dealloc = (destructor)mps_dealloc;
+  ptoSet.tp_dealloc = (destructor)pfn_dealloc(SetO);
   ptoSet.tp_as_mapping = &pmmSet;
   ptoSet.tp_iter = (getiterfunc)mps_iter;
   ptoSet.tp_iternext = (iternextfunc)mps_iternext;
   ptoSet.tp_methods = pmdSet;
 
   InitPto(ptoDep, "xbmc.scraper.Dependencies", sizeof(DepO), "Addon dependencies");
-  ptoDep.tp_flags = Py_TPFLAGS_IS_ABSTRACT;//XXX
+  ptoDep.tp_flags |= Py_TPFLAGS_HAVE_ITER;
+  ptoDep.tp_init = (initproc)dep_init;
+  ptoDep.tp_dealloc = (destructor)pfn_dealloc(DepO);
+  ptoDep.tp_as_mapping = &pmmDep;
+  ptoDep.tp_iter = (getiterfunc)dep_iter;
+  ptoDep.tp_iternext = (iternextfunc)dep_iternext;
 
   InitPto(ptoScr, "xbmc.scraper.Scraper", sizeof(ScrO), "Scraper interface");
   ptoScr.tp_init = (initproc)scr_init;
-  ptoScr.tp_dealloc = (destructor)scr_dealloc;
+  ptoScr.tp_dealloc = (destructor)pfn_dealloc(ScrO);
   ptoScr.tp_methods = pmdScr;
   ptoScr.tp_getset = pgsScr;
 

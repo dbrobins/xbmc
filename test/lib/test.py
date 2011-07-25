@@ -14,11 +14,13 @@ print("s has type {} id {} name {} ver {} desc:\n{}".
 print("s2 has type {} id {} name {} ver {} desc:\n{}".
   format(s2.type, s2.id, s2.name, s2.ver, s2.desc))
 
-x = s.extra_info
-print(dict(x))
+print(dict(s.extra_info))
 
-y = s.settings
-print(dict(y))
+print(dict(s.settings))
+print(s.settings['fanart'])
+
+print(dict(s.deps))
+print(s.deps['xbmc.metadata'][0])
 
 # what operations are possible?
 # - don't allow e.g. GetVideoDetails on Scraper objects;

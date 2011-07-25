@@ -484,10 +484,9 @@ static PyObject *mps_iternext(MpsO *pmpso)
   const CStdString &sKey = pmpso->i->first;
   const CStdString &sVal = pmpso->i->second;
   ++pmpso->i;
-  PyObject *tup = PyTuple_New(2);
-  PyTuple_SetItem(tup, 0, PyString_FromStringAndSize(sKey, sKey.size()));
-  PyTuple_SetItem(tup, 1, PyString_FromStringAndSize(sVal, sVal.size()));
-  return tup;
+  return PyTuple_Pack(2,
+   PyString_FromStringAndSize(sKey, sKey.size()),
+   PyString_FromStringAndSize(sVal, sVal.size()));
 }
 
 static Py_ssize_t mps_length(MpsO *pmpso)
@@ -578,10 +577,8 @@ static PyObject *dep_iter(DepO *pdepo)
 
 static PyObject *PyoDepVal(const ADDONREQ &areq)
 {
-  PyObject *tup = PyTuple_New(2);
-  PyTuple_SetItem(tup, 0, PyString_FromString(areq.first.c_str()));
-  PyTuple_SetItem(tup, 1, PyBool_FromLong(areq.second));
-  return tup;
+  return PyTuple_Pack(2, 
+   PyString_FromString(areq.first.c_str()), PyBool_FromLong(areq.second));
 }
 
 static PyObject *dep_iternext(DepO *pdepo)
@@ -591,10 +588,8 @@ static PyObject *dep_iternext(DepO *pdepo)
   const CStdString &sKey = pdepo->i->first;
   const ADDONREQ &areq = pdepo->i->second;
   ++pdepo->i;
-  PyObject *tup = PyTuple_New(2);
-  PyTuple_SetItem(tup, 0, PyString_FromStringAndSize(sKey, sKey.size()));
-  PyTuple_SetItem(tup, 1, PyoDepVal(areq));
-  return tup;
+  return PyTuple_Pack(2,
+   PyString_FromStringAndSize(sKey, sKey.size()), PyoDepVal(areq));
 }
 
 static Py_ssize_t dep_length(DepO *pdepo)

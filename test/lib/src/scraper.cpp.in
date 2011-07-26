@@ -26,6 +26,7 @@ static PyTypeObject ptoMps = { PyObject_HEAD_INIT(NULL) };  // string map
 static PyTypeObject ptoSet = { PyObject_HEAD_INIT(NULL) };  // settings
 static PyTypeObject ptoDep = { PyObject_HEAD_INIT(NULL) };  // dependencies
 static PyTypeObject ptoScr = { PyObject_HEAD_INIT(NULL) };  // scraper
+static PyTypeObject ptoSce = { PyObject_HEAD_INIT(NULL) };  // exception
 
 
 // Empty object
@@ -38,6 +39,13 @@ struct EmO
 struct ScrO : EmO
 {
   ScraperPtr psc;
+};
+
+// Scraper exception
+struct SceO : PyBaseExceptionObject
+{
+  ~SceO() { delete psce; }
+  const CScraperError *psce;
 };
 
 // Base type for sub-objects with pointer to scraper
@@ -83,15 +91,23 @@ static void InitPto(PyTypeObject &pto, const char *sName, size_t cb, const char 
   pto.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
 }
 
-// raise Python exception for scraper error
+// raise Python exception for scraper error; conveniently returns NULL
 PyObject *PyoRaiseSce(const CScraperError &sce)
 {
-  //XXX get our own exception
-  if (sce.FAborted())
-    PyErr_SetString(PyExc_RuntimeError, "scraper aborted");
-  else
-    PyErr_SetString(PyExc_RuntimeError, "CScraperError");
+  SceO *psceo = (SceO *)PyObject_CallFunctionObjArgs((PyObject *)&ptoSce, NULL);
+  psceo->psce = new CScraperError(sce);  // copy sce; it's going away
+  PyErr_SetObject((PyObject *)&ptoSce, (PyObject *)psceo);
   return NULL;
+}
+
+static inline int FAnyArgs(PyObject *args, PyObject *kwds)
+{
+    if (PyTuple_GET_SIZE(args) || (kwds && PyDict_Check(kwds) && PyDict_Size(kwds)))
+    {
+      PyErr_SetString(PyExc_RuntimeError, "callable takes no parameters");
+      return true;
+    }
+    return false;
 }
 
 
@@ -171,8 +187,6 @@ static PyObject *scr_nfo_url(ScrO *pscro, PyObject *ppyo)
 }
 
 //XXX need a way to set fcurl (globally, or in the object?)...
-//also need a scraper object
-//and a scraper exception/abort (two separate Python exceptions?)
 
 static PyMethodDef pmdScr[] = {
   {"nfo_url", (PyCFunction)scr_nfo_url, METH_O,
@@ -186,7 +200,7 @@ static PyMethodDef pmdScr[] = {
   {"find_artist", (PyCFunction)scr_find_artist, METH_O,
     "Find an artist given a name" },
 
- * XXX really these should be called on the object returned from the above...
+ * XXX really these should be called on the sub-object returned from the above...
  * ... art_details should store the search string on return so it can be autopassed
  * ... they can also be given fcurl and scurl will be implicit from the object
   {"episodes", (PyCFunction)vid_episodes, METH_NOARGS,
@@ -220,6 +234,7 @@ static PyMethodDef pmdScr[] = {
 };
 
 <%
+setcontext('ScrO', 'scr', 'psc->')
 add_get('type', 'Type', 'int', "Scraper type, from Type enumeration")
 add_get('id', 'ID', 'CStdString', "Scraper id (dotted pseudo-domain)")
 add_get('name', 'Name', 'CStdString', "Scraper display name")
@@ -244,17 +259,17 @@ add_get('has_settings', 'HasSettings', 'bool', "True if scraper has custom setti
 
 static PyObject *scr_get_mps_extra_info(ScrO *pscro, void *)
 {
-  return (PyObject *)PyObject_CallFunctionObjArgs((PyObject *)&ptoMps, pscro, NULL);
+  return PyObject_CallFunctionObjArgs((PyObject *)&ptoMps, pscro, NULL);
 }
 
 static PyObject *scr_get_set_settings(ScrO *pscro, void *)
 {
-  return (PyObject *)PyObject_CallFunctionObjArgs((PyObject *)&ptoSet, pscro, NULL);
+  return PyObject_CallFunctionObjArgs((PyObject *)&ptoSet, pscro, NULL);
 }
 
 static PyObject *scr_get_dep_deps(ScrO *pscro, void *)
 {
-  return (PyObject *)PyObject_CallFunctionObjArgs((PyObject *)&ptoDep, pscro, NULL);
+  return PyObject_CallFunctionObjArgs((PyObject *)&ptoDep, pscro, NULL);
 }
 
 static PyGetSetDef pgsScr[] = {
@@ -445,6 +460,35 @@ static PyMappingMethods pmmDep =
 };
 
 
+// Scraper exception object
+
+static int sce_init(SceO *psceo, PyObject *args, PyObject *kwds)
+{
+  if (FAnyArgs(args, kwds))
+    return -1;
+  return Py_TYPE(psceo)->tp_base->tp_init((PyObject *)psceo, args, kwds);
+}
+
+static PyObject *sce_repr(SceO *psceo)
+{
+  if (psceo->psce->FAborted())
+    return PyString_FromString("ScraperError: scraper aborted!");
+  return PyString_FromFormat("ScraperError: %s, %s",
+   psceo->psce->Title().c_str(), psceo->psce->Message().c_str());
+}
+
+<%
+setcontext('SceO', 'sce', 'psce->')
+add_get('aborted', 'FAborted', 'bool', "Did the scraper abort?")
+add_get('title', 'Title', 'CStdString', "Error dialog title")
+add_get('message', 'Message', 'CStdString', "Error message")
+%>
+
+static PyGetSetDef pgsSce[] = {
+${getdefs()}
+  {NULL}  /* Sentinel */
+};
+
 // Module initialization
 
 PyMODINIT_FUNC
@@ -488,8 +532,16 @@ initscraper()
   ptoScr.tp_methods = pmdScr;
   ptoScr.tp_getset = pgsScr;
 
+  InitPto(ptoSce, "xbmc.scraper.Error", sizeof(SceO), "Scraper error or abort");
+  ptoSce.tp_base = (PyTypeObject *)PyExc_BaseException;
+  ptoSce.tp_new = (newfunc)ptoSce.tp_base->tp_new;  // our fields are zero-inited
+  ptoSce.tp_init = (initproc)sce_init;
+  ptoSce.tp_dealloc = (destructor)pfn_dealloc(SceO);
+  ptoSce.tp_repr = (reprfunc)sce_repr;
+  ptoSce.tp_getset = pgsSce;
+
   if (PyType_Ready(&ptoTyp) < 0 || PyType_Ready(&ptoMps) < 0 || PyType_Ready(&ptoSet) ||
-    PyType_Ready(&ptoDep) < 0 || PyType_Ready(&ptoScr) < 0)
+    PyType_Ready(&ptoDep) < 0 || PyType_Ready(&ptoScr) < 0 || PyType_Ready(&ptoSce) < 0)
   {
     return;
   }
@@ -508,10 +560,12 @@ initscraper()
   Py_INCREF(&ptoMps);
   Py_INCREF(&ptoSet);
   Py_INCREF(&ptoDep);
+  Py_INCREF(&ptoSce);
   PyModule_AddObject(mod, "Scraper", (PyObject *)&ptoScr);
   PyModule_AddObject(mod, "Type", (PyObject *)&ptoTyp);
   PyModule_AddObject(mod, "StringMap", (PyObject *)&ptoMps);
   PyModule_AddObject(mod, "Settings", (PyObject *)&ptoSet);
   PyModule_AddObject(mod, "Dependencies", (PyObject *)&ptoDep);
+  PyModule_AddObject(mod, "Error", (PyObject *)&ptoSce);
 }
 

@@ -25,6 +25,7 @@ static PyTypeObject ptoMps = { PyObject_HEAD_INIT(NULL) };  // string map
 static PyTypeObject ptoSet = { PyObject_HEAD_INIT(NULL) };  // settings
 static PyTypeObject ptoDep = { PyObject_HEAD_INIT(NULL) };  // dependencies
 static PyTypeObject ptoScr = { PyObject_HEAD_INIT(NULL) };  // scraper
+static PyTypeObject ptoSce = { PyObject_HEAD_INIT(NULL) };  // exception
 
 
 // Empty object
@@ -37,6 +38,13 @@ struct EmO
 struct ScrO : EmO
 {
   ScraperPtr psc;
+};
+
+// Scraper exception
+struct SceO : PyBaseExceptionObject
+{
+  ~SceO() { delete psce; }
+  const CScraperError *psce;
 };
 
 // Base type for sub-objects with pointer to scraper
@@ -82,15 +90,25 @@ static void InitPto(PyTypeObject &pto, const char *sName, size_t cb, const char 
   pto.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
 }
 
-// raise Python exception for scraper error
+// raise Python exception for scraper error; conveniently returns NULL
 PyObject *PyoRaiseSce(const CScraperError &sce)
 {
-  //XXX get our own exception
-  if (sce.FAborted())
-    PyErr_SetString(PyExc_RuntimeError, "scraper aborted");
-  else
-    PyErr_SetString(PyExc_RuntimeError, "CScraperError");
+  // copy the error; it's going away
+  SceO *psceo = (SceO *)PyObject_CallFunctionObjArgs((PyObject *)&ptoSce, NULL);
+  psceo->psce = new CScraperError(sce); /*sce.FAborted() ? new CScraperError()
+                               : new CScraperError(sce.Title(), sce.Message());XXX*/
+  PyErr_SetObject((PyObject *)&ptoSce, (PyObject *)psceo);
   return NULL;
+}
+
+static inline int FAnyArgs(PyObject *args, PyObject *kwds)
+{
+    if (PyTuple_GET_SIZE(args) || (kwds && PyDict_Check(kwds) && PyDict_Size(kwds)))
+    {
+      PyErr_SetString(PyExc_RuntimeError, "callable takes no parameters");
+      return true;
+    }
+    return false;
 }
 
 
@@ -170,8 +188,6 @@ static PyObject *scr_nfo_url(ScrO *pscro, PyObject *ppyo)
 }
 
 //XXX need a way to set fcurl (globally, or in the object?)...
-//also need a scraper object
-//and a scraper exception/abort (two separate Python exceptions?)
 
 static PyMethodDef pmdScr[] = {
   {"nfo_url", (PyCFunction)scr_nfo_url, METH_O,
@@ -185,7 +201,7 @@ static PyMethodDef pmdScr[] = {
   {"find_artist", (PyCFunction)scr_find_artist, METH_O,
     "Find an artist given a name" },
 
- * XXX really these should be called on the object returned from the above...
+ * XXX really these should be called on the sub-object returned from the above...
  * ... art_details should store the search string on return so it can be autopassed
  * ... they can also be given fcurl and scurl will be implicit from the object
   {"episodes", (PyCFunction)vid_episodes, METH_NOARGS,
@@ -221,196 +237,199 @@ static PyMethodDef pmdScr[] = {
 
 
 
-static PyObject *scr_get_i_type(ScrO *pscro, void *)
+
+
+static PyObject *scr_get_i_type(ScrO *scro, void *)
 {
-  return PyInt_FromLong(pscro->psc->Type());
+  return PyInt_FromLong(scro->psc->Type());
 }
 
 
 
 
-static PyObject *scr_get_s_id(ScrO *pscro, void *)
+static PyObject *scr_get_s_id(ScrO *scro, void *)
 {
-  CStdString s = pscro->psc->ID();
+  CStdString s = scro->psc->ID();
   return PyString_FromStringAndSize(s, s.size());
 }
 
 
 
 
-static PyObject *scr_get_s_name(ScrO *pscro, void *)
+static PyObject *scr_get_s_name(ScrO *scro, void *)
 {
-  CStdString s = pscro->psc->Name();
+  CStdString s = scro->psc->Name();
   return PyString_FromStringAndSize(s, s.size());
 }
 
 
 
 
-static PyObject *scr_get_f_enabled(ScrO *pscro, void *)
+static PyObject *scr_get_f_enabled(ScrO *scro, void *)
 {
-  return PyBool_FromLong(pscro->psc->Enabled());
+  return PyBool_FromLong(scro->psc->Enabled());
 }
 
 
 
 
-static PyObject *scr_get_f_active(ScrO *pscro, void *)
+static PyObject *scr_get_f_active(ScrO *scro, void *)
 {
-  return PyBool_FromLong(pscro->psc->IsInUse());
+  return PyBool_FromLong(scro->psc->IsInUse());
 }
 
 
 
 
-static PyObject *scr_get_ver_ver(ScrO *pscro, void *)
+static PyObject *scr_get_ver_ver(ScrO *scro, void *)
 {
   // not comparable (maybe later?); just a simple string
-  return PyString_FromString(pscro->psc->Version().c_str());
+  return PyString_FromString(scro->psc->Version().c_str());
 }
 
 
 
 
-static PyObject *scr_get_ver_min_ver(ScrO *pscro, void *)
+static PyObject *scr_get_ver_min_ver(ScrO *scro, void *)
 {
   // not comparable (maybe later?); just a simple string
-  return PyString_FromString(pscro->psc->MinVersion().c_str());
+  return PyString_FromString(scro->psc->MinVersion().c_str());
 }
 
 
 
 
-static PyObject *scr_get_s_summary(ScrO *pscro, void *)
+static PyObject *scr_get_s_summary(ScrO *scro, void *)
 {
-  CStdString s = pscro->psc->Summary();
+  CStdString s = scro->psc->Summary();
   return PyString_FromStringAndSize(s, s.size());
 }
 
 
 
 
-static PyObject *scr_get_s_desc(ScrO *pscro, void *)
+static PyObject *scr_get_s_desc(ScrO *scro, void *)
 {
-  CStdString s = pscro->psc->Description();
+  CStdString s = scro->psc->Description();
   return PyString_FromStringAndSize(s, s.size());
 }
 
 
 
 
-static PyObject *scr_get_s_path(ScrO *pscro, void *)
+static PyObject *scr_get_s_path(ScrO *scro, void *)
 {
-  CStdString s = pscro->psc->Path();
+  CStdString s = scro->psc->Path();
   return PyString_FromStringAndSize(s, s.size());
 }
 
 
 
 
-static PyObject *scr_get_s_profile(ScrO *pscro, void *)
+static PyObject *scr_get_s_profile(ScrO *scro, void *)
 {
-  CStdString s = pscro->psc->Profile();
+  CStdString s = scro->psc->Profile();
   return PyString_FromStringAndSize(s, s.size());
 }
 
 
 
 
-static PyObject *scr_get_s_lib_path(ScrO *pscro, void *)
+static PyObject *scr_get_s_lib_path(ScrO *scro, void *)
 {
-  CStdString s = pscro->psc->LibPath();
+  CStdString s = scro->psc->LibPath();
   return PyString_FromStringAndSize(s, s.size());
 }
 
 
 
 
-static PyObject *scr_get_s_changelog(ScrO *pscro, void *)
+static PyObject *scr_get_s_changelog(ScrO *scro, void *)
 {
-  CStdString s = pscro->psc->ChangeLog();
+  CStdString s = scro->psc->ChangeLog();
   return PyString_FromStringAndSize(s, s.size());
 }
 
 
 
 
-static PyObject *scr_get_s_fanart(ScrO *pscro, void *)
+static PyObject *scr_get_s_fanart(ScrO *scro, void *)
 {
-  CStdString s = pscro->psc->FanArt();
+  CStdString s = scro->psc->FanArt();
   return PyString_FromStringAndSize(s, s.size());
 }
 
 
 
 
-static PyObject *scr_get_s_author(ScrO *pscro, void *)
+static PyObject *scr_get_s_author(ScrO *scro, void *)
 {
-  CStdString s = pscro->psc->Author();
+  CStdString s = scro->psc->Author();
   return PyString_FromStringAndSize(s, s.size());
 }
 
 
 
 
-static PyObject *scr_get_s_icon(ScrO *pscro, void *)
+static PyObject *scr_get_s_icon(ScrO *scro, void *)
 {
-  CStdString s = pscro->psc->Icon();
+  CStdString s = scro->psc->Icon();
   return PyString_FromStringAndSize(s, s.size());
 }
 
 
 
 
-static PyObject *scr_get_i_rating(ScrO *pscro, void *)
+static PyObject *scr_get_i_rating(ScrO *scro, void *)
 {
-  return PyInt_FromLong(pscro->psc->Stars());
+  return PyInt_FromLong(scro->psc->Stars());
 }
 
 
 
 
-static PyObject *scr_get_s_disclaimer(ScrO *pscro, void *)
+static PyObject *scr_get_s_disclaimer(ScrO *scro, void *)
 {
-  CStdString s = pscro->psc->Disclaimer();
+  CStdString s = scro->psc->Disclaimer();
   return PyString_FromStringAndSize(s, s.size());
 }
 
 
 
 
-static PyObject *scr_get_s_lang(ScrO *pscro, void *)
+static PyObject *scr_get_s_lang(ScrO *scro, void *)
 {
-  CStdString s = pscro->psc->Language();
+  CStdString s = scro->psc->Language();
   return PyString_FromStringAndSize(s, s.size());
 }
 
 
 
 
-static PyObject *scr_get_f_has_settings(ScrO *pscro, void *)
+static PyObject *scr_get_f_has_settings(ScrO *scro, void *)
 {
-  return PyBool_FromLong(pscro->psc->HasSettings());
+  return PyBool_FromLong(scro->psc->HasSettings());
 }
 
 
 
 static PyObject *scr_get_mps_extra_info(ScrO *pscro, void *)
 {
-  return (PyObject *)PyObject_CallFunctionObjArgs((PyObject *)&ptoMps, pscro, NULL);
+  return PyObject_CallFunctionObjArgs((PyObject *)&ptoMps, pscro, NULL);
 }
 
 static PyObject *scr_get_set_settings(ScrO *pscro, void *)
 {
-  return (PyObject *)PyObject_CallFunctionObjArgs((PyObject *)&ptoSet, pscro, NULL);
+  return PyObject_CallFunctionObjArgs((PyObject *)&ptoSet, pscro, NULL);
 }
 
 static PyObject *scr_get_dep_deps(ScrO *pscro, void *)
 {
-  return (PyObject *)PyObject_CallFunctionObjArgs((PyObject *)&ptoDep, pscro, NULL);
+  return PyObject_CallFunctionObjArgs((PyObject *)&ptoDep, pscro, NULL);
 }
 
 static PyGetSetDef pgsScr[] = {
+
 
   {(char *)"type", (getter)scr_get_i_type, NULL, (char *)"Scraper type, from Type enumeration", NULL},
   {(char *)"id", (getter)scr_get_s_id, NULL, (char *)"Scraper id (dotted pseudo-domain)", NULL},
@@ -432,6 +451,7 @@ static PyGetSetDef pgsScr[] = {
   {(char *)"disclaimer", (getter)scr_get_s_disclaimer, NULL, (char *)"Disclaimer text", NULL},
   {(char *)"lang", (getter)scr_get_s_lang, NULL, (char *)"Scraper language", NULL},
   {(char *)"has_settings", (getter)scr_get_f_has_settings, NULL, (char *)"True if scraper has custom settings", NULL},
+
 
   {(char *)"extra_info", (getter)scr_get_mps_extra_info, NULL, (char *)"Extra info dictionary", NULL},
   {(char *)"settings", (getter)scr_get_set_settings, NULL, (char *)"Addon settings", NULL},
@@ -619,6 +639,64 @@ static PyMappingMethods pmmDep =
 };
 
 
+// Scraper exception object
+
+static int sce_init(SceO *psceo, PyObject *args, PyObject *kwds)
+{
+  if (FAnyArgs(args, kwds))
+    return -1;
+  return Py_TYPE(psceo)->tp_base->tp_init((PyObject *)psceo, args, kwds);
+}
+
+static PyObject *sce_repr(SceO *psceo)
+{
+  if (psceo->psce->FAborted())
+    return PyString_FromString("ScraperError: scraper aborted!");
+  return PyString_FromFormat("ScraperError: %s, %s",
+   psceo->psce->Title().c_str(), psceo->psce->Message().c_str());
+}
+
+
+
+
+
+
+static PyObject *sce_get_f_aborted(SceO *sceo, void *)
+{
+  return PyBool_FromLong(sceo->psce->FAborted());
+}
+
+
+
+
+static PyObject *sce_get_s_title(SceO *sceo, void *)
+{
+  CStdString s = sceo->psce->Title();
+  return PyString_FromStringAndSize(s, s.size());
+}
+
+
+
+
+static PyObject *sce_get_s_message(SceO *sceo, void *)
+{
+  CStdString s = sceo->psce->Message();
+  return PyString_FromStringAndSize(s, s.size());
+}
+
+
+
+static PyGetSetDef pgsSce[] = {
+
+
+  {(char *)"aborted", (getter)sce_get_f_aborted, NULL, (char *)"Did the scraper abort?", NULL},
+  {(char *)"title", (getter)sce_get_s_title, NULL, (char *)"Error dialog title", NULL},
+  {(char *)"message", (getter)sce_get_s_message, NULL, (char *)"Error message", NULL},
+
+
+  {NULL}  /* Sentinel */
+};
+
 // Module initialization
 
 PyMODINIT_FUNC
@@ -662,8 +740,16 @@ initscraper()
   ptoScr.tp_methods = pmdScr;
   ptoScr.tp_getset = pgsScr;
 
+  InitPto(ptoSce, "xbmc.scraper.Error", sizeof(SceO), "Scraper error or abort");
+  ptoSce.tp_base = (PyTypeObject *)PyExc_BaseException;
+  ptoSce.tp_new = (newfunc)ptoSce.tp_base->tp_new;  // our fields are zero-inited
+  ptoSce.tp_init = (initproc)sce_init;
+  ptoSce.tp_dealloc = (destructor)pfn_dealloc(SceO);
+  ptoSce.tp_repr = (reprfunc)sce_repr;
+  ptoSce.tp_getset = pgsSce;
+
   if (PyType_Ready(&ptoTyp) < 0 || PyType_Ready(&ptoMps) < 0 || PyType_Ready(&ptoSet) ||
-    PyType_Ready(&ptoDep) < 0 || PyType_Ready(&ptoScr) < 0)
+    PyType_Ready(&ptoDep) < 0 || PyType_Ready(&ptoScr) < 0 || PyType_Ready(&ptoSce) < 0)
   {
     return;
   }
@@ -684,10 +770,12 @@ initscraper()
   Py_INCREF(&ptoMps);
   Py_INCREF(&ptoSet);
   Py_INCREF(&ptoDep);
+  Py_INCREF(&ptoSce);
   PyModule_AddObject(mod, "Scraper", (PyObject *)&ptoScr);
   PyModule_AddObject(mod, "Type", (PyObject *)&ptoTyp);
   PyModule_AddObject(mod, "StringMap", (PyObject *)&ptoMps);
   PyModule_AddObject(mod, "Settings", (PyObject *)&ptoSet);
   PyModule_AddObject(mod, "Dependencies", (PyObject *)&ptoDep);
+  PyModule_AddObject(mod, "Error", (PyObject *)&ptoSce);
 }
 

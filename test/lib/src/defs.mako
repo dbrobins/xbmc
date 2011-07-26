@@ -1,33 +1,49 @@
 ## Extension module definition library
 
+<%!
+# class: ScrO, etc.
+# name: of pointer; pscro, etc.
+# prefix: for function names, e.g. "scr"
+# inner: inner object e.g. "psc->"
+gen_ctx = {}
+%>
+
+<%def name="setcontext(cls, prefix, inner)">
+<%
+  global gen_ctx
+  if getset:
+    raise RuntimeError('new context set before render')
+  gen_ctx = {'class': cls, 'name': cls.lower(), 'prefix': prefix, 'inner': inner}
+%>
+</%def>
+
 <%def name="get_f(name, cpp)">
-static PyObject *${name}(ScrO *pscro, void *)
+static PyObject *${name}(${gen_ctx['class']} *${gen_ctx['name']}, void *)
 {
-  return PyBool_FromLong(pscro->psc->${cpp}());
+  return PyBool_FromLong(${gen_ctx['name']}->${gen_ctx['inner']}${cpp}());
 }
 </%def>
 
-
 <%def name="get_i(name, cpp)">
-static PyObject *${name}(ScrO *pscro, void *)
+static PyObject *${name}(${gen_ctx['class']} *${gen_ctx['name']}, void *)
 {
-  return PyInt_FromLong(pscro->psc->${cpp}());
+  return PyInt_FromLong(${gen_ctx['name']}->${gen_ctx['inner']}${cpp}());
 }
 </%def>
 
 <%def name="get_s(name, cpp)">
-static PyObject *${name}(ScrO *pscro, void *)
+static PyObject *${name}(${gen_ctx['class']} *${gen_ctx['name']}, void *)
 {
-  CStdString s = pscro->psc->${cpp}();
+  CStdString s = ${gen_ctx['name']}->${gen_ctx['inner']}${cpp}();
   return PyString_FromStringAndSize(s, s.size());
 }
 </%def>
 
 <%def name="get_ver(name, cpp)">
-static PyObject *${name}(ScrO *pscro, void *)
+static PyObject *${name}(${gen_ctx['class']} *${gen_ctx['name']}, void *)
 {
   // not comparable (maybe later?); just a simple string
-  return PyString_FromString(pscro->psc->${cpp}().c_str());
+  return PyString_FromString(${gen_ctx['name']}->${gen_ctx['inner']}${cpp}().c_str());
 }
 </%def>
 
@@ -47,7 +63,7 @@ getset = []
   get = mpgetfn[typ]
 
   # create thunk function name
-  fn = "scr_get_" + get + "_" + py
+  fn = gen_ctx['prefix'] + "_get_" + get + "_" + py
 
   # create the getset entry
   getset.append({'py': py, 'fn': fn, 'doc': doc})
@@ -58,7 +74,10 @@ getset = []
 </%def>
 
 <%def name="getdefs()">
+<% global getset %>
 % for i in getset:
   {(char *)"${i['py']}", (getter)${i['fn']}, NULL, (char *)"${i['doc']}", NULL},
 % endfor
+<% getset = [] %>
 </%def>
+

@@ -7,7 +7,7 @@ if extra_cxx:
   extra_cxx = filter(lambda x: not re.match("-D'", x), extra_cxx)  # bad quoted define
 extra_cxx.append('-std=c++0x')
 
-xbmc_lib = Extension('__init__',
+xbmc_lib = Extension('_load',
        sources = ['src/lib.cpp'],
        libraries = ['xbmc'],
        library_dirs = ['/usr/lib64/xbmc'],
@@ -27,8 +27,6 @@ setup (name = 'XBMC Library',
        version = '1.0',
        description = 'XBMC shared library access',
        author = 'David Robins',
-       # we need __init__.py for the __init__ shared object to be loaded
-       # (see http://mail.python.org/pipermail/python-ideas/2008-October/002293.html)
        packages = ['xbmc', 'xbmc.lib'],
        package_dir = {'xbmc': 'ext'},
        ext_package = 'xbmc.lib',

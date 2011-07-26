@@ -93,10 +93,8 @@ static void InitPto(PyTypeObject &pto, const char *sName, size_t cb, const char 
 // raise Python exception for scraper error; conveniently returns NULL
 PyObject *PyoRaiseSce(const CScraperError &sce)
 {
-  // copy the error; it's going away
   SceO *psceo = (SceO *)PyObject_CallFunctionObjArgs((PyObject *)&ptoSce, NULL);
-  psceo->psce = new CScraperError(sce); /*sce.FAborted() ? new CScraperError()
-                               : new CScraperError(sce.Title(), sce.Message());XXX*/
+  psceo->psce = new CScraperError(sce);  // copy sce; it's going away
   PyErr_SetObject((PyObject *)&ptoSce, (PyObject *)psceo);
   return NULL;
 }

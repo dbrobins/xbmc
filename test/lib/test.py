@@ -1,5 +1,5 @@
 import xbmc.lib
-from xbmc.lib.scraper import Scraper, Type
+from xbmc.lib.scraper import Scraper, Type, Error
 
 print("Scraper test loaded.")
 
@@ -21,6 +21,16 @@ print(s.settings['fanart'])
 
 print(dict(s.deps))
 print(s.deps['xbmc.metadata'][0])
+
+# if program terminates (via std::terminate usually) on throwing ADDON::CScraperError,
+# then libxbmc.so hasn't been loaded with symbols available; see ext/__init__.py
+try:
+  s.nfo_url("!") # will throw (abort)...
+except Error as e:
+  if e.aborted:
+    print("scraper aborted!")
+  else:
+    print("scraper error: '{}', title '{}'".format(e.message, e.title))
 
 # what operations are possible?
 # - don't allow e.g. GetVideoDetails on Scraper objects;

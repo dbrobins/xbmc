@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,9 +30,13 @@
 #include "playlists/PlayList.h"
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
+#include "utils/StringUtils.h"
 #include "music/tags/MusicInfoTag.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "guilib/LocalizeStrings.h"
+#include "interfaces/AnnouncementManager.h"
+#include "guilib/Key.h"
+#include "URL.h"
 
 using namespace PLAYLIST;
 
@@ -59,6 +63,22 @@ CPlayListPlayer::~CPlayListPlayer(void)
   delete m_PlaylistEmpty;
 }
 
+bool CPlayListPlayer::OnAction(const CAction &action)
+{
+  if (action.GetID() == ACTION_PREV_ITEM && !IsSingleItemNonRepeatPlaylist())
+  {
+    PlayPrevious();
+    return true;
+  }
+  else if (action.GetID() == ACTION_NEXT_ITEM && !IsSingleItemNonRepeatPlaylist())
+  {
+    PlayNext();
+    return true;
+  }
+  else
+    return false;
+}
+
 bool CPlayListPlayer::OnMessage(CGUIMessage &message)
 {
   switch (message.GetMessage())
@@ -66,10 +86,13 @@ bool CPlayListPlayer::OnMessage(CGUIMessage &message)
   case GUI_MSG_NOTIFY_ALL:
     if (message.GetParam1() == GUI_MSG_UPDATE_ITEM && message.GetItem())
     {
-      // update our item if necessary
-      CPlayList &playlist = GetPlaylist(m_iCurrentPlayList);
-      CFileItemPtr item = boost::static_pointer_cast<CFileItem>(message.GetItem());
-      playlist.UpdateItem(item.get());
+      // update the items in our playlist(s) if necessary
+      for (int i = PLAYLIST_MUSIC; i <= PLAYLIST_VIDEO; i++)
+      {
+        CPlayList &playlist = GetPlaylist(i);
+        CFileItemPtr item = std::static_pointer_cast<CFileItem>(message.GetItem());
+        playlist.UpdateItem(item.get());
+      }
     }
     break;
   case GUI_MSG_PLAYBACK_STOPPED:
@@ -196,6 +219,12 @@ bool CPlayListPlayer::PlayPrevious()
   return Play(iSong, false, true);
 }
 
+bool CPlayListPlayer::IsSingleItemNonRepeatPlaylist() const
+{
+  const CPlayList& playlist = GetPlaylist(m_iCurrentPlayList);
+  return (playlist.size() <= 1 && !RepeatedOne(m_iCurrentPlayList) && !Repeated(m_iCurrentPlayList));
+}
+
 bool CPlayListPlayer::Play()
 {
   if (m_iCurrentPlayList == PLAYLIST_NONE)
@@ -254,9 +283,12 @@ bool CPlayListPlayer::Play(int iSong, bool bAutoPlay /* = false */, bool bPlayPr
   m_bPlaybackStarted = false;
 
   unsigned int playAttempt = XbmcThreads::SystemClockMillis();
-  if (!g_application.PlayFile(*item, bAutoPlay))
+  PlayBackRet ret = g_application.PlayFile(*item, bAutoPlay);
+  if (ret == PLAYBACK_CANCELED)
+    return false;
+  if (ret == PLAYBACK_FAIL)
   {
-    CLog::Log(LOGERROR,"Playlist Player: skipping unplayable item: %i, path [%s]", m_iCurrentSong, item->GetPath().c_str());
+    CLog::Log(LOGERROR,"Playlist Player: skipping unplayable item: %i, path [%s]", m_iCurrentSong, CURL::GetRedacted(item->GetPath()).c_str());
     playlist.SetUnPlayable(m_iCurrentSong);
 
     // abort on 100 failed CONSECTUTIVE songs
@@ -297,6 +329,10 @@ bool CPlayListPlayer::Play(int iSong, bool bAutoPlay /* = false */, bool bPlayPr
       return false;
     }
   }
+
+  // reset the start offset of this item
+  if (item->m_lStartOffset == STARTOFFSET_RESUME)
+    item->m_lStartOffset = 0;
 
   // TODO - move the above failure logic and the below success logic
   //        to callbacks instead so we don't rely on the return value
@@ -343,7 +379,7 @@ void CPlayListPlayer::SetCurrentPlaylist(int iPlaylist)
 void CPlayListPlayer::ClearPlaylist(int iPlaylist)
 {
   // clear our applications playlist file
-  g_application.m_strPlayListFile.Empty();
+  g_application.m_strPlayListFile.clear();
 
   CPlayList& playlist = GetPlaylist(iPlaylist);
   playlist.Clear();
@@ -451,8 +487,7 @@ void CPlayListPlayer::SetShuffle(int iPlaylist, bool bYesNo, bool bNotify /* = f
 
     if (bNotify)
     {
-      CStdString shuffleStr;
-      shuffleStr.Format("%s: %s", g_localizeStrings.Get(191), g_localizeStrings.Get(bYesNo ? 593 : 591)); // Shuffle: All/Off
+      std::string shuffleStr = StringUtils::Format("%s: %s", g_localizeStrings.Get(191).c_str(), g_localizeStrings.Get(bYesNo ? 593 : 591).c_str()); // Shuffle: All/Off
       CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Info, g_localizeStrings.Get(559),  shuffleStr);
     }
 
@@ -466,6 +501,8 @@ void CPlayListPlayer::SetShuffle(int iPlaylist, bool bYesNo, bool bNotify /* = f
       // so dont do anything
     }
   }
+  
+  AnnouncePropertyChanged(iPlaylist, "shuffled", IsShuffled(iPlaylist));
 }
 
 bool CPlayListPlayer::IsShuffled(int iPlaylist) const
@@ -503,6 +540,21 @@ void CPlayListPlayer::SetRepeat(int iPlaylist, REPEAT_STATE state, bool bNotify 
   }
 
   m_repeatState[iPlaylist] = state;
+
+  CVariant data;
+  switch (state)
+  {
+  case REPEAT_ONE:
+    data = "one";
+    break;
+  case REPEAT_ALL:
+    data = "all";
+    break;
+  default:
+    data = "off";
+    break;
+  }
+  AnnouncePropertyChanged(iPlaylist, "repeat", data);
 }
 
 REPEAT_STATE CPlayListPlayer::GetRepeat(int iPlaylist) const
@@ -525,8 +577,8 @@ void CPlayListPlayer::ReShuffle(int iPlaylist, int iPosition)
   else if (iPlaylist == m_iCurrentPlayList)
   {
     if (
-      (g_application.IsPlayingAudio() && iPlaylist == PLAYLIST_MUSIC) ||
-      (g_application.IsPlayingVideo() && iPlaylist == PLAYLIST_VIDEO)
+      (g_application.m_pPlayer->IsPlayingAudio() && iPlaylist == PLAYLIST_MUSIC) ||
+      (g_application.m_pPlayer->IsPlayingVideo() && iPlaylist == PLAYLIST_VIDEO)
       )
     {
       g_playlistPlayer.GetPlaylist(iPlaylist).Shuffle(m_iCurrentSong + 2);
@@ -653,4 +705,17 @@ void CPlayListPlayer::Swap(int iPlaylist, int indexItem1, int indexItem2)
   // its likely that the playlist changed
   CGUIMessage msg(GUI_MSG_PLAYLIST_CHANGED, 0, 0);
   g_windowManager.SendMessage(msg);
+}
+
+void CPlayListPlayer::AnnouncePropertyChanged(int iPlaylist, const std::string &strProperty, const CVariant &value)
+{
+  if (strProperty.empty() || value.isNull() ||
+     (iPlaylist == PLAYLIST_VIDEO && !g_application.m_pPlayer->IsPlayingVideo()) ||
+     (iPlaylist == PLAYLIST_MUSIC && !g_application.m_pPlayer->IsPlayingAudio()))
+    return;
+
+  CVariant data;
+  data["player"]["playerid"] = iPlaylist;
+  data["property"][strProperty] = value;
+  ANNOUNCEMENT::CAnnouncementManager::Get().Announce(ANNOUNCEMENT::Player, "xbmc", "OnPropertyChanged", data);
 }

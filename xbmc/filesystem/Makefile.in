@@ -1,8 +1,6 @@
 CXXFLAGS += -D__STDC_FORMAT_MACROS
 
 SRCS  = AddonsDirectory.cpp
-SRCS += AndroidAppFile.cpp
-SRCS += AndroidAppDirectory.cpp
 SRCS += ASAPFileDirectory.cpp
 SRCS += CacheStrategy.cpp
 SRCS += CircularCache.cpp
@@ -11,12 +9,15 @@ SRCS += CDDAFile.cpp
 SRCS += CurlFile.cpp
 SRCS += DAAPDirectory.cpp
 SRCS += DAAPFile.cpp
+SRCS += DAVCommon.cpp
 SRCS += DAVDirectory.cpp
+SRCS += DAVFile.cpp
 SRCS += Directory.cpp
 SRCS += DirectoryCache.cpp
 SRCS += DirectoryFactory.cpp
 SRCS += DirectoryHistory.cpp
 SRCS += DllLibCurl.cpp
+SRCS += FavouritesDirectory.cpp
 SRCS += File.cpp
 SRCS += FileCache.cpp
 SRCS += FileDirectoryFactory.cpp
@@ -24,21 +25,18 @@ SRCS += FileFactory.cpp
 SRCS += FileReaderFile.cpp
 SRCS += FTPDirectory.cpp
 SRCS += FTPParse.cpp
-SRCS += HDDirectory.cpp
-SRCS += HDFile.cpp
 SRCS += HDHomeRunDirectory.cpp
 SRCS += HDHomeRunFile.cpp
 SRCS += HTSPDirectory.cpp
 SRCS += HTSPSession.cpp
 SRCS += HTTPDirectory.cpp
+SRCS += HTTPFile.cpp
 SRCS += IDirectory.cpp
 SRCS += IFile.cpp
 SRCS += ImageFile.cpp
 SRCS += iso9660.cpp
 SRCS += ISO9660Directory.cpp
 SRCS += ISOFile.cpp
-SRCS += LastFMDirectory.cpp
-SRCS += LastFMFile.cpp
 SRCS += LibraryDirectory.cpp
 SRCS += MemBufferCache.cpp
 SRCS += MultiPathDirectory.cpp
@@ -52,11 +50,15 @@ SRCS += MythFile.cpp
 SRCS += MythSession.cpp
 SRCS += NSFFileDirectory.cpp
 SRCS += OGGFileDirectory.cpp
+SRCS += OverrideDirectory.cpp
+SRCS += OverrideFile.cpp
 SRCS += PlaylistDirectory.cpp
 SRCS += PlaylistFileDirectory.cpp
 SRCS += PipeFile.cpp
 SRCS += PipesManager.cpp
 SRCS += PluginDirectory.cpp
+SRCS += posix/PosixDirectory.cpp
+SRCS += posix/PosixFile.cpp
 SRCS += PVRFile.cpp
 SRCS += PVRDirectory.cpp
 SRCS += RSSDirectory.cpp
@@ -94,6 +96,8 @@ SRCS += ZipManager.cpp
 ifeq (@USE_ANDROID@,1)
 SRCS += APKDirectory.cpp
 SRCS += APKFile.cpp
+SRCS += AndroidAppFile.cpp
+SRCS += AndroidAppDirectory.cpp
 endif
 
 ifeq (@HAVE_XBMC_NONFREE@,1)
@@ -103,7 +107,7 @@ SRCS += RarManager.cpp
 endif
 
 ifeq (@USE_LIBSMBCLIENT@,1)
-SRCS += SmbFile.cpp
+SRCS += SMBFile.cpp
 SRCS += SMBDirectory.cpp
 endif
 
@@ -119,9 +123,11 @@ endif
 
 ifeq (@HAVE_LIBBLURAY@,1)
 SRCS += BlurayDirectory.cpp
+SRCS += BlurayFile.cpp
 endif
 
 ifeq (@USE_UPNP@,1)
+INCLUDES+=-I@abs_top_srcdir@/lib/libUPnP
 INCLUDES+=-I@abs_top_srcdir@/lib/libUPnP/Platinum/Source/Core
 INCLUDES+=-I@abs_top_srcdir@/lib/libUPnP/Platinum/Source/Platinum
 INCLUDES+=-I@abs_top_srcdir@/lib/libUPnP/Platinum/Source/Devices/MediaConnect

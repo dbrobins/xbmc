@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -188,9 +188,9 @@ void CWIN32Wmi::testquery()
   pclsObj = NULL;
 }
 
-std::vector<CStdString> CWIN32Wmi::GetWMIStrVector(CStdString& strQuery, CStdStringW& strProperty)
+std::vector<std::string> CWIN32Wmi::GetWMIStrVector(std::string& strQuery, std::wstring& strProperty)
 {
-  std::vector<CStdString> strResult;
+  std::vector<std::string> strResult;
   pEnumerator = NULL;
   pclsObj = NULL;
 
@@ -236,7 +236,7 @@ std::vector<CStdString> CWIN32Wmi::GetWMIStrVector(CStdString& strQuery, CStdStr
   return strResult;
 }
 
-CStdString CWIN32Wmi::GetWMIString(CStdString& strQuery, CStdStringW& strProperty)
+std::string CWIN32Wmi::GetWMIString(std::string& strQuery, std::wstring& strProperty)
 {
   return GetWMIStrVector(strQuery, strProperty)[0];
 }

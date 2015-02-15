@@ -39,37 +39,42 @@ using namespace std;
 namespace dbiplus {
 //************* Database implementation ***************
 
-Database::Database() {
+Database::Database():
+  error(), //S_NO_CONNECTION,
+  host(),
+  port(),
+  db(),
+  login(),
+  passwd(),
+  sequence_table("db_sequence")
+{
   active = false;	// No connection yet
-  error = "";//S_NO_CONNECTION;
-  host = "";
-  port = "";
-  db = "";
-  login = "";
-  passwd = "";
-  sequence_table = "db_sequence";
 }
 
 Database::~Database() {
   disconnect();		// Disconnect if connected to database
 }
 
-int Database::connectFull(const char *newHost, const char *newPort, const char *newDb, const char *newLogin, const char *newPasswd) {
+int Database::connectFull(const char *newHost, const char *newPort, const char *newDb, const char *newLogin, const char *newPasswd,
+                        const char *newKey, const char *newCert, const char *newCA, const char *newCApath, const char *newCiphers) {
   host = newHost;
   port = newPort;
   db = newDb;
   login = newLogin;
   passwd = newPasswd;
+  key = newKey;
+  cert = newCert;
+  ca = newCA;
+  capath = newCApath;
+  ciphers = newCiphers;
   return connect(true);
 }
 
 string Database::prepare(const char *format, ...)
 {
-  string result = "";
-
   va_list args;
   va_start(args, format);
-  result = vprepare(format, args);
+  string result = vprepare(format, args);
   va_end(args);
 
   return result;
@@ -77,15 +82,15 @@ string Database::prepare(const char *format, ...)
 
 //************* Dataset implementation ***************
 
-Dataset::Dataset() {
+Dataset::Dataset():
+  select_sql("")
+{
 
   db = NULL;
   haveError = active = false;
   frecno = 0;
   fbof = feof = true;
   autocommit = true;
-
-  select_sql = "";
 
   fields_object = new Fields();
 
@@ -94,15 +99,15 @@ Dataset::Dataset() {
 
 
 
-Dataset::Dataset(Database *newDb) {
+Dataset::Dataset(Database *newDb):
+  select_sql("")
+{
 
   db = newDb;
   haveError = active = false;
   frecno = 0;
   fbof = feof = true;
   autocommit = true;
-
-  select_sql = "";
 
   fields_object = new Fields();
 
@@ -128,7 +133,7 @@ void Dataset::setSqlParams(const char *sqlFrmt, sqlType t, ...) {
   char sqlCmd[DB_BUFF_MAX+1];
 
   va_start(ap, t);
-#ifndef _LINUX
+#ifndef TARGET_POSIX
   _vsnprintf(sqlCmd, DB_BUFF_MAX-1, sqlFrmt, ap);
 #else
   vsnprintf(sqlCmd, DB_BUFF_MAX-1, sqlFrmt, ap);
@@ -508,8 +513,9 @@ for (unsigned int i=0; i < fields_object->size(); i++)
 
 //************* DbErrors implementation ***************
 
-DbErrors::DbErrors() {
-  msg_ = "Unknown Database Error";
+DbErrors::DbErrors():
+  msg_("Unknown Database Error")
+{
 }
 
 
@@ -517,7 +523,7 @@ DbErrors::DbErrors(const char *msg, ...) {
   va_list vl;
   va_start(vl, msg);
   char buf[DB_BUFF_MAX]="";
-#ifndef _LINUX
+#ifndef TARGET_POSIX
   _vsnprintf(buf, DB_BUFF_MAX-1, msg, vl);
 #else
   vsnprintf(buf, DB_BUFF_MAX-1, msg, vl);

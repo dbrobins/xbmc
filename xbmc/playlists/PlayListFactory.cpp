@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,10 +26,11 @@
 #include "PlayListURL.h"
 #include "PlayListXML.h"
 #include "utils/URIUtils.h"
+#include "utils/StringUtils.h"
 
 using namespace PLAYLIST;
 
-CPlayList* CPlayListFactory::Create(const CStdString& filename)
+CPlayList* CPlayListFactory::Create(const std::string& filename)
 {
   CFileItem item(filename,false);
   return Create(item);
@@ -37,13 +38,14 @@ CPlayList* CPlayListFactory::Create(const CStdString& filename)
 
 CPlayList* CPlayListFactory::Create(const CFileItem& item)
 {
-  if(item.IsLastFM()) //lastfm is always a stream, and just silly to check content
-    return NULL;
-
   if( item.IsInternetStream() )
   {
-    CStdString strMimeType = item.GetMimeType();
-    strMimeType.MakeLower();
+    // Ensure the MIME type has been retrieved for http:// and shout:// streams
+    if (item.GetMimeType().empty())
+      const_cast<CFileItem&>(item).FillInMimeType();
+
+    std::string strMimeType = item.GetMimeType();
+    StringUtils::ToLower(strMimeType);
 
     if (strMimeType == "video/x-ms-asf"
     || strMimeType == "video/x-ms-asx"
@@ -70,8 +72,8 @@ CPlayList* CPlayListFactory::Create(const CFileItem& item)
       return new CPlayListWPL();
   }
 
-  CStdString extension = URIUtils::GetExtension(item.GetPath());
-  extension.MakeLower();
+  std::string extension = URIUtils::GetExtension(item.GetPath());
+  StringUtils::ToLower(extension);
 
   if (extension == ".m3u" || extension == ".strm")
     return new CPlayListM3U();
@@ -103,8 +105,8 @@ CPlayList* CPlayListFactory::Create(const CFileItem& item)
 
 bool CPlayListFactory::IsPlaylist(const CFileItem& item)
 {
-  CStdString strMimeType = item.GetMimeType();
-  strMimeType.ToLower();
+  std::string strMimeType = item.GetMimeType();
+  StringUtils::ToLower(strMimeType);
 
 /* These are abit uncertain 
   if(strMimeType == "video/x-ms-asf"
@@ -130,20 +132,15 @@ bool CPlayListFactory::IsPlaylist(const CFileItem& item)
   return IsPlaylist(item.GetPath());
 }
 
-bool CPlayListFactory::IsPlaylist(const CStdString& filename)
+bool CPlayListFactory::IsPlaylist(const CURL& url)
 {
-  CStdString extension = URIUtils::GetExtension(filename);
-  extension.ToLower();
+  return URIUtils::HasExtension(url,
+                                ".m3u|.b4s|.pls|.strm|.wpl|.asx|.ram|.url|.pxml");
+}
 
-  if (extension == ".m3u") return true;
-  if (extension == ".b4s") return true;
-  if (extension == ".pls") return true;
-  if (extension == ".strm") return true;
-  if (extension == ".wpl") return true;
-  if (extension == ".asx") return true;
-  if (extension == ".ram") return true;
-  if (extension == ".url") return true;
-  if (extension == ".pxml") return true;
-  return false;
+bool CPlayListFactory::IsPlaylist(const std::string& filename)
+{
+  return URIUtils::HasExtension(filename,
+                     ".m3u|.b4s|.pls|.strm|.wpl|.asx|.ram|.url|.pxml");
 }
 

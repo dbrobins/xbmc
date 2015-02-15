@@ -6,8 +6,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
  */
 
 #include "GUIWindow.h"
-#include "Key.h"
+#include "WindowIDs.h"
 
 /*!
  \ingroup winmsg
@@ -36,16 +36,15 @@ class CGUIDialog :
       public CGUIWindow
 {
 public:
-  CGUIDialog(int id, const CStdString &xmlFile);
+  CGUIDialog(int id, const std::string &xmlFile);
   virtual ~CGUIDialog(void);
 
   virtual bool OnAction(const CAction &action);
   virtual bool OnMessage(CGUIMessage& message);
-  virtual void FrameMove();
   virtual void DoProcess(unsigned int currentTime, CDirtyRegionList &dirtyregions);
   virtual void Render();
 
-  void DoModal(int iWindowID = WINDOW_INVALID, const CStdString &param = ""); // modal
+  void DoModal(int iWindowID = WINDOW_INVALID, const std::string &param = ""); // modal
   void Show(); // modeless
   
   virtual bool OnBack(int actionID);
@@ -65,7 +64,7 @@ protected:
   virtual void OnWindowLoaded();
   virtual void UpdateVisibility();
 
-  virtual void DoModal_Internal(int iWindowID = WINDOW_INVALID, const CStdString &param = ""); // modal
+  virtual void DoModal_Internal(int iWindowID = WINDOW_INVALID, const std::string &param = ""); // modal
   virtual void Show_Internal(); // modeless
   virtual void OnDeinitWindow(int nextWindowID);
 

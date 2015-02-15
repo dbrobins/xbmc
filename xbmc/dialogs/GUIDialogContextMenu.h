@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -75,13 +75,11 @@ enum CONTEXT_BUTTON { CONTEXT_BUTTON_CANCELLED = 0,
                       CONTEXT_BUTTON_INFO,
                       CONTEXT_BUTTON_INFO_ALL,
                       CONTEXT_BUTTON_CDDB,
-                      CONTEXT_BUTTON_UPDATE_LIBRARY,
-                      CONTEXT_BUTTON_UPDATE_TVSHOW,
+                      CONTEXT_BUTTON_REFRESH,
                       CONTEXT_BUTTON_SCAN,
                       CONTEXT_BUTTON_STOP_SCANNING,
                       CONTEXT_BUTTON_SET_ARTIST_THUMB,
-                      CONTEXT_BUTTON_SET_SEASON_THUMB,
-                      CONTEXT_BUTTON_NOW_PLAYING,
+                      CONTEXT_BUTTON_SET_SEASON_ART,
                       CONTEXT_BUTTON_CANCEL_PARTYMODE,
                       CONTEXT_BUTTON_MARK_WATCHED,
                       CONTEXT_BUTTON_MARK_UNWATCHED,
@@ -109,11 +107,11 @@ enum CONTEXT_BUTTON { CONTEXT_BUTTON_CANCELLED = 0,
                       CONTEXT_BUTTON_GROUP_MANAGER,
                       CONTEXT_BUTTON_CHANNEL_MANAGER,
                       CONTEXT_BUTTON_FILTER,
-                      CONTEXT_BUTTON_SET_MOVIESET_THUMB,
+                      CONTEXT_BUTTON_SET_MOVIESET_ART,
                       CONTEXT_BUTTON_BEGIN,
                       CONTEXT_BUTTON_END,
+                      CONTEXT_BUTTON_NOW,
                       CONTEXT_BUTTON_FIND,
-                      CONTEXT_BUTTON_SET_MOVIESET_FANART,
                       CONTEXT_BUTTON_DELETE_PLUGIN,
                       CONTEXT_BUTTON_SORTASC,
                       CONTEXT_BUTTON_SORTBY,
@@ -122,10 +120,15 @@ enum CONTEXT_BUTTON { CONTEXT_BUTTON_CANCELLED = 0,
                       CONTEXT_BUTTON_SORTBY_DATE,
                       CONTEXT_BUTTON_MENU_HOOKS,
                       CONTEXT_BUTTON_PLAY_AND_QUEUE,
+                      CONTEXT_BUTTON_PLAY_ONLY_THIS,
                       CONTEXT_BUTTON_UPDATE_EPG,
                       CONTEXT_BUTTON_RECORD_ITEM,
                       CONTEXT_BUTTON_TAGS_ADD_ITEMS,
                       CONTEXT_BUTTON_TAGS_REMOVE_ITEMS,
+                      CONTEXT_BUTTON_SET_MOVIESET,
+                      CONTEXT_BUTTON_MOVIESET_ADD_REMOVE_ITEMS,
+                      CONTEXT_BUTTON_BROWSE_INTO,
+                      CONTEXT_BUTTON_EDIT_SORTTITLE,
                       CONTEXT_BUTTON_USER1,
                       CONTEXT_BUTTON_USER2,
                       CONTEXT_BUTTON_USER3,
@@ -138,10 +141,10 @@ enum CONTEXT_BUTTON { CONTEXT_BUTTON_CANCELLED = 0,
                       CONTEXT_BUTTON_USER10
                     };
 
-class CContextButtons : public std::vector< std::pair<unsigned int, CStdString> >
+class CContextButtons : public std::vector< std::pair<unsigned int, std::string> >
 {
 public:
-  void Add(unsigned int, const CStdString &label);
+  void Add(unsigned int, const std::string &label);
   void Add(unsigned int, int label);
 };
 
@@ -155,11 +158,11 @@ public:
   virtual bool OnAction(const CAction& action);
   virtual void SetPosition(float posX, float posY);
 
-  static bool SourcesMenu(const CStdString &strType, const CFileItemPtr item, float posX, float posY);
-  static void SwitchMedia(const CStdString& strType, const CStdString& strPath);
+  static bool SourcesMenu(const std::string &strType, const CFileItemPtr& item, float posX, float posY);
+  static void SwitchMedia(const std::string& strType, const std::string& strPath);
 
-  static void GetContextButtons(const CStdString &type, const CFileItemPtr item, CContextButtons &buttons);
-  static bool OnContextButton(const CStdString &type, const CFileItemPtr item, CONTEXT_BUTTON button);
+  static void GetContextButtons(const std::string &type, const CFileItemPtr& item, CContextButtons &buttons);
+  static bool OnContextButton(const std::string &type, const CFileItemPtr& item, CONTEXT_BUTTON button);
 
   /*! \brief Show the context menu with the given choices
    \param choices the choices available for the user.
@@ -180,10 +183,10 @@ protected:
   virtual void OnInitWindow();
   virtual void OnWindowLoaded();
   virtual void OnDeinitWindow(int nextWindowID);
-  static CStdString GetDefaultShareNameByType(const CStdString &strType);
-  static void SetDefault(const CStdString &strType, const CStdString &strDefault);
-  static void ClearDefault(const CStdString &strType);
-  static CMediaSource *GetShare(const CStdString &type, const CFileItem *item);
+  static std::string GetDefaultShareNameByType(const std::string &strType);
+  static void SetDefault(const std::string &strType, const std::string &strDefault);
+  static void ClearDefault(const std::string &strType);
+  static CMediaSource *GetShare(const std::string &type, const CFileItem *item);
 
 private:
   float m_coordX, m_coordY;

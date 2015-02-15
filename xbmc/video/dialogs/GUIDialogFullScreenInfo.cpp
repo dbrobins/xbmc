@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
  */
 
 #include "GUIDialogFullScreenInfo.h"
+#include "guilib/Key.h"
 
 CGUIDialogFullScreenInfo::CGUIDialogFullScreenInfo(void)
     : CGUIDialog(WINDOW_DIALOG_FULLSCREEN_INFO, "DialogFullScreenInfo.xml")
@@ -28,5 +29,15 @@ CGUIDialogFullScreenInfo::CGUIDialogFullScreenInfo(void)
 
 CGUIDialogFullScreenInfo::~CGUIDialogFullScreenInfo(void)
 {
+}
+
+bool CGUIDialogFullScreenInfo::OnAction(const CAction &action)
+{
+  if (action.GetID() == ACTION_SHOW_INFO)
+  {
+    Close();
+    return true;
+  }
+  return CGUIDialog::OnAction(action);
 }
 

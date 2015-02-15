@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2011-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2011-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,9 +22,10 @@
 #include "SlingboxFile.h"
 #include "filesystem/File.h"
 #include "lib/SlingboxLib/SlingboxLib.h"
-#include "settings/Settings.h"
+#include "profiles/ProfilesManager.h"
 #include "utils/log.h"
 #include "utils/XMLUtils.h"
+#include "utils/StringUtils.h"
 #include "URL.h"
 
 using namespace XFILE;
@@ -50,13 +51,13 @@ bool CSlingboxFile::Open(const CURL& url)
     uiPort = (unsigned int)url.GetPort();
   else
     uiPort = 5001;
-  m_pSlingbox->SetAddress(url.GetHostName(), uiPort);
+  m_pSlingbox->SetAddress(url.GetHostName().c_str(), uiPort);
 
   // Prepare to connect to the Slingbox
   bool bAdmin;
-  if (url.GetUserName().CompareNoCase("administrator") == 0)
+  if (StringUtils::EqualsNoCase(url.GetUserName(), "administrator"))
     bAdmin = true;
-  else if (url.GetUserName().CompareNoCase("viewer") == 0)
+  else if (StringUtils::EqualsNoCase(url.GetUserName(), "viewer"))
     bAdmin = false;
   else
   {
@@ -66,7 +67,7 @@ bool CSlingboxFile::Open(const CURL& url)
   }
 
   // Connect to the Slingbox
-  if (m_pSlingbox->Connect(bAdmin, url.GetPassWord()))
+  if (m_pSlingbox->Connect(bAdmin, url.GetPassWord().c_str()))
   {
     CLog::Log(LOGDEBUG, "%s - Successfully connected to Slingbox: %s",
       __FUNCTION__, url.GetHostName().c_str());
@@ -94,12 +95,12 @@ bool CSlingboxFile::Open(const CURL& url)
   // Set correct input
   if (url.GetFileNameWithoutPath() != "")
   {
-    if (m_pSlingbox->SetInput(atoi(url.GetFileNameWithoutPath())))
+    if (m_pSlingbox->SetInput(atoi(url.GetFileNameWithoutPath().c_str())))
       CLog::Log(LOGDEBUG, "%s - Successfully requested change to input %i on Slingbox: %s",
-        __FUNCTION__, atoi(url.GetFileNameWithoutPath()), url.GetHostName().c_str());
+        __FUNCTION__, atoi(url.GetFileNameWithoutPath().c_str()), url.GetHostName().c_str());
     else
       CLog::Log(LOGERROR, "%s - Error requesting change to input %i on Slingbox: %s",
-        __FUNCTION__, atoi(url.GetFileNameWithoutPath()), url.GetHostName().c_str());
+        __FUNCTION__, atoi(url.GetFileNameWithoutPath().c_str()), url.GetHostName().c_str());
   }
 
   // Load the video settings
@@ -141,30 +142,31 @@ bool CSlingboxFile::Open(const CURL& url)
   // Check for correct input
   if (url.GetFileNameWithoutPath() != "")
   {
+    int input = atoi(url.GetFileNameWithoutPath().c_str());
     if (m_pSlingbox->GetInput() == -1)
       CLog::Log(LOGDEBUG, "%s - Unable to confirm change to input %i on Slingbox: %s",
-        __FUNCTION__, atoi(url.GetFileNameWithoutPath()), url.GetHostName().c_str());
-    else if (m_pSlingbox->GetInput() == atoi(url.GetFileNameWithoutPath()))
+        __FUNCTION__, input, url.GetHostName().c_str());
+    else if (m_pSlingbox->GetInput() == input)
       CLog::Log(LOGDEBUG, "%s - Comfirmed change to input %i on Slingbox: %s",
-        __FUNCTION__, atoi(url.GetFileNameWithoutPath()), url.GetHostName().c_str());
+        __FUNCTION__, input, url.GetHostName().c_str());
     else
       CLog::Log(LOGERROR, "%s - Error changing to input %i on Slingbox: %s",
-        __FUNCTION__, atoi(url.GetFileNameWithoutPath()), url.GetHostName().c_str());
+        __FUNCTION__, input, url.GetHostName().c_str());
   }
 
   return true;
 }
 
-unsigned int CSlingboxFile::Read(void * pBuffer, int64_t iSize)
+ssize_t CSlingboxFile::Read(void * pBuffer, size_t iSize)
 {
+  if (iSize > SSIZE_MAX)
+    iSize = SSIZE_MAX;
+
   // Read the data and check for any errors
-  int iRead = m_pSlingbox->ReadStream(pBuffer, (unsigned int)iSize);
+  ssize_t iRead = m_pSlingbox->ReadStream(pBuffer, (unsigned int)iSize);
   if (iRead < 0)
-  {
     CLog::Log(LOGERROR, "%s - Error reading stream from Slingbox: %s", __FUNCTION__,
       m_sSlingboxSettings.strHostname.c_str());
-    return 0;
-  }
 
   return iRead;
 }
@@ -429,12 +431,11 @@ bool CSlingboxFile::SelectChannel(unsigned int uiChannel)
   else if (uiButtonsWithCode == 10)
   {
     // Prepare variables
-    CStdString strDigits;
-    strDigits.Format("%u", uiChannel);
-    unsigned int uiNumberOfDigits = strDigits.GetLength();
+    std::string strDigits = StringUtils::Format("%u", uiChannel);
+    size_t uiNumberOfDigits = strDigits.size();
 
     // Change the channel using IR commands
-    for (unsigned int i = 0; i < uiNumberOfDigits; i++)
+    for (size_t i = 0; i < uiNumberOfDigits; i++)
     {
       if (m_pSlingbox->SendIRCommand(m_sSlingboxSettings.uiCodeNumber[strDigits[i] - '0']))
       {
@@ -475,7 +476,7 @@ bool CSlingboxFile::SelectChannel(unsigned int uiChannel)
   return bSuccess;
 }
 
-void CSlingboxFile::LoadSettings(const CStdString& strHostname)
+void CSlingboxFile::LoadSettings(const std::string& strHostname)
 {
   // Load default settings
   m_sSlingboxSettings.strHostname = strHostname;
@@ -493,7 +494,7 @@ void CSlingboxFile::LoadSettings(const CStdString& strHostname)
     m_sSlingboxSettings.uiCodeNumber[i] = 0;
 
   // Check if a SlingboxSettings.xml file exists
-  CStdString slingboxXMLFile = g_settings.GetUserDataItem("SlingboxSettings.xml");
+  std::string slingboxXMLFile = CProfilesManager::Get().GetUserDataItem("SlingboxSettings.xml");
   if (!CFile::Exists(slingboxXMLFile))
   {
     CLog::Log(LOGNOTICE, "No SlingboxSettings.xml file (%s) found - using default settings",
@@ -527,8 +528,8 @@ void CSlingboxFile::LoadSettings(const CStdString& strHostname)
   for (pElement = pRootElement->FirstChildElement("slingbox"); pElement;
     pElement = pElement->NextSiblingElement("slingbox"))
   {
-    if (pElement->Attribute("hostname") == NULL ||      
-      !m_sSlingboxSettings.strHostname.CompareNoCase(pElement->Attribute("hostname")))
+    const char *hostname = pElement->Attribute("hostname");
+    if (!hostname || StringUtils::EqualsNoCase(m_sSlingboxSettings.strHostname, hostname))
     {
       // Load setting values
       XMLUtils::GetInt(pElement, "width", m_sSlingboxSettings.iVideoWidth, 0, 640);

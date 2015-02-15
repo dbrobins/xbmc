@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2012 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -21,8 +21,9 @@
 #include "PeripheralImon.h"
 #include "utils/log.h"
 #include "guilib/LocalizeStrings.h"
+#include "settings/Settings.h"
 #include "threads/Atomics.h"
-#include "settings/GUISettings.h"
+#include "input/InputManager.h"
 #if defined (TARGET_WINDOWS)
 #include "system.h" // For HAS_SDL_JOYSTICK
 #if defined (HAS_SDL_JOYSTICK)
@@ -34,26 +35,21 @@
 using namespace PERIPHERALS;
 using namespace std;
 
-volatile long CPeripheralImon::m_CountOfImonsConflictWithDInput = 0;
+volatile long CPeripheralImon::m_lCountOfImonsConflictWithDInput = 0;
 
 
-CPeripheralImon::CPeripheralImon(const PeripheralType type, const PeripheralBusType busType, const CStdString &strLocation, const CStdString &strDeviceName, int iVendorId, int iProductId) :
-  CPeripheralHID(type, busType, strLocation, strDeviceName.IsEmpty() ? g_localizeStrings.Get(35001) : strDeviceName, iVendorId, iProductId)
+CPeripheralImon::CPeripheralImon(const PeripheralScanResult& scanResult) :
+  CPeripheralHID(scanResult)
 {
   m_features.push_back(FEATURE_IMON);
-#if defined(TARGET_WINDOWS)
-  if (iProductId >= 0x34 && iProductId <= 0x46)
-    m_ImonConflictsWithDInput = true;
-  else 
-#endif // TARGET_WINDOWS
-    m_ImonConflictsWithDInput = false;
+  m_bImonConflictsWithDInput = false;
 }
 
 void CPeripheralImon::OnDeviceRemoved()
 {
-  if (m_ImonConflictsWithDInput)
+  if (m_bImonConflictsWithDInput)
   {
-    if (AtomicDecrement(&m_CountOfImonsConflictWithDInput) == 0)
+    if (AtomicDecrement(&m_lCountOfImonsConflictWithDInput) == 0)
       ActionOnImonConflict(false);    
   }
 }
@@ -62,9 +58,16 @@ bool CPeripheralImon::InitialiseFeature(const PeripheralFeature feature)
 {
   if (feature == FEATURE_IMON)
   {
-    if (m_ImonConflictsWithDInput)
+#if defined(TARGET_WINDOWS)
+    if (HasSetting("disable_winjoystick") && GetSettingBool("disable_winjoystick"))
+      m_bImonConflictsWithDInput = true;
+    else 
+#endif // TARGET_WINDOWS
+      m_bImonConflictsWithDInput = false;
+
+    if (m_bImonConflictsWithDInput)
     {
-      AtomicIncrement(&m_CountOfImonsConflictWithDInput);
+      AtomicIncrement(&m_lCountOfImonsConflictWithDInput);
       ActionOnImonConflict(true);
     }
     return CPeripheral::InitialiseFeature(feature);
@@ -73,19 +76,42 @@ bool CPeripheralImon::InitialiseFeature(const PeripheralFeature feature)
   return CPeripheralHID::InitialiseFeature(feature);
 }
 
+void CPeripheralImon::AddSetting(const std::string &strKey, const CSetting *setting, int order)
+{
+#if !defined(TARGET_WINDOWS)
+  if (strKey.compare("disable_winjoystick")!=0)
+#endif // !TARGET_WINDOWS
+    CPeripheralHID::AddSetting(strKey, setting, order);
+}
+
+void CPeripheralImon::OnSettingChanged(const std::string &strChangedSetting)
+{
+  if (strChangedSetting.compare("disable_winjoystick") == 0)
+  {
+    if (m_bImonConflictsWithDInput && !GetSettingBool("disable_winjoystick"))
+    {
+      m_bImonConflictsWithDInput = false;
+      if (AtomicDecrement(&m_lCountOfImonsConflictWithDInput) == 0)
+        ActionOnImonConflict(false);
+    }
+    else if(!m_bImonConflictsWithDInput && GetSettingBool("disable_winjoystick"))
+    {
+      m_bImonConflictsWithDInput = true;
+      AtomicIncrement(&m_lCountOfImonsConflictWithDInput);
+      ActionOnImonConflict(true);
+    }
+  }
+}
+
 void CPeripheralImon::ActionOnImonConflict(bool deviceInserted /*= true*/)
 {
-  if (deviceInserted || m_CountOfImonsConflictWithDInput == 0)
+  if (deviceInserted || m_lCountOfImonsConflictWithDInput == 0)
   {
 #if defined(TARGET_WINDOWS) && defined (HAS_SDL_JOYSTICK)
-    bool enableJoystickNow = (!deviceInserted || !g_guiSettings.GetBool("input.disablejoystickwithimon")) 
-        && g_guiSettings.GetBool("input.enablejoystick");
+    bool enableJoystickNow = !deviceInserted && CSettings::Get().GetBool("input.enablejoystick");
     CLog::Log(LOGNOTICE, "Problematic iMON hardware %s. Joystick usage: %s", (deviceInserted ? "detected" : "was removed"),
         (enableJoystickNow) ? "enabled." : "disabled." );
-    g_Joystick.SetEnabled(enableJoystickNow);
-    CSetting* setting = g_guiSettings.GetSetting("input.disablejoystickwithimon");
-    if(setting)
-      setting->SetVisible(deviceInserted && !setting->IsAdvanced());
+    CInputManager::GetInstance().SetEnabledJoystick(enableJoystickNow);
 #endif
   }
 }

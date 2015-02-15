@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,10 +19,10 @@
  */
 
 #include "GUITextBox.h"
-#include "utils/CharsetConverter.h"
 #include "GUIInfoManager.h"
 #include "utils/XBMCTinyXML.h"
 #include "utils/MathUtils.h"
+#include "utils/StringUtils.h"
 
 using namespace std;
 
@@ -30,6 +30,7 @@ CGUITextBox::CGUITextBox(int parentID, int controlID, float posX, float posY, fl
                          const CLabelInfo& labelInfo, int scrollTime)
     : CGUIControl(parentID, controlID, posX, posY, width, height)
     , CGUITextLayout(labelInfo.font, true)
+    , m_label(labelInfo)
 {
   m_offset = 0;
   m_scrollOffset = 0;
@@ -40,12 +41,12 @@ CGUITextBox::CGUITextBox(int parentID, int controlID, float posX, float posY, fl
   m_pageControl = 0;
   m_lastRenderTime = 0;
   m_scrollTime = scrollTime;
-  m_autoScrollCondition = 0;
   m_autoScrollTime = 0;
   m_autoScrollDelay = 3000;
   m_autoScrollDelayTime = 0;
   m_autoScrollRepeatAnim = NULL;
-  m_label = labelInfo;
+  m_minHeight = 0;
+  m_renderHeight = height;
 }
 
 CGUITextBox::CGUITextBox(const CGUITextBox &from)
@@ -56,6 +57,8 @@ CGUITextBox::CGUITextBox(const CGUITextBox &from)
   m_autoScrollCondition = from.m_autoScrollCondition;
   m_autoScrollTime = from.m_autoScrollTime;
   m_autoScrollDelay = from.m_autoScrollDelay;
+  m_minHeight = from.m_minHeight;
+  m_renderHeight = from.m_renderHeight;
   m_autoScrollRepeatAnim = NULL;
   if (from.m_autoScrollRepeatAnim)
     m_autoScrollRepeatAnim = new CAnimation(*from.m_autoScrollRepeatAnim);
@@ -86,6 +89,8 @@ bool CGUITextBox::UpdateColors()
   return changed;
 }
 
+#define CLAMP(x, low, high)  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+
 void CGUITextBox::UpdateInfo(const CGUIListItem *item)
 {
   m_textColor = m_label.textColor;
@@ -99,7 +104,10 @@ void CGUITextBox::UpdateInfo(const CGUIListItem *item)
   ResetAutoScrolling();
 
   m_itemHeight = m_font ? m_font->GetLineHeight() : 10;
-  m_itemsPerPage = (unsigned int)(m_height / m_itemHeight);
+  float textHeight = m_font ? m_font->GetTextHeight(m_lines.size()) : m_itemHeight * m_lines.size();
+  float maxHeight = m_height ? m_height : textHeight;
+  m_renderHeight = m_minHeight ? CLAMP(textHeight, m_minHeight, maxHeight) : m_height;
+  m_itemsPerPage = (unsigned int)(m_renderHeight / m_itemHeight);
 
   UpdatePageControl();
 }
@@ -124,7 +132,7 @@ void CGUITextBox::Process(unsigned int currentTime, CDirtyRegionList &dirtyregio
   // update our auto-scrolling as necessary
   if (m_autoScrollTime && m_lines.size() > m_itemsPerPage)
   {
-    if (!m_autoScrollCondition || g_infoManager.GetBoolValue(m_autoScrollCondition))
+    if (!m_autoScrollCondition || m_autoScrollCondition->Get())
     {
       if (m_lastRenderTime)
         m_autoScrollDelayTime += currentTime - m_lastRenderTime;
@@ -196,7 +204,7 @@ void CGUITextBox::Render()
   if (m_autoScrollRepeatAnim)
     g_graphicsContext.SetTransform(m_cachedTextMatrix);
 
-  if (g_graphicsContext.SetClipRegion(m_posX, m_posY, m_width, m_height))
+  if (g_graphicsContext.SetClipRegion(m_posX, m_posY, m_width, m_renderHeight))
   {
     // we offset our draw position to take into account scrolling and whether or not our focused
     // item is offscreen "above" the list.
@@ -214,12 +222,12 @@ void CGUITextBox::Render()
     {
       m_font->Begin();
       int current = offset;
-      while (posY < m_posY + m_height && current < (int)m_lines.size())
+      while (posY < m_posY + m_renderHeight && current < (int)m_lines.size())
       {
         uint32_t align = m_label.align;
         if (m_lines[current].m_text.size() && m_lines[current].m_carriageReturn)
           align &= ~XBFONT_JUSTIFIED; // last line of a paragraph shouldn't be justified
-        m_font->DrawText(posX, posY + 2, m_colors, m_label.shadowColor, m_lines[current].m_text, align, m_width);
+        m_font->DrawText(posX, posY, m_colors, m_label.shadowColor, m_lines[current].m_text, align, m_width);
         posY += m_itemHeight;
         current++;
       }
@@ -270,6 +278,19 @@ bool CGUITextBox::OnMessage(CGUIMessage& message)
   }
 
   return CGUIControl::OnMessage(message);
+}
+
+float CGUITextBox::GetHeight() const
+{
+  return m_renderHeight;
+}
+
+void CGUITextBox::SetMinHeight(float minHeight)
+{
+  if (m_minHeight != minHeight)
+    SetInvalid();
+  
+  m_minHeight = minHeight;
 }
 
 void CGUITextBox::UpdatePageControl()
@@ -330,6 +351,15 @@ void CGUITextBox::SetAutoScrolling(const TiXmlNode *node)
   }
 }
 
+void CGUITextBox::SetAutoScrolling(int delay, int time, int repeatTime, const std::string &condition /* = "" */)
+{
+  m_autoScrollDelay = delay;
+  m_autoScrollTime = time;
+  if (!condition.empty())
+    m_autoScrollCondition = g_infoManager.Register(condition, GetParentID());
+  m_autoScrollRepeatAnim = new CAnimation(CAnimation::CreateFader(100, 0, repeatTime, 1000));
+}
+
 void CGUITextBox::ResetAutoScrolling()
 {
   m_autoScrollDelayTime = 0;
@@ -349,21 +379,26 @@ int CGUITextBox::GetCurrentPage() const
   return m_offset / m_itemsPerPage + 1;
 }
 
-CStdString CGUITextBox::GetLabel(int info) const
+std::string CGUITextBox::GetLabel(int info) const
 {
-  CStdString label;
+  std::string label;
   switch (info)
   {
   case CONTAINER_NUM_PAGES:
-    label.Format("%u", (GetRows() + m_itemsPerPage - 1) / m_itemsPerPage);
+    label = StringUtils::Format("%u", (GetRows() + m_itemsPerPage - 1) / m_itemsPerPage);
     break;
   case CONTAINER_CURRENT_PAGE:
-    label.Format("%u", GetCurrentPage());
+    label = StringUtils::Format("%u", GetCurrentPage());
     break;
   default:
     break;
   }
   return label;
+}
+
+std::string CGUITextBox::GetDescription() const
+{
+  return GetText();
 }
 
 void CGUITextBox::UpdateVisibility(const CGUIListItem *item)

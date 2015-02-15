@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,9 @@
  *
  */
 
-#include "utils/StdString.h"
+#include <map>
+#include <string>
+#include <vector>
 
 class CDirectoryHistory
 {
@@ -29,24 +31,48 @@ public:
   public:
     CHistoryItem(){};
     virtual ~CHistoryItem(){};
-    CStdString m_strItem;
-    CStdString m_strDirectory;
+    std::string m_strItem;
+    std::string m_strDirectory;
   };
-  CDirectoryHistory();
+
+  class CPathHistoryItem
+  {
+  public:
+    CPathHistoryItem() { }
+    virtual ~CPathHistoryItem() { }
+
+    const std::string& GetPath(bool filter = false) const;
+
+    std::string m_strPath;
+    std::string m_strFilterPath;
+  };
+  
+  CDirectoryHistory() { }
   virtual ~CDirectoryHistory();
 
-  void SetSelectedItem(const CStdString& strSelectedItem, const CStdString& strDirectory);
-  const CStdString& GetSelectedItem(const CStdString& strDirectory) const;
-  void RemoveSelectedItem(const CStdString& strDirectory);
+  void SetSelectedItem(const std::string& strSelectedItem, const std::string& strDirectory);
+  const std::string& GetSelectedItem(const std::string& strDirectory) const;
+  void RemoveSelectedItem(const std::string& strDirectory);
 
-  void AddPath(const CStdString& strPath);
-  void AddPathFront(const CStdString& strPath);
-  CStdString GetParentPath();
-  CStdString RemoveParentPath();
+  void AddPath(const std::string& strPath, const std::string &m_strFilterPath = "");
+  void AddPathFront(const std::string& strPath, const std::string &m_strFilterPath = "");
+  std::string GetParentPath(bool filter = false);
+  std::string RemoveParentPath(bool filter = false);
   void ClearPathHistory();
+  void ClearSearchHistory();
   void DumpPathHistory();
+
+  /*! \brief Returns whether a path is in the history.
+   \param path to test
+   \return true if the path is in the history, false otherwise.
+   */
+  bool IsInHistory(const std::string &path) const;
+
 private:
-  std::vector<CHistoryItem> m_vecHistory;
-  std::vector<CStdString> m_vecPathHistory; ///< History of traversed directories
-  CStdString m_strNull;
+  static std::string preparePath(const std::string &strDirectory, bool tolower = true);
+  
+  typedef std::map<std::string, CHistoryItem> HistoryMap;
+  HistoryMap m_vecHistory;
+  std::vector<CPathHistoryItem> m_vecPathHistory; ///< History of traversed directories
+  static bool IsMusicSearchUrl(CPathHistoryItem &i);
 };

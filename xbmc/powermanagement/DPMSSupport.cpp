@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2009-2012 Team XBMC
+ *      Copyright (C) 2009-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -25,7 +25,7 @@
 #include "utils/SystemInfo.h"
 #include <assert.h>
 #include <string>
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
 #include "guilib/GraphicContext.h"
 #endif
 
@@ -174,20 +174,14 @@ bool DPMSSupport::PlatformSpecificDisablePowerSaving()
   DPMSForceLevel(dpy, DPMSModeOn);
   DPMSDisable(dpy);
   XFlush(dpy);
-  // On my ATI, the full-screen window stays blank after waking up from
-  // DPMS, presumably due to being OpenGL. There is something magical about
-  // window expose events (involving the window manager) that solves this
-  // without fail.
-  XUnmapWindow(dpy, g_Windowing.GetWindow());
-  XFlush(dpy);
-  XMapWindow(dpy, g_Windowing.GetWindow());
-  XFlush(dpy);
+
+  g_Windowing.RecreateWindow();
 
   return true;
 }
 
 /////  Add other platforms here.
-#elif defined(_WIN32)
+#elif defined(TARGET_WINDOWS)
 void DPMSSupport::PlatformSpecificInit()
 {
   // Assume we support DPMS. Is there a way to test it?

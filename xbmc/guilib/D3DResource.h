@@ -1,27 +1,27 @@
 /*
-*      Copyright (C) 2005-2012 Team XBMC
-*      http://www.xbmc.org
-*
-*  This Program is free software; you can redistribute it and/or modify
-*  it under the terms of the GNU General Public License as published by
-*  the Free Software Foundation; either version 2, or (at your option)
-*  any later version.
-*
-*  This Program is distributed in the hope that it will be useful,
-*  but WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-*  GNU General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with XBMC; see the file COPYING.  If not, see
-*  <http://www.gnu.org/licenses/>.
-*
-*/
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 
 #pragma once
 
 #ifdef HAS_DX
-#include "utils/StdString.h"
+#include <string>
 #include <map>
 
 class ID3DResource
@@ -50,8 +50,9 @@ public:
 
   // Accessors
   LPDIRECT3DTEXTURE9 Get() const { return m_texture; };
-  UINT GetWidth()  { return m_width; }
-  UINT GetHeight() { return m_height; }
+  UINT GetWidth()  const { return m_width; }
+  UINT GetHeight() const { return m_height; }
+  D3DFORMAT GetFormat() const { return m_format; }
 
   virtual void OnDestroyDevice();
   virtual void OnCreateDevice();
@@ -81,14 +82,14 @@ private:
   BYTE*     m_data;
 };
 
-typedef std::map<CStdString, CStdString> DefinesMap;
+typedef std::map<std::string, std::string> DefinesMap;
 
 class CD3DEffect : public ID3DResource
 {
 public:
   CD3DEffect();
   virtual ~CD3DEffect();
-  bool Create(const CStdString &effectString, DefinesMap* defines);
+  bool Create(const std::string &effectString, DefinesMap* defines);
   void Release();
   bool SetFloatArray(D3DXHANDLE handle, const float* val, unsigned int count);
   bool SetMatrix(D3DXHANDLE handle, const D3DXMATRIX* mat);
@@ -107,7 +108,7 @@ public:
   virtual void OnResetDevice();
 private:
   bool         CreateEffect();
-  CStdString   m_effectString;
+  std::string   m_effectString;
   ID3DXEffect  *m_effect;
   DefinesMap   m_defines;
 };

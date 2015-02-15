@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -38,9 +38,11 @@ struct KeymapEntry
 class CLinuxInputDevice
 {
 public:
-  CLinuxInputDevice(const std::string fileName, int index);
+  CLinuxInputDevice(const std::string& fileName, int index);
   ~CLinuxInputDevice();
   XBMC_Event ReadEvent();
+  const std::string& GetFileName();
+  bool IsUnplugged();
  
 private:
   void SetupKeyboardAutoRepeat(int fd);
@@ -76,19 +78,24 @@ private:
   int m_deviceMaxKeyCode;
   int m_deviceMaxAxis;
   bool m_bSkipNonKeyEvents;
+  bool m_bUnplugged;
 };
 
 class CLinuxInputDevices
 {
 public:
   void InitAvailable();
+  void CheckHotplugged();
   XBMC_Event ReadEvent();
   bool IsRemoteLowBattery();
   bool IsRemoteNotPaired();
+  size_t Size() { return m_devices.size(); }
 private:
   CCriticalSection m_devicesListLock;
   bool CheckDevice(const char *device);
   std::vector<CLinuxInputDevice*> m_devices;
+  bool m_bReInitialize;
+  time_t m_lastHotplugCheck;
 };
 
 #endif /* LINUXINPUTDEVICES_H_ */

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,21 +23,9 @@
 #include "threads/SingleLock.h"
 #include "utils/JobManager.h"
 
+#include <algorithm>
+
 using namespace std;
-using namespace ANNOUNCEMENT;
-
-class ObservableMessageJob : public CJob
-{
-private:
-  Observable        m_observable;
-  ObservableMessage m_message;
-public:
-  ObservableMessageJob(const Observable &obs, const ObservableMessage message);
-  virtual ~ObservableMessageJob() {}
-  virtual const char *GetType() const { return "observable-message-job"; }
-
-  virtual bool DoWork();
-};
 
 Observer::~Observer(void)
 {
@@ -47,9 +35,9 @@ Observer::~Observer(void)
 void Observer::StopObserving(void)
 {
   CSingleLock lock(m_obsCritSection);
-  for (unsigned int iObsPtr = 0; iObsPtr < m_observables.size(); iObsPtr++)
-    m_observables.at(iObsPtr)->UnregisterObserver(this);
-  m_observables.clear();
+  std::vector<Observable *> observables = m_observables;
+  for (unsigned int iObsPtr = 0; iObsPtr < observables.size(); iObsPtr++)
+    observables.at(iObsPtr)->UnregisterObserver(this);
 }
 
 bool Observer::IsObserving(const Observable &obs) const
@@ -74,15 +62,12 @@ void Observer::UnregisterObservable(Observable *obs)
 }
 
 Observable::Observable() :
-    m_bObservableChanged(false),
-    m_bAsyncAllowed(true)
+    m_bObservableChanged(false)
 {
-  CAnnouncementManager::AddAnnouncer(this);
 }
 
 Observable::~Observable()
 {
-  CAnnouncementManager::RemoveAnnouncer(this);
   StopObserver();
 }
 
@@ -101,9 +86,9 @@ Observable &Observable::operator=(const Observable &observable)
 void Observable::StopObserver(void)
 {
   CSingleLock lock(m_obsCritSection);
-  for (unsigned int iObsPtr = 0; iObsPtr < m_observers.size(); iObsPtr++)
-    m_observers.at(iObsPtr)->UnregisterObservable(this);
-  m_observers.clear();
+  std::vector<Observer *> observers = m_observers;
+  for (unsigned int iObsPtr = 0; iObsPtr < observers.size(); iObsPtr++)
+    observers.at(iObsPtr)->UnregisterObservable(this);
 }
 
 bool Observable::IsObserving(const Observer &obs) const
@@ -133,7 +118,7 @@ void Observable::UnregisterObserver(Observer *obs)
   }
 }
 
-void Observable::NotifyObservers(const ObservableMessage message /* = ObservableMessageNone */, bool bAsync /* = false */)
+void Observable::NotifyObservers(const ObservableMessage message /* = ObservableMessageNone */)
 {
   bool bNotify(false);
   {
@@ -144,27 +129,13 @@ void Observable::NotifyObservers(const ObservableMessage message /* = Observable
   }
 
   if (bNotify)
-  {
-    if (bAsync && m_bAsyncAllowed)
-      CJobManager::GetInstance().AddJob(new ObservableMessageJob(*this, message), NULL);
-    else
-      SendMessage(*this, message);
-  }
+    SendMessage(*this, message);
 }
 
 void Observable::SetChanged(bool SetTo)
 {
   CSingleLock lock(m_obsCritSection);
   m_bObservableChanged = SetTo;
-}
-
-void Observable::Announce(AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data)
-{
-  if (flag == System && !strcmp(sender, "xbmc") && !strcmp(message, "ApplicationStop"))
-  {
-    CSingleLock lock(m_obsCritSection);
-    m_bAsyncAllowed = false;
-  }
 }
 
 void Observable::SendMessage(const Observable& obs, const ObservableMessage message)
@@ -183,17 +154,4 @@ void Observable::SendMessage(const Observable& obs, const ObservableMessage mess
       }
     }
   }
-}
-
-ObservableMessageJob::ObservableMessageJob(const Observable &obs, const ObservableMessage message)
-{
-  m_message = message;
-  m_observable = obs;
-}
-
-bool ObservableMessageJob::DoWork()
-{
-  Observable::SendMessage(m_observable, m_message);
-
-  return true;
 }

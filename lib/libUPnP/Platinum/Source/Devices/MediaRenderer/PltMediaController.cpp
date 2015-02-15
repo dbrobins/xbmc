@@ -521,6 +521,22 @@ PLT_MediaController::Seek(PLT_DeviceDataReference& device,
 }
 
 /*----------------------------------------------------------------------
+|   PLT_MediaController::CanSetNextAVTransportURI
++---------------------------------------------------------------------*/
+bool
+PLT_MediaController::CanSetNextAVTransportURI(PLT_DeviceDataReference &device)
+{
+    if (device.IsNull()) return false;
+
+    PLT_ActionDesc* action_desc;
+    NPT_Result result = m_CtrlPoint->FindActionDesc(device,
+                                                    "urn:schemas-upnp-org:service:AVTransport:1",
+                                                    "SetNextAVTransportURI",
+                                                    action_desc);
+    return (result == NPT_SUCCESS);
+}
+
+/*----------------------------------------------------------------------
 |   PLT_MediaController::SetAVTransportURI
 +---------------------------------------------------------------------*/
 NPT_Result 
@@ -561,8 +577,7 @@ PLT_MediaController::SetNextAVTransportURI(PLT_DeviceDataReference& device,
                                            void*                    userdata)
 {
     PLT_ActionReference action;
-    NPT_CHECK_SEVERE(m_CtrlPoint->CreateAction(
-                                               device, 
+    NPT_CHECK_SEVERE(m_CtrlPoint->CreateAction(device, 
                                                "urn:schemas-upnp-org:service:AVTransport:1", 
                                                "SetNextAVTransportURI", 
                                                action));
@@ -866,6 +881,10 @@ PLT_MediaController::OnActionResponse(NPT_Result           res,
     else if (actionName.Compare("SetAVTransportURI", true) == 0) {
         if (NPT_FAILED(FindRenderer(uuid, device))) res = NPT_FAILURE;
         m_Delegate->OnSetAVTransportURIResult(res, device, userdata);
+    }
+    else if (actionName.Compare("SetNextAVTransportURI", true) == 0) {
+      if (NPT_FAILED(FindRenderer(uuid, device))) res = NPT_FAILURE;
+      m_Delegate->OnSetNextAVTransportURIResult(res, device, userdata);
     }
     else if (actionName.Compare("SetPlayMode", true) == 0) {
         if (NPT_FAILED(FindRenderer(uuid, device))) res = NPT_FAILURE;

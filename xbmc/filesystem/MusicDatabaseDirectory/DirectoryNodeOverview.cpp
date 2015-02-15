@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,22 +22,23 @@
 #include "FileItem.h"
 #include "music/MusicDatabase.h"
 #include "guilib/LocalizeStrings.h"
+#include "utils/StringUtils.h"
 
 namespace XFILE
 {
   namespace MUSICDATABASEDIRECTORY
   {
     Node OverviewChildren[] = {
-                                { NODE_TYPE_GENRE,                 1, 135 },
-                                { NODE_TYPE_ARTIST,                2, 133 },
-                                { NODE_TYPE_ALBUM,                 3, 132 },
-                                { NODE_TYPE_SINGLES,              10, 1050 },
-                                { NODE_TYPE_SONG,                  4, 134 },
-                                { NODE_TYPE_YEAR,                  9, 652 },
-                                { NODE_TYPE_TOP100,                5, 271 },
-                                { NODE_TYPE_ALBUM_RECENTLY_ADDED,  6, 359 },
-                                { NODE_TYPE_ALBUM_RECENTLY_PLAYED, 7, 517 },
-                                { NODE_TYPE_ALBUM_COMPILATIONS,    8, 521 },
+                                { NODE_TYPE_GENRE,                 "genres",               135 },
+                                { NODE_TYPE_ARTIST,                "artists",              133 },
+                                { NODE_TYPE_ALBUM,                 "albums",               132 },
+                                { NODE_TYPE_SINGLES,               "singles",              1050 },
+                                { NODE_TYPE_SONG,                  "songs",                134 },
+                                { NODE_TYPE_YEAR,                  "years",                652 },
+                                { NODE_TYPE_TOP100,                "top100",               271 },
+                                { NODE_TYPE_ALBUM_RECENTLY_ADDED,  "recentlyaddedalbums",  359 },
+                                { NODE_TYPE_ALBUM_RECENTLY_PLAYED, "recentlyplayedalbums", 517 },
+                                { NODE_TYPE_ALBUM_COMPILATIONS,    "compilations",         521 },
                               };
   };
 };
@@ -45,7 +46,7 @@ namespace XFILE
 using namespace std;
 using namespace XFILE::MUSICDATABASEDIRECTORY;
 
-CDirectoryNodeOverview::CDirectoryNodeOverview(const CStdString& strName, CDirectoryNode* pParent)
+CDirectoryNodeOverview::CDirectoryNodeOverview(const std::string& strName, CDirectoryNode* pParent)
   : CDirectoryNode(NODE_TYPE_OVERVIEW, strName, pParent)
 {
 
@@ -54,15 +55,15 @@ CDirectoryNodeOverview::CDirectoryNodeOverview(const CStdString& strName, CDirec
 NODE_TYPE CDirectoryNodeOverview::GetChildType() const
 {
   for (unsigned int i = 0; i < sizeof(OverviewChildren) / sizeof(Node); ++i)
-    if (GetID() == OverviewChildren[i].id)
+    if (GetName() == OverviewChildren[i].id)
       return OverviewChildren[i].node;
   return NODE_TYPE_NONE;
 }
 
-CStdString CDirectoryNodeOverview::GetLocalizedName() const
+std::string CDirectoryNodeOverview::GetLocalizedName() const
 {
   for (unsigned int i = 0; i < sizeof(OverviewChildren) / sizeof(Node); ++i)
-    if (GetID() == OverviewChildren[i].id)
+    if (GetName() == OverviewChildren[i].id)
       return g_localizeStrings.Get(OverviewChildren[i].label);
   return "";
 }
@@ -73,7 +74,7 @@ bool CDirectoryNodeOverview::GetContent(CFileItemList& items) const
   bool showSingles = false;
   if (musicDatabase.Open())
   {
-    CDatabase::Filter filter("idAlbum IN (SELECT idAlbum FROM album WHERE strAlbum = '')");
+    CDatabase::Filter filter("songview.idAlbum IN (SELECT idAlbum FROM album WHERE strAlbum = '')");
     if (musicDatabase.GetSongsCount(filter) > 0)
       showSingles = true;
   }
@@ -86,8 +87,7 @@ bool CDirectoryNodeOverview::GetContent(CFileItemList& items) const
       continue;
 
     CFileItemPtr pItem(new CFileItem(g_localizeStrings.Get(OverviewChildren[i].label)));
-    CStdString strDir;
-    strDir.Format("%ld/", OverviewChildren[i].id);
+    std::string strDir = StringUtils::Format("%s/", OverviewChildren[i].id.c_str());
     pItem->SetPath(BuildPath() + strDir);
     pItem->m_bIsFolder = true;
     pItem->SetCanQueue(false);

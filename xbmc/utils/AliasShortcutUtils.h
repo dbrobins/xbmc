@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2009-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2009-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
  *
  */
 
-#include "StdString.h"
+#include <string>
 
-bool IsAliasShortcut(CStdString &path);
-void TranslateAliasShortcut(CStdString &path);
+bool IsAliasShortcut(const std::string& path);
+void TranslateAliasShortcut(std::string &path);

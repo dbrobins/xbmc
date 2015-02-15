@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,14 +36,15 @@ class CBlurayDirectory: public XFILE::IDirectory
 public:
   CBlurayDirectory();
   virtual ~CBlurayDirectory();
-  virtual bool GetDirectory(const CStdString& path, CFileItemList &items);
+  virtual bool GetDirectory(const CURL& url, CFileItemList &items);
 
 private:
 
   void         Dispose();
   void         GetRoot  (CFileItemList &items);
   void         GetTitles(bool main, CFileItemList &items);
-  CFileItemPtr GetTitle(const BLURAY_TITLE_INFO* title, const CStdString& label);
+  CFileItemPtr GetTitle(const BLURAY_TITLE_INFO* title, const std::string& label);
+  CURL         GetUnderlyingCURL(const CURL& url);
   CURL          m_url;
   DllLibbluray* m_dll;
   BLURAY*       m_bd;

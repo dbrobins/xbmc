@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -27,17 +27,15 @@
 using namespace PERIPHERALS;
 using namespace std;
 
-#define NYBOARD_POWER_BUTTON_KEYSYM 0x9f
-
-CPeripheralNyxboard::CPeripheralNyxboard(const PeripheralType type, const PeripheralBusType busType, const CStdString &strLocation, const CStdString &strDeviceName, int iVendorId, int iProductId) :
-  CPeripheralHID(type, busType, strLocation, strDeviceName, iVendorId, iProductId)
+CPeripheralNyxboard::CPeripheralNyxboard(const PeripheralScanResult& scanResult) :
+  CPeripheralHID(scanResult)
 {
   m_features.push_back(FEATURE_NYXBOARD);
 }
 
 bool CPeripheralNyxboard::LookupSymAndUnicode(XBMC_keysym &keysym, uint8_t *key, char *unicode)
 {
-  CStdString strCommand;
+  std::string strCommand;
   if (keysym.sym == XBMCK_F7 && keysym.mod == XBMCKMOD_NONE && GetSettingBool("enable_flip_commands"))
   {
     /* switched to keyboard side */
@@ -50,20 +48,8 @@ bool CPeripheralNyxboard::LookupSymAndUnicode(XBMC_keysym &keysym, uint8_t *key,
     CLog::Log(LOGDEBUG, "%s - switched to remote side", __FUNCTION__);
     strCommand = GetSettingString("flip_remote");
   }
-  else if (keysym.sym == XBMCK_F4 && keysym.mod == XBMCKMOD_NONE)
-  {
-    /* 'user' key pressed */
-    CLog::Log(LOGDEBUG, "%s - 'user' key pressed", __FUNCTION__);
-    strCommand = GetSettingString("key_user");
-  }
-  else if (keysym.sym == NYBOARD_POWER_BUTTON_KEYSYM && keysym.mod == XBMCKMOD_NONE)
-  {
-    /* 'power' key pressed */
-    CLog::Log(LOGDEBUG, "%s - 'power' key pressed", __FUNCTION__);
-    strCommand = GetSettingString("key_power");
-  }
 
-  if (!strCommand.IsEmpty())
+  if (!strCommand.empty())
   {
     CLog::Log(LOGDEBUG, "%s - executing command '%s'", __FUNCTION__, strCommand.c_str());
     if (g_application.ExecuteXBMCAction(strCommand))

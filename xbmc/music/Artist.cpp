@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,37 @@
 #include "utils/XMLUtils.h"
 #include "settings/AdvancedSettings.h"
 
+#include <algorithm>
+
 using namespace std;
+
+void CArtist::MergeScrapedArtist(const CArtist& source, bool override /* = true */)
+{
+  /*
+   We don't merge musicbrainz artist ID so that a refresh of artist information
+   allows a lookup based on name rather than directly (re)using musicbrainz.
+   In future, we may wish to be able to override lookup by musicbrainz so
+   this might be dropped.
+   */
+  //  strMusicBrainzArtistID = source.strMusicBrainzArtistID;
+  if ((override && !source.strArtist.empty()) || strArtist.empty())
+    strArtist = source.strArtist;
+
+  genre = source.genre;
+  strBiography = source.strBiography;
+  styles = source.styles;
+  moods = source.moods;
+  instruments = source.instruments;
+  strBorn = source.strBorn;
+  strFormed = source.strFormed;
+  strDied = source.strDied;
+  strDisbanded = source.strDisbanded;
+  yearsActive = source.yearsActive;
+  thumbURL = source.thumbURL;
+  fanart = source.fanart;
+  discography = source.discography;
+}
+
 
 bool CArtist::Load(const TiXmlElement *artist, bool append, bool prioritise)
 {
@@ -30,21 +60,23 @@ bool CArtist::Load(const TiXmlElement *artist, bool append, bool prioritise)
   if (!append)
     Reset();
 
-  XMLUtils::GetString(artist,"name",strArtist);
-  XMLUtils::GetStringArray(artist, "genre", genre, prioritise, g_advancedSettings.m_musicItemSeparator);
-  XMLUtils::GetStringArray(artist, "style", styles, prioritise, g_advancedSettings.m_musicItemSeparator);
-  XMLUtils::GetStringArray(artist, "mood", moods, prioritise, g_advancedSettings.m_musicItemSeparator);
+  XMLUtils::GetString(artist,                "name", strArtist);
+  XMLUtils::GetString(artist, "musicBrainzArtistID", strMusicBrainzArtistID);
+
+  XMLUtils::GetStringArray(artist,       "genre", genre, prioritise, g_advancedSettings.m_musicItemSeparator);
+  XMLUtils::GetStringArray(artist,       "style", styles, prioritise, g_advancedSettings.m_musicItemSeparator);
+  XMLUtils::GetStringArray(artist,        "mood", moods, prioritise, g_advancedSettings.m_musicItemSeparator);
   XMLUtils::GetStringArray(artist, "yearsactive", yearsActive, prioritise, g_advancedSettings.m_musicItemSeparator);
   XMLUtils::GetStringArray(artist, "instruments", instruments, prioritise, g_advancedSettings.m_musicItemSeparator);
 
-  XMLUtils::GetString(artist, "born", strBorn);
-  XMLUtils::GetString(artist, "formed", strFormed);
+  XMLUtils::GetString(artist,      "born", strBorn);
+  XMLUtils::GetString(artist,    "formed", strFormed);
   XMLUtils::GetString(artist, "biography", strBiography);
-  XMLUtils::GetString(artist, "died", strDied);
+  XMLUtils::GetString(artist,      "died", strDied);
   XMLUtils::GetString(artist, "disbanded", strDisbanded);
 
   size_t iThumbCount = thumbURL.m_url.size();
-  CStdString xmlAdd = thumbURL.m_xml;
+  std::string xmlAdd = thumbURL.m_xml;
 
   const TiXmlElement* thumb = artist->FirstChildElement("thumb");
   while (thumb)
@@ -52,7 +84,7 @@ bool CArtist::Load(const TiXmlElement *artist, bool append, bool prioritise)
     thumbURL.ParseElement(thumb);
     if (prioritise)
     {
-      CStdString temp;
+      std::string temp;
       temp << *thumb;
       xmlAdd = temp+xmlAdd;
     }
@@ -72,8 +104,8 @@ bool CArtist::Load(const TiXmlElement *artist, bool append, bool prioritise)
     const TiXmlNode* title = node->FirstChild("title");
     if (title && title->FirstChild())
     {
-      CStdString strTitle = title->FirstChild()->Value();
-      CStdString strYear;
+      std::string strTitle = title->FirstChild()->Value();
+      std::string strYear;
       const TiXmlNode* year = node->FirstChild("year");
       if (year && year->FirstChild())
         strYear = year->FirstChild()->Value();
@@ -89,7 +121,7 @@ bool CArtist::Load(const TiXmlElement *artist, bool append, bool prioritise)
     // we prefix to handle mixed-mode nfo's with fanart set
     if (prioritise)
     {
-      CStdString temp;
+      std::string temp;
       temp << *fanart2;
       fanart.m_xml = temp+fanart.m_xml;
     }
@@ -101,7 +133,7 @@ bool CArtist::Load(const TiXmlElement *artist, bool append, bool prioritise)
   return true;
 }
 
-bool CArtist::Save(TiXmlNode *node, const CStdString &tag, const CStdString& strPath)
+bool CArtist::Save(TiXmlNode *node, const std::string &tag, const std::string& strPath)
 {
   if (!node) return false;
 
@@ -111,17 +143,18 @@ bool CArtist::Save(TiXmlNode *node, const CStdString &tag, const CStdString& str
 
   if (!artist) return false;
 
-  XMLUtils::SetString(artist,       "name", strArtist);
-  XMLUtils::SetStringArray(artist, "genre", genre);
-  XMLUtils::SetStringArray(artist, "style", styles);
-  XMLUtils::SetStringArray(artist,  "mood", moods);
-  XMLUtils::SetStringArray(artist, "yearsactive", yearsActive);
-  XMLUtils::SetStringArray(artist, "instruments", instruments);
-  XMLUtils::SetString(artist,        "born", strBorn);
-  XMLUtils::SetString(artist,      "formed", strFormed);
-  XMLUtils::SetString(artist,   "biography", strBiography);
-  XMLUtils::SetString(artist,        "died", strDied);
-  XMLUtils::SetString(artist,   "disbanded", strDisbanded);
+  XMLUtils::SetString(artist,                      "name", strArtist);
+  XMLUtils::SetString(artist,       "musicBrainzArtistID", strMusicBrainzArtistID);
+  XMLUtils::SetStringArray(artist,                "genre", genre);
+  XMLUtils::SetStringArray(artist,                "style", styles);
+  XMLUtils::SetStringArray(artist,                 "mood", moods);
+  XMLUtils::SetStringArray(artist,          "yearsactive", yearsActive);
+  XMLUtils::SetStringArray(artist,          "instruments", instruments);
+  XMLUtils::SetString(artist,                      "born", strBorn);
+  XMLUtils::SetString(artist,                    "formed", strFormed);
+  XMLUtils::SetString(artist,                 "biography", strBiography);
+  XMLUtils::SetString(artist,                      "died", strDied);
+  XMLUtils::SetString(artist,                 "disbanded", strDisbanded);
   if (!thumbURL.m_xml.empty())
   {
     CXBMCTinyXML doc;
@@ -142,7 +175,7 @@ bool CArtist::Save(TiXmlNode *node, const CStdString &tag, const CStdString& str
   }
 
   // albums
-  for (vector< pair<CStdString,CStdString> >::const_iterator it = discography.begin(); it != discography.end(); ++it)
+  for (vector< pair<std::string,std::string> >::const_iterator it = discography.begin(); it != discography.end(); ++it)
   {
     // add a <album> tag
     TiXmlElement cast("album");

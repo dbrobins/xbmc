@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include "utils/URIUtils.h"
 #include "URL.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 #include "video/VideoInfoTag.h"
 
 using namespace XFILE;
@@ -63,13 +64,13 @@ bool CVTPFile::Open(const CURL& url2)
   if(url.GetPort() == 0)
     url.SetPort(2004);
 
-  CStdString path(url.GetFileName());
+  std::string path(url.GetFileName());
 
-  if (path.Left(9) == "channels/")
+  if (StringUtils::StartsWith(path, "channels/"))
   {
 
-    CStdString channel = path.Mid(9);
-    if(!URIUtils::GetExtension(channel).Equals(".ts"))
+    std::string channel = path.substr(9);
+    if(!URIUtils::HasExtension(channel, ".ts"))
     {
       CLog::Log(LOGERROR, "%s - invalid channel url %s", __FUNCTION__, channel.c_str());
       return false;
@@ -91,10 +92,13 @@ bool CVTPFile::Open(const CURL& url2)
   return true;
 }
 
-unsigned int CVTPFile::Read(void* buffer, int64_t size)
+ssize_t CVTPFile::Read(void* buffer, size_t size)
 {
+  if (size > SSIZE_MAX)
+    size = SSIZE_MAX;
+
   if(m_socket == INVALID_SOCKET)
-    return 0;
+    return -1;
 
   fd_set         set_r, set_e;
   struct timeval tv;
@@ -111,7 +115,7 @@ unsigned int CVTPFile::Read(void* buffer, int64_t size)
   if(res < 0)
   {
     CLog::Log(LOGERROR, "CVTPFile::Read - select failed");
-    return 0;
+    return -1;
   }
   if(res == 0)
   {
@@ -119,24 +123,19 @@ unsigned int CVTPFile::Read(void* buffer, int64_t size)
     return 0;
   }
 
-  res = recv(m_socket, (char*)buffer, (size_t)size, 0);
+  res = recv(m_socket, (char*)buffer, size, 0);
   if(res < 0)
-  {
     CLog::Log(LOGERROR, "CVTPFile::Read - failed");
-    return 0;
-  }
+
   if(res == 0)
-  {
     CLog::Log(LOGERROR, "CVTPFile::Read - eof");
-    return 0;
-  }
 
   return res;
 }
 
 int64_t CVTPFile::Seek(int64_t pos, int whence)
 {
-  CLog::Log(LOGDEBUG, "CVTPFile::Seek - seek to pos %"PRId64", whence %d", pos, whence);
+  CLog::Log(LOGDEBUG, "CVTPFile::Seek - seek to pos %" PRId64", whence %d", pos, whence);
   return -1;
 }
 

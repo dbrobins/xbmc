@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@
 #include <string>
 #include <vector>
 
+#include "media/MediaType.h"
+
 class CVariant;
 
 namespace dbiplus
@@ -35,6 +37,7 @@ namespace dbiplus
 
 typedef enum {
   // special fields used during sorting
+  FieldUnknown = -1,
   FieldNone = 0,
   FieldSort,        // used to store the string to use for sorting
   FieldSortSpecial, // whether the item needs special handling (0 = no, 1 = sort on top, 2 = sort on bottom)
@@ -53,7 +56,9 @@ typedef enum {
   FieldBitrate,
   FieldListeners,
   FieldPlaylist,
+  FieldVirtualFolder,
   FieldRandom,
+  FieldDateTaken,
 
   // fields retrievable from the database
   FieldId,
@@ -92,6 +97,7 @@ typedef enum {
   FieldWriter,
   FieldAirDate,
   FieldEpisodeNumber,
+  FieldUniqueId,
   FieldSeason,
   FieldEpisodeNumberSpecialSort,
   FieldSeasonSpecialSort,
@@ -112,30 +118,19 @@ typedef enum {
   FieldProductionCode,
   FieldTag,
   FieldChannelName,
+  FieldChannelNumber,
   FieldInstruments,
   FieldBiography,
   FieldBorn,
   FieldBandFormed,
   FieldDisbanded,
-  FieldDied
+  FieldDied,
+  FieldStereoMode,
+  FieldMax
 } Field;
 
 typedef std::set<Field> Fields;
 typedef std::vector<Field> FieldList;
-
-typedef enum {
-  MediaTypeNone = 0,
-  MediaTypeMusic,
-  MediaTypeArtist,
-  MediaTypeAlbum,
-  MediaTypeSong,
-  MediaTypeVideo,
-  MediaTypeVideoCollection,
-  MediaTypeMusicVideo,
-  MediaTypeMovie,
-  MediaTypeTvShow,
-  MediaTypeEpisode
-} MediaType;
 
 typedef enum {
   DatabaseQueryPartSelect,
@@ -149,15 +144,18 @@ typedef std::vector<DatabaseResult> DatabaseResults;
 class DatabaseUtils
 {
 public:
-  static std::string MediaTypeToString(MediaType mediaType);
-  static MediaType MediaTypeFromString(const std::string &strMediaType);
+  static MediaType MediaTypeFromVideoContentType(int videoContentType);
 
-  static std::string GetField(Field field, MediaType mediaType, DatabaseQueryPart queryPart);
-  static int GetFieldIndex(Field field, MediaType mediaType);
-  static bool GetSelectFields(const Fields &fields, MediaType mediaType, FieldList &selectFields);
+  static std::string GetField(Field field, const MediaType &mediaType, DatabaseQueryPart queryPart);
+  static int GetField(Field field, const MediaType &mediaType);
+  static int GetFieldIndex(Field field, const MediaType &mediaType);
+  static bool GetSelectFields(const Fields &fields, const MediaType &mediaType, FieldList &selectFields);
   
   static bool GetFieldValue(const dbiplus::field_value &fieldValue, CVariant &variantValue);
-  static bool GetDatabaseResults(MediaType mediaType, const FieldList &fields, const std::auto_ptr<dbiplus::Dataset> &dataset, DatabaseResults &results);
+  static bool GetDatabaseResults(const MediaType &mediaType, const FieldList &fields, const std::unique_ptr<dbiplus::Dataset> &dataset, DatabaseResults &results);
 
   static std::string BuildLimitClause(int end, int start = 0);
+
+private:
+  static int GetField(Field field, const MediaType &mediaType, bool asIndex);
 };

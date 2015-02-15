@@ -2,8 +2,8 @@
 #define AFX_XMLDOCUMENT_H__D68461F7_E0CE_4FA0_B1C9_0541610164E9__INCLUDED_
 
 /*
- *      Copyright (C) 2004-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2004-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,9 +25,7 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 
 //#include <xtl.h>
 #include <windows.h>

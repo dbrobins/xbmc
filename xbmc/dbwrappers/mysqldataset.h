@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -68,6 +68,9 @@ public:
 
 /* \brief copy database */
   virtual int copy(const char *backup_name);
+
+/* \brief drop all extra analytics from database */
+  virtual int drop_analytics(void);
 
   virtual long nextid(const char* seq_name);
 
@@ -145,7 +148,6 @@ or insert() operations default = false) */
   virtual int  exec (const std::string &sql);
   virtual const void* getExecRes();
 /* as open, but with our query exept Sql */
-  virtual bool query(const char *query);
   virtual bool query(const std::string &query);
 /* func. closes a query */
   virtual void close(void);

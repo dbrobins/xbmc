@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
  */
 
 #include "guilib/GUIDialog.h"
-#include "GUIViewControl.h"
+#include "view/GUIViewControl.h"
 #include "../channels/PVRChannelGroup.h"
 
 class CFileItemList;
@@ -38,6 +38,9 @@ namespace PVR
     void SetRadio(bool IsRadio) { m_bIsRadio = IsRadio; }
 
   protected:
+    virtual void OnInitWindow();
+    virtual void OnDeinitWindow(int nextWindowID);
+
     void Clear();
     void Update();
 
@@ -51,6 +54,7 @@ namespace PVR
     bool ActionButtonUngroupedChannels(CGUIMessage &message);
     bool ActionButtonGroupMembers(CGUIMessage &message);
     bool ActionButtonChannelGroups(CGUIMessage &message);
+    bool ActionButtonHideGroup(CGUIMessage &message);
     bool OnMessageClick(CGUIMessage &message);
 
     CPVRChannelGroupPtr m_selectedGroup;

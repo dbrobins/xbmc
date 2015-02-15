@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,8 @@
  *
  */
 
-#include "utils/StdString.h"
+#include <string>
+#include <vector>
 #include "TextureBundleXPR.h"
 #include "TextureBundleXBT.h"
 
@@ -33,13 +34,13 @@ public:
   void Cleanup();
 
   void SetThemeBundle(bool themeBundle);
-  bool HasFile(const CStdString& Filename);
-  void GetTexturesFromPath(const CStdString &path, std::vector<CStdString> &textures);
-  static CStdString Normalize(const CStdString &name);
+  bool HasFile(const std::string& Filename);
+  void GetTexturesFromPath(const std::string &path, std::vector<std::string> &textures);
+  static std::string Normalize(const std::string &name);
 
-  bool LoadTexture(const CStdString& Filename, CBaseTexture** ppTexture, int &width, int &height);
+  bool LoadTexture(const std::string& Filename, CBaseTexture** ppTexture, int &width, int &height);
 
-  int LoadAnim(const CStdString& Filename, CBaseTexture*** ppTextures, int &width, int &height, int& nLoops, int** ppDelays);
+  int LoadAnim(const std::string& Filename, CBaseTexture*** ppTextures, int &width, int &height, int& nLoops, int** ppDelays);
 
 private:
   CTextureBundleXPR m_tbXPR;

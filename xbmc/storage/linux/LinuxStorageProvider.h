@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,8 +19,8 @@
  *
  */
 #include "storage/IStorageProvider.h"
-#include "HALProvider.h"
 #include "DeviceKitDisksProvider.h"
+#include "UDevProvider.h"
 #include "UDisksProvider.h"
 #include "PosixMountProvider.h"
 
@@ -37,9 +37,9 @@ public:
     else if (CDeviceKitDisksProvider::HasDeviceKitDisks())
       m_instance = new CDeviceKitDisksProvider();
 #endif
-#ifdef HAS_HAL
+#ifdef HAVE_LIBUDEV
     if (m_instance == NULL)
-      m_instance = new CHALProvider();
+      m_instance = new CUDevProvider();
 #endif
 
     if (m_instance == NULL)
@@ -82,12 +82,12 @@ public:
     m_instance->GetRemovableDrives(removableDrives);
   }
 
-  virtual bool Eject(CStdString mountpath)
+  virtual bool Eject(const std::string& mountpath)
   {
     return m_instance->Eject(mountpath);
   }
 
-  virtual std::vector<CStdString> GetDiskUsage()
+  virtual std::vector<std::string> GetDiskUsage()
   {
     return m_instance->GetDiskUsage();
   }

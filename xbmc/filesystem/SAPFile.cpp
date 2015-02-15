@@ -1,21 +1,24 @@
 /*
-* SAP-Announcement Support for XBMC
-* Copyright (c) 2008 elupus (Joakim Plate)
-*
-* This program is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program; if not, write to the Free Software
-* Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-*/
+ *  SAP-Announcement Support for XBMC
+ *      Copyright (c) 2008 elupus (Joakim Plate)
+ *      Copyright (C) 2008-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 
 #include "SAPFile.h"
 #include "SAPDirectory.h"
@@ -24,6 +27,7 @@
 
 #include <sys/stat.h>
 #include <vector>
+#include <limits>
 
 using namespace std;
 using namespace XFILE;
@@ -33,6 +37,7 @@ using namespace XFILE;
 //////////////////////////////////////////////////////////////////////
 
 CSAPFile::CSAPFile()
+  : m_len(0)
 {}
 
 CSAPFile::~CSAPFile()
@@ -41,10 +46,10 @@ CSAPFile::~CSAPFile()
 
 bool CSAPFile::Open(const CURL& url)
 {
-  CStdString path = url.Get();
+  std::string path = url.Get();
 
   CSingleLock lock(g_sapsessions.m_section);
-  for(vector<CSAPSessions::CSession>::iterator it = g_sapsessions.m_sessions.begin(); it != g_sapsessions.m_sessions.end(); it++)
+  for(vector<CSAPSessions::CSession>::iterator it = g_sapsessions.m_sessions.begin(); it != g_sapsessions.m_sessions.end(); ++it)
   {
     if(it->path == path)
     {
@@ -62,10 +67,10 @@ bool CSAPFile::Open(const CURL& url)
 
 bool CSAPFile::Exists(const CURL& url)
 {
-  CStdString path = url.Get();
+  std::string path = url.Get();
 
   CSingleLock lock(g_sapsessions.m_section);
-  for(vector<CSAPSessions::CSession>::iterator it = g_sapsessions.m_sessions.begin(); it != g_sapsessions.m_sessions.end(); it++)
+  for(vector<CSAPSessions::CSession>::iterator it = g_sapsessions.m_sessions.begin(); it != g_sapsessions.m_sessions.end(); ++it)
   {
     if(it->path == path)
       return true;
@@ -75,7 +80,7 @@ bool CSAPFile::Exists(const CURL& url)
 
 int CSAPFile::Stat(const CURL& url, struct __stat64* buffer)
 {
-  CStdString path = url.Get();
+  std::string path = url.Get();
 
   if(path == "smb://")
   {
@@ -84,12 +89,12 @@ int CSAPFile::Stat(const CURL& url, struct __stat64* buffer)
       memset(buffer, 0, sizeof(struct __stat64));
       buffer->st_mode = _S_IFDIR;
     }
-    return true;
+    return 0;
   }
 
 
   CSingleLock lock(g_sapsessions.m_section);
-  for(vector<CSAPSessions::CSession>::iterator it = g_sapsessions.m_sessions.begin(); it != g_sapsessions.m_sessions.end(); it++)
+  for(vector<CSAPSessions::CSession>::iterator it = g_sapsessions.m_sessions.begin(); it != g_sapsessions.m_sessions.end(); ++it)
   {
     if(it->path == path)
     {
@@ -100,17 +105,22 @@ int CSAPFile::Stat(const CURL& url, struct __stat64* buffer)
         buffer->st_size = it->payload.size();
         buffer->st_mode = _S_IFREG;
       }
-      return true;
+      return 0;
     }
   }
-  return false;
+  return -1;
 
 }
 
 
-unsigned int CSAPFile::Read(void *lpBuf, int64_t uiBufSize)
+ssize_t CSAPFile::Read(void *lpBuf, size_t uiBufSize)
 {
-  return (unsigned int)m_stream.readsome((char*)lpBuf, (streamsize)uiBufSize);
+  if (uiBufSize > SSIZE_MAX)
+    uiBufSize = SSIZE_MAX;
+  if (uiBufSize > std::numeric_limits<std::streamsize>::max())
+    uiBufSize = (size_t)std::numeric_limits<std::streamsize>::max();
+
+  return (ssize_t)m_stream.readsome((char*)lpBuf, (streamsize)uiBufSize);
 }
 
 void CSAPFile::Close()
@@ -151,10 +161,10 @@ int64_t CSAPFile::GetPosition()
 
 bool CSAPFile::Delete(const CURL& url)
 {
-  CStdString path = url.Get();
+  std::string path = url.Get();
 
   CSingleLock lock(g_sapsessions.m_section);
-  for(vector<CSAPSessions::CSession>::iterator it = g_sapsessions.m_sessions.begin(); it != g_sapsessions.m_sessions.end(); it++)
+  for(vector<CSAPSessions::CSession>::iterator it = g_sapsessions.m_sessions.begin(); it != g_sapsessions.m_sessions.end(); ++it)
   {
     if(it->path == path)
     {

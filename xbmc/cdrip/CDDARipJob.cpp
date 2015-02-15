@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,33 +19,30 @@
  */
 
 #include "CDDARipJob.h"
-#ifdef HAVE_LIBMP3LAME
-#include "EncoderLame.h"
-#endif
-#ifdef HAVE_LIBVORBISENC
-#include "EncoderVorbis.h"
-#endif
-#include "EncoderWav.h"
+#include "Encoder.h"
 #include "EncoderFFmpeg.h"
-#include "EncoderFlac.h"
 #include "FileItem.h"
 #include "utils/log.h"
+#include "utils/SystemInfo.h"
 #include "Util.h"
 #include "dialogs/GUIDialogExtendedProgressBar.h"
 #include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
+#include "settings/Settings.h"
 #include "settings/AdvancedSettings.h"
 #include "utils/StringUtils.h"
-#include "settings/GUISettings.h"
 #include "storage/MediaManager.h"
+#include "addons/AddonManager.h"
+#include "addons/AudioEncoder.h"
 
+using namespace ADDON;
 using namespace MUSIC_INFO;
 using namespace XFILE;
 
-CCDDARipJob::CCDDARipJob(const CStdString& input,
-                         const CStdString& output,
+CCDDARipJob::CCDDARipJob(const std::string& input,
+                         const std::string& output,
                          const CMusicInfoTag& tag, 
                          int encoder,
                          bool eject,
@@ -71,7 +68,7 @@ bool CCDDARipJob::DoWork()
   if (file.IsRemote())
     m_output = SetupTempFile();
   
-  if (m_output.IsEmpty())
+  if (m_output.empty())
   {
     CLog::Log(LOGERROR, "CCDDARipper: Error opening file");
     return false;
@@ -90,12 +87,11 @@ bool CCDDARipJob::DoWork()
   CGUIDialogExtendedProgressBar* pDlgProgress = 
       (CGUIDialogExtendedProgressBar*)g_windowManager.GetWindow(WINDOW_DIALOG_EXT_PROGRESS);
   CGUIDialogProgressBarHandle* handle = pDlgProgress->GetHandle(g_localizeStrings.Get(605));
-  CStdString strLine0;
+
   int iTrack = atoi(m_input.substr(13, m_input.size() - 13 - 5).c_str());
-  strLine0.Format("%02i. %s - %s", iTrack,
-                  StringUtils::Join(m_tag.GetArtist(),
-                              g_advancedSettings.m_musicItemSeparator).c_str(),
-                  m_tag.GetTitle().c_str());
+  std::string strLine0 = StringUtils::Format("%02i. %s - %s", iTrack,
+                                            StringUtils::Join(m_tag.GetArtist(), g_advancedSettings.m_musicItemSeparator).c_str(),
+                                            m_tag.GetTitle().c_str());
   handle->SetText(strLine0);
 
   // start ripping
@@ -109,19 +105,19 @@ bool CCDDARipJob::DoWork()
     if (percent > oldpercent)
     {
       oldpercent = percent;
-      handle->SetPercentage(percent);
+      handle->SetPercentage(static_cast<float>(percent));
     }
   }
 
   // close encoder ripper
-  encoder->Close();
+  encoder->CloseEncode();
   delete encoder;
   reader.Close();
 
   if (file.IsRemote() && !cancelled && result == 2)
   {
     // copy the ripped track to the share
-    if (!CFile::Cache(m_output, file.GetPath()))
+    if (!CFile::Copy(m_output, file.GetPath()))
     {
       CLog::Log(LOGERROR, "CDDARipper: Error copying file from %s to %s", 
                 m_output.c_str(), file.GetPath().c_str());
@@ -166,14 +162,14 @@ int CCDDARipJob::RipChunk(CFile& reader, CEncoder* encoder, int& percent)
   int result = reader.Read(stream, 1024);
 
   // return if rip is done or on some kind of error
-  if (!result)
+  if (result <= 0)
     return 1;
 
   // encode data
   int encres=encoder->Encode(result, stream);
 
   // Get progress indication
-  percent = reader.GetPosition()*100/reader.GetLength();
+  percent = static_cast<int>(reader.GetPosition()*100/reader.GetLength());
 
   if (reader.GetPosition() == reader.GetLength())
     return 2;
@@ -183,36 +179,32 @@ int CCDDARipJob::RipChunk(CFile& reader, CEncoder* encoder, int& percent)
 
 CEncoder* CCDDARipJob::SetupEncoder(CFile& reader)
 {
-  CEncoder* encoder;
-  switch (m_encoder)
+  CEncoder* encoder = NULL;
+  if (CSettings::Get().GetString("audiocds.encoder") == "audioencoder.xbmc.builtin.aac" ||
+           CSettings::Get().GetString("audiocds.encoder") == "audioencoder.xbmc.builtin.wma")
   {
-#ifdef HAVE_LIBVORBISENC
-  case CDDARIP_ENCODER_VORBIS:
-    encoder = new CEncoderVorbis();
-    break;
-#endif
-#ifdef HAVE_LIBMP3LAME
-  case CDDARIP_ENCODER_LAME:
-    encoder = new CEncoderLame();
-    break;
-#endif
-  case CDDARIP_ENCODER_FLAC:
-    encoder = new CEncoderFlac();
-    break;
-  case CDDARIP_ENCODER_WAV:
-  default:
-    encoder = new CEncoderWav();
-    break;
+    std::shared_ptr<IEncoder> enc(new CEncoderFFmpeg());
+    encoder = new CEncoder(enc);
   }
-
+  else
+  {
+    AddonPtr addon;
+    CAddonMgr::Get().GetAddon(CSettings::Get().GetString("audiocds.encoder"), addon);
+    if (addon)
+    {
+      std::shared_ptr<CAudioEncoder> aud =  std::static_pointer_cast<CAudioEncoder>(addon);
+      aud->Create();
+      std::shared_ptr<IEncoder> enc =  std::static_pointer_cast<IEncoder>(aud);
+      encoder = new CEncoder(enc);
+    }
+  }
   if (!encoder)
     return NULL;
 
   // we have to set the tags before we init the Encoder
-  CStdString strTrack;
-  strTrack.Format("%i", strtol(m_input.substr(13, m_input.size() - 13 - 5).c_str(),NULL,10));
+  std::string strTrack = StringUtils::Format("%li", strtol(m_input.substr(13, m_input.size() - 13 - 5).c_str(),NULL,10));
 
-  encoder->SetComment("Ripped with XBMC");
+  encoder->SetComment(std::string("Ripped with ") + CSysInfo::GetAppName());
   encoder->SetArtist(StringUtils::Join(m_tag.GetArtist(),
                                       g_advancedSettings.m_musicItemSeparator));
   encoder->SetTitle(m_tag.GetTitle());
@@ -222,7 +214,7 @@ CEncoder* CCDDARipJob::SetupEncoder(CFile& reader)
   encoder->SetGenre(StringUtils::Join(m_tag.GetGenre(),
                                       g_advancedSettings.m_musicItemSeparator));
   encoder->SetTrack(strTrack);
-  encoder->SetTrackLength(reader.GetLength());
+  encoder->SetTrackLength(static_cast<int>(reader.GetLength()));
   encoder->SetYear(m_tag.GetYearString());
 
   // init encoder
@@ -232,11 +224,11 @@ CEncoder* CCDDARipJob::SetupEncoder(CFile& reader)
   return encoder;
 }
 
-CStdString CCDDARipJob::SetupTempFile()
+std::string CCDDARipJob::SetupTempFile()
 {
   char tmp[MAX_PATH];
-#ifndef _LINUX
-  GetTempFileName(CSpecialProtocol::TranslatePath("special://temp/"), "riptrack", 0, tmp);
+#ifndef TARGET_POSIX
+  GetTempFileName(CSpecialProtocol::TranslatePath("special://temp/").c_str(), "riptrack", 0, tmp);
 #else
   int fd;
   strncpy(tmp, CSpecialProtocol::TranslatePath("special://temp/riptrackXXXXXX").c_str(), MAX_PATH);

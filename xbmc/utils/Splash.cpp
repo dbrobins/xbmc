@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,9 +30,8 @@
 
 using namespace XFILE;
 
-CSplash::CSplash(const CStdString& imageName) : CThread("CSplash")
+CSplash::CSplash(const std::string& imageName) : CThread("Splash"), m_ImageName(imageName)
 {
-  m_ImageName = imageName;
   fade = 0.5;
   m_messageLayout = NULL;
   m_image = NULL;
@@ -58,7 +57,7 @@ void CSplash::Show()
   Show("");
 }
 
-void CSplash::Show(const CStdString& message)
+void CSplash::Show(const std::string& message)
 {
   g_graphicsContext.Lock();
   g_graphicsContext.Clear();
@@ -67,7 +66,7 @@ void CSplash::Show(const CStdString& message)
   g_graphicsContext.SetRenderingResolution(res, true);  
   if (!m_image)
   {
-    m_image = new CGUIImage(0, 0, 0, 0, 1280, 720, m_ImageName);
+    m_image = new CGUIImage(0, 0, 0, 0, 1280, 720, CTextureInfo(m_ImageName));
     m_image->SetAspectRatio(CAspectRatio::AR_CENTER);
   }
 
@@ -79,7 +78,7 @@ void CSplash::Show(const CStdString& message)
   m_image->FreeResources();
 
   // render message
-  if (!message.IsEmpty())
+  if (!message.empty())
   {
     if (!m_layoutWasLoading)
     {
@@ -122,7 +121,7 @@ void CSplash::Process()
 
 bool CSplash::Start()
 {
-  if (m_ImageName.IsEmpty() || !CFile::Exists(m_ImageName))
+  if (m_ImageName.empty() || !CFile::Exists(m_ImageName))
   {
     CLog::Log(LOGDEBUG, "Splash image %s not found", m_ImageName.c_str());
     return false;

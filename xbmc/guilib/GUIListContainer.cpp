@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,9 +18,11 @@
  *
  */
 
+#include "system.h"
 #include "GUIListContainer.h"
 #include "GUIListItem.h"
 #include "Key.h"
+#include "utils/StringUtils.h"
 
 CGUIListContainer::CGUIListContainer(int parentID, int controlID, float posX, float posY, float width, float height, ORIENTATION orientation, const CScroller& scroller, int preloadItems)
     : CGUIBaseContainer(parentID, controlID, posX, posY, width, height, orientation, scroller, preloadItems)
@@ -283,7 +285,7 @@ bool CGUIListContainer::SelectItemFromPoint(const CPoint &point)
   return true;
 }
 
-//#ifdef PRE_SKIN_VERSION_9_10_COMPATIBILITY
+//#ifdef GUILIB_PYTHON_COMPATIBILITY
 CGUIListContainer::CGUIListContainer(int parentID, int controlID, float posX, float posY, float width, float height,
                                  const CLabelInfo& labelInfo, const CLabelInfo& labelInfo2,
                                  const CTextureInfo& textureButton, const CTextureInfo& textureButtonFocus,
@@ -293,9 +295,8 @@ CGUIListContainer::CGUIListContainer(int parentID, int controlID, float posX, fl
   CGUIListItemLayout layout;
   layout.CreateListControlLayouts(width, textureHeight + spaceBetweenItems, false, labelInfo, labelInfo2, textureButton, textureButtonFocus, textureHeight, itemWidth, itemHeight, "", "");
   m_layouts.push_back(layout);
-  CStdString condition;
-  condition.Format("control.hasfocus(%i)", controlID);
-  CStdString condition2 = "!" + condition;
+  std::string condition = StringUtils::Format("control.hasfocus(%i)", controlID);
+  std::string condition2 = "!" + condition;
   CGUIListItemLayout focusLayout;
   focusLayout.CreateListControlLayouts(width, textureHeight + spaceBetweenItems, true, labelInfo, labelInfo2, textureButton, textureButtonFocus, textureHeight, itemWidth, itemHeight, condition2, condition);
   m_focusedLayouts.push_back(focusLayout);

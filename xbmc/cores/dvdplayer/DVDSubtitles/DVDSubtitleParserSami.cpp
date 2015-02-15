@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 #include "DVDClock.h"
 #include "utils/RegExp.h"
 #include "DVDStreamInfo.h"
-#include "utils/StdString.h"
+#include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "DVDSubtitleTagSami.h"
 
@@ -51,8 +51,8 @@ bool CDVDSubtitleParserSami::Open(CDVDStreamInfo &hints)
   if (!reg.RegComp("<SYNC START=([0-9]+)>"))
     return false;
 
-  CStdString strFileName;
-  CStdString strClassID;
+  std::string strFileName;
+  std::string strClassID;
   strFileName = URIUtils::GetFileName(m_filename);
 
   CDVDSubtitleTagSami TagConv;
@@ -63,15 +63,16 @@ bool CDVDSubtitleParserSami::Open(CDVDStreamInfo &hints)
   {
     for (unsigned int i = 0; i < TagConv.m_Langclass.size(); i++)
     {
-      if (strFileName.Find(TagConv.m_Langclass[i].Name, 9) == 9)
+      if (strFileName.find(TagConv.m_Langclass[i].Name, 9) == 9)
       {
-        strClassID = TagConv.m_Langclass[i].ID.ToLower();
+        strClassID = TagConv.m_Langclass[i].ID;
+        StringUtils::ToLower(strClassID);
         break;
       }
     }
   }
   const char *lang = NULL;
-  if (!strClassID.IsEmpty())
+  if (!strClassID.empty())
     lang = strClassID.c_str();
 
   CDVDOverlayText* pOverlay = NULL;
@@ -84,7 +85,7 @@ bool CDVDSubtitleParserSami::Open(CDVDStreamInfo &hints)
     const char* text = line;
     if (pos > -1)
     {
-      CStdString start = reg.GetMatch(1);
+      std::string start = reg.GetMatch(1);
       if(pOverlay)
       {
         TagConv.ConvertLine(pOverlay, text, pos, lang);

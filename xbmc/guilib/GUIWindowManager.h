@@ -9,8 +9,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,6 +32,9 @@
 #include "IWindowManagerCallback.h"
 #include "IMsgTargetCallback.h"
 #include "DirtyRegionTracker.h"
+#include "utils/GlobalsHandling.h"
+#include "guilib/WindowIDs.h"
+#include <list>
 
 class CGUIDialog;
 
@@ -55,17 +58,17 @@ public:
   void AddCustomWindow(CGUIWindow* pWindow);
   void Remove(int id);
   void Delete(int id);
-  void ActivateWindow(int iWindowID, const CStdString &strPath = "");
-  void ChangeActiveWindow(int iNewID, const CStdString &strPath = "");
-  void ActivateWindow(int iWindowID, const std::vector<CStdString>& params, bool swappingWindows = false);
+  void ActivateWindow(int iWindowID, const std::string &strPath = "");
+  void ChangeActiveWindow(int iNewID, const std::string &strPath = "");
+  void ActivateWindow(int iWindowID, const std::vector<std::string>& params, bool swappingWindows = false);
   void PreviousWindow();
 
-  void CloseDialogs(bool forceClose = false);
+  void CloseDialogs(bool forceClose = false) const;
 
   // OnAction() runs through our active dialogs and windows and sends the message
   // off to the callbacks (application, python, playlist player) and to the
   // currently focused window(s).  Returns true only if the message is handled.
-  bool OnAction(const CAction &action);
+  bool OnAction(const CAction &action) const;
 
   /*! \brief Process active controls allowing them to animate before rendering.
    */
@@ -74,6 +77,10 @@ public:
   /*! \brief Mark the screen as dirty, forcing a redraw at the next Render()
    */
   void MarkDirty();
+
+  /*! \brief Mark a region as dirty, forcing a redraw at the next Render()
+   */
+  void MarkDirty(const CRect& rect);
 
   /*! \brief Get the current dirty region
    */
@@ -85,6 +92,10 @@ public:
    Returns true only if it has rendered something.
    */
   bool Render();
+
+  /*! \brief Do any post render activities.
+   */
+  void AfterRender();
 
   /*! \brief Per-frame updating of the current window and any dialogs
    FrameMove is called every frame to update the current window and any dialogs
@@ -99,6 +110,16 @@ public:
    */
   bool Initialized() const { return m_initialized; };
 
+  /*! \brief Create and initialize all windows and dialogs
+   */
+  void CreateWindows();
+
+  /*! \brief Destroy and remove all windows and dialogs
+  *
+  * \return true on success, false if destruction fails for any window
+  */
+  bool DestroyWindows();
+
   CGUIWindow* GetWindow(int id) const;
   void ProcessRenderLoop(bool renderOnly = false);
   void SetCallback(IWindowManagerCallback& callback);
@@ -109,20 +130,23 @@ public:
   void RemoveDialog(int id);
   int GetTopMostModalDialogID(bool ignoreClosing = false) const;
 
-  void SendThreadMessage(CGUIMessage& message);
-  void SendThreadMessage(CGUIMessage& message, int window);
+  void SendThreadMessage(CGUIMessage& message, int window = 0);
   void DispatchThreadMessages();
+  // method to removed queued messages with message id in the requested message id list.
+  // pMessageIDList: point to first integer of a 0 ends integer array.
+  int RemoveThreadMessageByMessageIds(int *pMessageIDList);
   void AddMsgTarget( IMsgTargetCallback* pMsgTarget );
   int GetActiveWindow() const;
+  int GetActiveWindowID();
   int GetFocusedWindow() const;
   bool HasModalDialog() const;
   bool HasDialogOnScreen() const;
   bool IsWindowActive(int id, bool ignoreClosing = true) const;
   bool IsWindowVisible(int id) const;
   bool IsWindowTopMost(int id) const;
-  bool IsWindowActive(const CStdString &xmlFile, bool ignoreClosing = true) const;
-  bool IsWindowVisible(const CStdString &xmlFile) const;
-  bool IsWindowTopMost(const CStdString &xmlFile) const;
+  bool IsWindowActive(const std::string &xmlFile, bool ignoreClosing = true) const;
+  bool IsWindowVisible(const std::string &xmlFile) const;
+  bool IsWindowTopMost(const std::string &xmlFile) const;
   bool IsOverlayAllowed() const;
   void ShowOverlay(CGUIWindow::OVERLAY_STATE state);
   void GetActiveModelessWindows(std::vector<int> &ids);
@@ -130,7 +154,8 @@ public:
   void DumpTextureUse();
 #endif
 private:
-  void RenderPass();
+  void RenderPass() const;
+  void RenderEx() const;
 
   void LoadNotOnDemandWindows();
   void UnloadNotOnDemandWindows();
@@ -141,7 +166,7 @@ private:
   CGUIWindow *GetTopMostDialog() const;
 
   friend class CApplicationMessenger;
-  void ActivateWindow_Internal(int windowID, const std::vector<CStdString> &params, bool swappingWindows);
+  void ActivateWindow_Internal(int windowID, const std::vector<std::string> &params, bool swappingWindows);
 
   typedef std::map<int, CGUIWindow *> WindowMap;
   WindowMap m_mapWindows;
@@ -156,7 +181,7 @@ private:
   std::stack<int> m_windowHistory;
 
   IWindowManagerCallback* m_pCallback;
-  std::vector < std::pair<CGUIMessage*,int> > m_vecThreadMessages;
+  std::list < std::pair<CGUIMessage*,int> > m_vecThreadMessages;
   CCriticalSection m_critSection;
   std::vector <IMsgTargetCallback*> m_vecMsgTargets;
 
@@ -165,12 +190,39 @@ private:
   bool m_initialized;
 
   CDirtyRegionTracker m_tracker;
+
+private:
+  class CGUIWindowManagerIdCache
+  {
+  public:
+    CGUIWindowManagerIdCache(void) : m_id(WINDOW_INVALID) {}
+    CGUIWindow *Get(int id)
+    {
+      if (id == m_id)
+        return m_window;
+      return NULL;
+    }
+    void Set(int id, CGUIWindow *window)
+    {
+      m_id = id;
+      m_window = window;
+    }
+    void Invalidate(void)
+    {
+      m_id = WINDOW_INVALID;
+    }
+  private:
+    int m_id;
+    CGUIWindow *m_window;
+  };
+  mutable CGUIWindowManagerIdCache m_idCache;
 };
 
 /*!
  \ingroup winman
  \brief
  */
-extern CGUIWindowManager g_windowManager;
+XBMC_GLOBAL_REF(CGUIWindowManager,g_windowManager);
+#define g_windowManager XBMC_GLOBAL_USE(CGUIWindowManager)
 #endif
 

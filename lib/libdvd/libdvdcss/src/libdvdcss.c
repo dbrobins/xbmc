@@ -5,21 +5,20 @@
  *          Håkan Hjort <d95hjort@dtek.chalmers.se>
  *
  * Copyright (C) 1998-2008 VideoLAN
- * $Id$
  *
- * This program is free software; you can redistribute it and/or modify
+ * This library is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this library; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
 /**
@@ -31,7 +30,7 @@
  * device without having to bother about the decryption. The important features
  * are:
  * \li portability: currently supported platforms are GNU/Linux, FreeBSD,
- *     NetBSD, OpenBSD, BSD/OS, BeOS, Windows 95/98, Windows NT/2000, MacOS X,
+ *     NetBSD, OpenBSD, BeOS, Windows 98/ME, Windows NT/2000/XP, Mac OS X,
  *     Solaris, HP-UX and OS/2.
  * \li adaptability: unlike most similar projects, libdvdcss doesn't require
  *     the region of your drive to be set and will try its best to read from
@@ -50,7 +49,7 @@
  *
  * \section env Environment variables
  *
- * Some environment variables can be used to change the behaviour of
+ * Some environment variables can be used to change the behavior of
  * \e libdvdcss without having to modify the program which uses it. These
  * variables are:
  *
@@ -120,10 +119,6 @@
 #   include <limits.h>
 #endif
 
-#ifdef HAVE_DIRECT_H
-#   include <direct.h>
-#endif
-
 #include "dvdcss/dvdcss.h"
 
 #include "common.h"
@@ -131,6 +126,11 @@
 #include "libdvdcss.h"
 #include "ioctl.h"
 #include "device.h"
+
+#ifdef HAVE_BROKEN_MKDIR
+#include <direct.h>
+#define mkdir(a, b) _mkdir(a)
+#endif
 
 /**
  * \brief Symbol for version checks.
@@ -166,7 +166,7 @@ LIBDVDCSS_EXPORT dvdcss_t dvdcss_open ( char *psz_target )
     char *psz_method = getenv( "DVDCSS_METHOD" );
     char *psz_verbose = getenv( "DVDCSS_VERBOSE" );
     char *psz_cache = getenv( "DVDCSS_CACHE" );
-#ifndef WIN32
+#ifdef DVDCSS_RAW_OPEN
     char *psz_raw_device = getenv( "DVDCSS_RAW_DEVICE" );
 #endif
 
@@ -184,7 +184,7 @@ LIBDVDCSS_EXPORT dvdcss_t dvdcss_open ( char *psz_target )
     /*
      *  Initialize structure with default values
      */
-#ifndef WIN32
+#ifdef DVDCSS_RAW_OPEN
     dvdcss->i_raw_fd = -1;
 #endif
     dvdcss->p_titles = NULL;
@@ -242,7 +242,7 @@ LIBDVDCSS_EXPORT dvdcss_t dvdcss_open ( char *psz_target )
      */
     if( psz_cache == NULL || psz_cache[0] == '\0' )
     {
-#ifdef HAVE_DIRECT_H
+#if defined(_WIN32_IE) && _WIN32_IE >= 0x401
         typedef HRESULT( WINAPI *SHGETFOLDERPATH )
                        ( HWND, int, HANDLE, DWORD, LPTSTR );
 
@@ -256,7 +256,7 @@ LIBDVDCSS_EXPORT dvdcss_t dvdcss_open ( char *psz_target )
 
         *psz_home = '\0';
 
-        /* Load the shfolder dll to retrieve SHGetFolderPath */
+        /* Load the shfolder DLL to retrieve SHGetFolderPath */
         p_dll = LoadLibrary( "shfolder.dll" );
         if( p_dll )
         {
@@ -310,7 +310,25 @@ LIBDVDCSS_EXPORT dvdcss_t dvdcss_open ( char *psz_target )
         /* Cache our keys in ${HOME}/.dvdcss/ */
         if( psz_home )
         {
-            snprintf( psz_buffer, PATH_MAX, "%s/.dvdcss", psz_home );
+            int home_pos = 0;
+
+#ifdef __OS2__
+            if( *psz_home == '/' || *psz_home == '\\')
+            {
+                char *psz_unixroot = getenv("UNIXROOT");
+
+                if( psz_unixroot &&
+                    psz_unixroot[0] &&
+                    psz_unixroot[1] == ':'  &&
+                    psz_unixroot[2] == '\0')
+                {
+                    strcpy( psz_buffer, psz_unixroot );
+                    home_pos = 2;
+                }
+            }
+#endif
+            snprintf( psz_buffer + home_pos, PATH_MAX - home_pos,
+                      "%s/.dvdcss", psz_home );
             psz_buffer[PATH_MAX-1] = '\0';
             psz_cache = psz_buffer;
         }
@@ -353,7 +371,14 @@ LIBDVDCSS_EXPORT dvdcss_t dvdcss_open ( char *psz_target )
     if( dvdcss->b_ioctls )
     {
         i_ret = _dvdcss_test( dvdcss );
-        if( i_ret < 0 )
+
+        if( i_ret == -3 )
+        {
+            print_debug( dvdcss, "scrambled disc on a region-free RPC-II "
+                                 "drive: possible failure, but continuing "
+                                 "anyway" );
+        }
+        else if( i_ret < 0 )
         {
             /* Disable the CSS ioctls and hope that it works? */
             print_debug( dvdcss,
@@ -369,7 +394,6 @@ LIBDVDCSS_EXPORT dvdcss_t dvdcss_open ( char *psz_target )
     }
     /* if wo don't have b_ioctls, we don't have a disk key, make sure area is nulled */
     memset( dvdcss->css.p_disc_key, 0, KEY_SIZE );
-
     /* If disc is CSS protected and the ioctls work, authenticate the drive */
     if( dvdcss->b_scrambled && dvdcss->b_ioctls )
     {
@@ -380,15 +404,12 @@ LIBDVDCSS_EXPORT dvdcss_t dvdcss_open ( char *psz_target )
             print_debug( dvdcss, "could not get disc key" );
         }
     }
-    else
-    {
-        memset( dvdcss->css.p_disc_key, 0, KEY_SIZE );
-    }
 
     /* If the cache is enabled, write the cache directory tag */
     if( psz_cache )
     {
-        char *psz_tag = "Signature: 8a477f597d28d172789f06886806bc55\r\n"
+        static const char psz_tag[] =
+            "Signature: 8a477f597d28d172789f06886806bc55\r\n"
             "# This file is a cache directory tag created by libdvdcss.\r\n"
             "# For information about cache directory tags, see:\r\n"
             "#   http://www.brynosaurus.com/cachedir/\r\n";
@@ -408,7 +429,6 @@ LIBDVDCSS_EXPORT dvdcss_t dvdcss_open ( char *psz_target )
     if( psz_cache )
     {
         uint8_t p_sector[DVDCSS_BLOCK_SIZE];
-        char psz_debug[PATH_MAX + 30];
         char psz_key[1 + KEY_SIZE * 2 + 1];
         char *psz_title;
         uint8_t *psz_serial;
@@ -506,11 +526,7 @@ LIBDVDCSS_EXPORT dvdcss_t dvdcss_open ( char *psz_target )
 
         /* We have a disc name or ID, we can create the cache dir */
         i = sprintf( dvdcss->psz_cachefile, "%s", psz_cache );
-#if !defined( WIN32 ) || defined( SYS_CYGWIN )
         i_ret = mkdir( dvdcss->psz_cachefile, 0755 );
-#else
-        i_ret = mkdir( dvdcss->psz_cachefile );
-#endif
         if( i_ret < 0 && errno != EEXIST )
         {
             print_error( dvdcss, "failed creating cache directory" );
@@ -518,31 +534,9 @@ LIBDVDCSS_EXPORT dvdcss_t dvdcss_open ( char *psz_target )
             goto nocache;
         }
 
-#ifdef _XBOX
-        //due to xbox file system having a limited length on folders/files, 
-        //make separate folder for disk name first
-        if(psz_title[0] == '\0')
-          strcat(psz_title, "NONAME");
-
-        i += sprintf( dvdcss->psz_cachefile + i, "/%s", psz_title);
-        
-        i_ret = mkdir( dvdcss->psz_cachefile );
-        if( i_ret < 0 && errno != EEXIST )
-        {
-            print_error( dvdcss, "failed creating cache titledirectory" );
-            dvdcss->psz_cachefile[0] = '\0';
-            goto nocache;
-        }
-        i += sprintf( dvdcss->psz_cachefile + i, "/%s%s", psz_serial, psz_key );
-#else
         i += sprintf( dvdcss->psz_cachefile + i, "/%s-%s%s", psz_title,
                       psz_serial, psz_key );
-#endif
-#if !defined( WIN32 ) || defined( SYS_CYGWIN )
         i_ret = mkdir( dvdcss->psz_cachefile, 0755 );
-#else
-        i_ret = mkdir( dvdcss->psz_cachefile );
-#endif
         if( i_ret < 0 && errno != EEXIST )
         {
             print_error( dvdcss, "failed creating cache subdirectory" );
@@ -554,13 +548,12 @@ LIBDVDCSS_EXPORT dvdcss_t dvdcss_open ( char *psz_target )
         /* Pointer to the filename we will use. */
         dvdcss->psz_block = dvdcss->psz_cachefile + i;
 
-        sprintf( psz_debug, "using CSS key cache dir: %s",
+        print_debug( dvdcss, "using CSS key cache dir: %s",
                             dvdcss->psz_cachefile );
-        print_debug( dvdcss, psz_debug );
     }
     nocache:
 
-#ifndef WIN32
+#ifdef DVDCSS_RAW_OPEN
     if( psz_raw_device != NULL )
     {
         _dvdcss_raw_open( dvdcss, psz_raw_device );
@@ -594,7 +587,7 @@ LIBDVDCSS_EXPORT char * dvdcss_error ( dvdcss_t dvdcss )
  *
  * \param dvdcss a \e libdvdcss instance.
  * \param i_blocks an absolute block offset to seek to.
- * \param i_flags #DVDCSS_NOFLAGS, optionally ored with one of #DVDCSS_SEEK_KEY
+ * \param i_flags #DVDCSS_NOFLAGS, optionally ORed with one of #DVDCSS_SEEK_KEY
  *        or #DVDCSS_SEEK_MPEG.
  * \return the new position in blocks, or a negative value in case an error
  *         happened.
@@ -604,7 +597,7 @@ LIBDVDCSS_EXPORT char * dvdcss_error ( dvdcss_t dvdcss )
  * You typically set \p i_flags to #DVDCSS_NOFLAGS when seeking in a .IFO.
  *
  * If #DVDCSS_SEEK_MPEG is specified in \p i_flags and if \e libdvdcss finds it
- * reasonable to do so (ie, if the dvdcss method is not "title"), the current
+ * reasonable to do so (i.e., if the dvdcss method is not "title"), the current
  * title key will be checked and a new one will be calculated if necessary.
  * This flag is typically used when reading data from a VOB.
  *
@@ -636,7 +629,7 @@ LIBDVDCSS_EXPORT int dvdcss_seek ( dvdcss_t dvdcss, int i_blocks, int i_flags )
  * \param dvdcss a \e libdvdcss instance.
  * \param p_buffer a buffer that will contain the data read from the disc.
  * \param i_blocks the amount of blocks to read.
- * \param i_flags #DVDCSS_NOFLAGS, optionally ored with #DVDCSS_READ_DECRYPT.
+ * \param i_flags #DVDCSS_NOFLAGS, optionally ORed with #DVDCSS_READ_DECRYPT.
  * \return the amount of blocks read, or a negative value in case an
  *         error happened.
  *
@@ -706,7 +699,7 @@ LIBDVDCSS_EXPORT int dvdcss_read ( dvdcss_t dvdcss, void *p_buffer,
  * \param p_iovec a pointer to an array of iovec structures that will contain
  *        the data read from the disc.
  * \param i_blocks the amount of blocks to read.
- * \param i_flags #DVDCSS_NOFLAGS, optionally ored with #DVDCSS_READ_DECRYPT.
+ * \param i_flags #DVDCSS_NOFLAGS, optionally ORed with #DVDCSS_READ_DECRYPT.
  * \return the amount of blocks read, or a negative value in case an
  *         error happened.
  *

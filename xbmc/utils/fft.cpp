@@ -15,8 +15,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  *  Contact addresses:
  *  arvin@informatik.uni-bremen.de
@@ -26,7 +26,7 @@
 
 
 #include <math.h>
-
+#include <algorithm>
 #include "fft.h"
 
 #ifndef M_PI
@@ -37,9 +37,11 @@
 #define M_SQRT2 1.4142135623730950488016887242097
 #endif
 
-
-
-
+// WARNING:
+// Whenever you call that method directly, make sure
+// that you pass in ptr - 1. Also remember this method 
+// has a complex result. You most likely want to have a 
+// realfft only instead
 void fft( float data[], int nn, int isign )
 {
   int n = nn << 1;
@@ -52,8 +54,8 @@ void fft( float data[], int nn, int isign )
   {
     if ( j > i )
     {
-      swap( data[j], data[i] );
-      swap( data[j + 1], data[i + 1] );
+      std::swap( data[j], data[i] );
+      std::swap( data[j + 1], data[i + 1] );
     }
     m = nn;
     while ( m >= 2 && j > m )

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ namespace ADDON
 CPluginSource::CPluginSource(const AddonProps &props)
   : CAddon(props)
 {
-  CStdString provides;
+  std::string provides;
   InfoMap::const_iterator i = Props().extrainfo.find("provides");
   if (i != Props().extrainfo.end())
     provides = i->second;
@@ -39,25 +39,29 @@ CPluginSource::CPluginSource(const AddonProps &props)
 CPluginSource::CPluginSource(const cp_extension_t *ext)
   : CAddon(ext)
 {
-  CStdString provides;
+  std::string provides;
   if (ext)
   {
     provides = CAddonMgr::Get().GetExtValue(ext->configuration, "provides");
-    if (!provides.IsEmpty())
+    if (!provides.empty())
       Props().extrainfo.insert(make_pair("provides", provides));
   }
   SetProvides(provides);
 }
 
-void CPluginSource::SetProvides(const CStdString &content)
+AddonPtr CPluginSource::Clone() const
 {
-  vector<CStdString> provides;
-  if (!content.IsEmpty())
+  return AddonPtr(new CPluginSource(*this));
+}
+
+void CPluginSource::SetProvides(const std::string &content)
+{
+  if (!content.empty())
   {
-    StringUtils::SplitString(content, " ", provides);
-    for (unsigned int i = 0; i < provides.size(); ++i)
+    vector<string> provides = StringUtils::Split(content, ' ');
+    for (vector<string>::const_iterator i = provides.begin(); i != provides.end(); ++i)
     {
-      Content content = Translate(provides[i]);
+      Content content = Translate(*i);
       if (content != UNKNOWN)
         m_providedContent.insert(content);
     }
@@ -66,15 +70,15 @@ void CPluginSource::SetProvides(const CStdString &content)
     m_providedContent.insert(EXECUTABLE);
 }
 
-CPluginSource::Content CPluginSource::Translate(const CStdString &content)
+CPluginSource::Content CPluginSource::Translate(const std::string &content)
 {
-  if (content.Equals("audio"))
+  if (content == "audio")
     return CPluginSource::AUDIO;
-  else if (content.Equals("image"))
+  else if (content == "image")
     return CPluginSource::IMAGE;
-  else if (content.Equals("executable"))
+  else if (content == "executable")
     return CPluginSource::EXECUTABLE;
-  else if (content.Equals("video"))
+  else if (content == "video")
     return CPluginSource::VIDEO;
   else
     return CPluginSource::UNKNOWN;

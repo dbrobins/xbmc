@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *      Test patterns designed by Ofer LaOr - hometheater.co.il
  *
@@ -22,7 +22,7 @@
  *
  */
 
-#include "settings/GUIWindowTestPattern.h"
+#include "settings/windows/GUIWindowTestPattern.h"
 
 class CGUIWindowTestPatternDX : public CGUIWindowTestPattern
 {
@@ -39,5 +39,14 @@ private:
   virtual void DrawCircle(int originX, int originY, int radius);
   virtual void BeginRender();
   virtual void EndRender();
+
+  struct CUSTOMVERTEX
+  {
+    FLOAT x, y, z, rhw; // The transformed position for the vertex
+    DWORD color;        // The vertex color
+  };
+
+  void DrawRectangle(float x, float y, float x2, float y2, DWORD color);
+  void DrawCircleEx(float originX, float originY, float radius, DWORD color);
 };
 

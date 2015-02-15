@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,46 +27,70 @@
 
 TEST(TestFile, Read)
 {
+  const std::string newLine = CXBMCTestUtils::Instance().getNewLineCharacters();
+  const int size = 1616;
+  const int lines = 25;
+  int addPerLine = newLine.length() - 1;
+  int realSize = size + lines * addPerLine;
+
+  const std::string firstBuf  = "About" + newLine + "-----" + newLine + "XBMC is ";
+  const std::string secondBuf = "an award-winning fre";
+  const std::string thirdBuf  = "ent hub for digital ";
+  const std::string fourthBuf  = "rs, XBMC is a non-pr";
+  const std::string fifthBuf = "multimedia jukebox." + newLine;
+
   XFILE::CFile file;
-  char buf[20];
+  char buf[23];
   memset(&buf, 0, sizeof(buf));
 
+  int currentPos;
   ASSERT_TRUE(file.Open(
     XBMC_REF_FILE_PATH("/xbmc/filesystem/test/reffile.txt")));
   EXPECT_EQ(0, file.GetPosition());
-  EXPECT_EQ(1616, file.GetLength());
-  EXPECT_EQ(sizeof(buf), file.Read(buf, sizeof(buf)));
+  EXPECT_EQ(realSize, file.GetLength());
+  EXPECT_EQ(firstBuf.length(), file.Read(buf, firstBuf.length()));
   file.Flush();
-  EXPECT_EQ(20, file.GetPosition());
-  EXPECT_TRUE(!memcmp("About\n-----\nXBMC is ", buf, sizeof(buf) - 1));
-  EXPECT_TRUE(file.ReadString(buf, sizeof(buf)));
-  EXPECT_EQ(39, file.GetPosition());
-  EXPECT_STREQ("an award-winning fr", buf);
-  EXPECT_EQ(100, file.Seek(100));
-  EXPECT_EQ(100, file.GetPosition());
-  EXPECT_EQ(sizeof(buf), file.Read(buf, sizeof(buf)));
+  currentPos = firstBuf.length();
+  EXPECT_EQ(currentPos, file.GetPosition());
+  EXPECT_TRUE(memcmp(firstBuf.c_str(), buf, firstBuf.length()) == 0);
+  EXPECT_TRUE(file.Read(buf, secondBuf.length()));
+  currentPos += secondBuf.length();
+  EXPECT_EQ(currentPos, file.GetPosition());
+  EXPECT_TRUE(memcmp(secondBuf.c_str(), buf, secondBuf.length()) == 0);
+  currentPos = 100 + addPerLine * 3;
+  EXPECT_EQ(currentPos, file.Seek(currentPos));
+  EXPECT_EQ(currentPos, file.GetPosition());
+  EXPECT_EQ(thirdBuf.length(), file.Read(buf, thirdBuf.length()));
   file.Flush();
-  EXPECT_EQ(120, file.GetPosition());
-  EXPECT_TRUE(!memcmp("ent hub for digital ", buf, sizeof(buf) - 1));
-  EXPECT_EQ(220, file.Seek(100, SEEK_CUR));
-  EXPECT_EQ(220, file.GetPosition());
-  EXPECT_EQ(sizeof(buf), file.Read(buf, sizeof(buf)));
+  currentPos += thirdBuf.length();
+  EXPECT_EQ(currentPos, file.GetPosition());
+  EXPECT_TRUE(memcmp(thirdBuf.c_str(), buf, thirdBuf.length()) == 0);
+  currentPos += 100 + addPerLine * 1;
+  EXPECT_EQ(currentPos, file.Seek(100 + addPerLine * 1, SEEK_CUR));
+  EXPECT_EQ(currentPos, file.GetPosition());
+  EXPECT_EQ(fourthBuf.length(), file.Read(buf, fourthBuf.length()));
   file.Flush();
-  EXPECT_EQ(240, file.GetPosition());
-  EXPECT_TRUE(!memcmp("rs, XBMC is a non-pr", buf, sizeof(buf) - 1));
-  EXPECT_EQ(1596, file.Seek(-(int64_t)sizeof(buf), SEEK_END));
-  EXPECT_EQ(1596, file.GetPosition());
-  EXPECT_EQ(sizeof(buf), file.Read(buf, sizeof(buf)));
+  currentPos += fourthBuf.length();
+  EXPECT_EQ(currentPos, file.GetPosition());
+  EXPECT_TRUE(memcmp(fourthBuf.c_str(), buf, fourthBuf.length()) == 0);
+  currentPos = realSize - fifthBuf.length();
+  EXPECT_EQ(currentPos, file.Seek(-(int64_t)fifthBuf.length(), SEEK_END));
+  EXPECT_EQ(currentPos, file.GetPosition());
+  EXPECT_EQ(fifthBuf.length(), file.Read(buf, fifthBuf.length()));
   file.Flush();
-  EXPECT_EQ(1616, file.GetPosition());
-  EXPECT_TRUE(!memcmp("multimedia jukebox.\n", buf, sizeof(buf) - 1));
-  EXPECT_EQ(1716, file.Seek(100, SEEK_CUR));
-  EXPECT_EQ(1716, file.GetPosition());
-  EXPECT_EQ(0, file.Seek(0, SEEK_SET));
-  EXPECT_EQ(sizeof(buf), file.Read(buf, sizeof(buf)));
+  currentPos += fifthBuf.length();
+  EXPECT_EQ(currentPos, file.GetPosition());
+  EXPECT_TRUE(memcmp(fifthBuf.c_str(), buf, fifthBuf.length()) == 0);
+  currentPos += 100;
+  EXPECT_EQ(currentPos, file.Seek(100, SEEK_CUR));
+  EXPECT_EQ(currentPos, file.GetPosition());
+  currentPos = 0;
+  EXPECT_EQ(currentPos, file.Seek(currentPos, SEEK_SET));
+  EXPECT_EQ(firstBuf.length(), file.Read(buf, firstBuf.length()));
   file.Flush();
-  EXPECT_EQ(20, file.GetPosition());
-  EXPECT_TRUE(!memcmp("About\n-----\nXBMC is ", buf, sizeof(buf) - 1));
+  currentPos += firstBuf.length();
+  EXPECT_EQ(currentPos, file.GetPosition());
+  EXPECT_TRUE(memcmp(firstBuf.c_str(), buf, firstBuf.length()) == 0);
   EXPECT_EQ(0, file.Seek(0, SEEK_SET));
   EXPECT_EQ(-1, file.Seek(-100, SEEK_SET));
   file.Close();
@@ -84,7 +108,7 @@ TEST(TestFile, Write)
   ASSERT_TRUE(file->OpenForWrite(XBMC_TEMPFILEPATH(file), true));
   EXPECT_EQ((int)sizeof(str), file->Write(str, sizeof(str)));
   file->Flush();
-  EXPECT_EQ(0, file->GetPosition());
+  EXPECT_EQ((int64_t)sizeof(str), file->GetPosition());
   file->Close();
   ASSERT_TRUE(file->Open(XBMC_TEMPFILEPATH(file)));
   EXPECT_EQ(0, file->GetPosition());
@@ -127,7 +151,7 @@ TEST(TestFile, Stat)
 TEST(TestFile, Delete)
 {
   XFILE::CFile *file;
-  CStdString path;
+  std::string path;
 
   ASSERT_TRUE((file = XBMC_CREATETEMPFILE("")) != NULL);
   file->Close();
@@ -140,7 +164,7 @@ TEST(TestFile, Delete)
 TEST(TestFile, Rename)
 {
   XFILE::CFile *file;
-  CStdString path1, path2;
+  std::string path1, path2;
 
   ASSERT_TRUE((file = XBMC_CREATETEMPFILE("")) != NULL);
   file->Close();
@@ -157,10 +181,10 @@ TEST(TestFile, Rename)
   EXPECT_TRUE(XFILE::CFile::Delete(path1));
 }
 
-TEST(TestFile, Cache)
+TEST(TestFile, Copy)
 {
   XFILE::CFile *file;
-  CStdString path1, path2;
+  std::string path1, path2;
 
   ASSERT_TRUE((file = XBMC_CREATETEMPFILE("")) != NULL);
   file->Close();
@@ -171,7 +195,7 @@ TEST(TestFile, Cache)
   EXPECT_TRUE(XFILE::CFile::Delete(path1));
   EXPECT_FALSE(XFILE::CFile::Exists(path1));
   EXPECT_TRUE(XFILE::CFile::Exists(path2));
-  EXPECT_TRUE(XFILE::CFile::Cache(path2, path1));
+  EXPECT_TRUE(XFILE::CFile::Copy(path2, path1));
   EXPECT_TRUE(XFILE::CFile::Exists(path1));
   EXPECT_TRUE(XFILE::CFile::Exists(path2));
   EXPECT_TRUE(XFILE::CFile::Delete(path1));

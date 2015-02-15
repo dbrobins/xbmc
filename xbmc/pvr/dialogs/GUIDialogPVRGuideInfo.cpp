@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,17 +23,20 @@
 #include "guilib/GUIWindowManager.h"
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogYesNo.h"
+#include "guilib/LocalizeStrings.h"
+#include "utils/StringUtils.h"
 
 #include "pvr/PVRManager.h"
 #include "pvr/channels/PVRChannelGroupsContainer.h"
 #include "epg/EpgInfoTag.h"
 #include "pvr/timers/PVRTimers.h"
 #include "pvr/timers/PVRTimerInfoTag.h"
+#include "pvr/windows/GUIWindowPVRBase.h"
 
-using namespace std;
 using namespace PVR;
 using namespace EPG;
 
+#define CONTROL_BTN_FIND                4
 #define CONTROL_BTN_SWITCH              5
 #define CONTROL_BTN_RECORD              6
 #define CONTROL_BTN_OK                  7
@@ -48,7 +51,7 @@ CGUIDialogPVRGuideInfo::~CGUIDialogPVRGuideInfo(void)
 {
 }
 
-bool CGUIDialogPVRGuideInfo::ActionStartTimer(const CEpgInfoTag *tag)
+bool CGUIDialogPVRGuideInfo::ActionStartTimer(const CEpgInfoTagPtr &tag)
 {
   bool bReturn = false;
 
@@ -139,7 +142,7 @@ bool CGUIDialogPVRGuideInfo::OnClickButtonRecord(CGUIMessage &message)
   {
     bReturn = true;
 
-    const CEpgInfoTag *tag = m_progItem->GetEPGInfoTag();
+    const CEpgInfoTagPtr tag(m_progItem->GetEPGInfoTag());
     if (!tag || !tag->HasPVRChannel())
     {
       /* invalid channel */
@@ -167,12 +170,51 @@ bool CGUIDialogPVRGuideInfo::OnClickButtonSwitch(CGUIMessage &message)
   if (message.GetSenderId() == CONTROL_BTN_SWITCH)
   {
     Close();
+    PlayBackRet ret = PLAYBACK_CANCELED;
+    CEpgInfoTagPtr epgTag(m_progItem->GetEPGInfoTag());
 
-    if (!m_progItem->GetEPGInfoTag()->HasPVRChannel() ||
-        !g_application.PlayFile(CFileItem(*m_progItem->GetEPGInfoTag()->ChannelTag())))
-      CGUIDialogOK::ShowAndGetInput(19033,0,19035,0);
+    if (epgTag)
+    {
+      if (epgTag->HasRecording())
+        ret = g_application.PlayFile(CFileItem(epgTag->Recording()));
+      else if (epgTag->HasPVRChannel())
+        ret = g_application.PlayFile(CFileItem(*epgTag->ChannelTag()));
+    }
     else
+      ret = PLAYBACK_FAIL;
+
+    if (ret == PLAYBACK_FAIL)
+    {
+      std::string msg = StringUtils::Format(g_localizeStrings.Get(19035).c_str(), g_localizeStrings.Get(19029).c_str()); // Channel could not be played. Check the log for details.
+      CGUIDialogOK::ShowAndGetInput(19033, 0, msg, 0);
+    }
+    else if (ret == PLAYBACK_OK)
+    {
       bReturn = true;
+    }
+  }
+
+  return bReturn;
+}
+
+bool CGUIDialogPVRGuideInfo::OnClickButtonFind(CGUIMessage &message)
+{
+  bool bReturn = false;
+
+  if (message.GetSenderId() == CONTROL_BTN_FIND)
+  {
+    const CEpgInfoTagPtr tag(m_progItem->GetEPGInfoTag());
+    if (tag && tag->HasPVRChannel())
+    {
+      int windowSearchId = tag->ChannelTag()->IsRadio() ? WINDOW_RADIO_SEARCH : WINDOW_TV_SEARCH;
+      CGUIWindowPVRBase *windowSearch = (CGUIWindowPVRBase*) g_windowManager.GetWindow(windowSearchId);
+      if (windowSearch)
+      {
+        Close();
+        g_windowManager.ActivateWindow(windowSearchId);
+        bReturn = windowSearch->OnContextButton(*m_progItem.get(), CONTEXT_BUTTON_FIND);
+      }
+    }
   }
 
   return bReturn;
@@ -182,14 +224,11 @@ bool CGUIDialogPVRGuideInfo::OnMessage(CGUIMessage& message)
 {
   switch (message.GetMessage())
   {
-  case GUI_MSG_WINDOW_INIT:
-    CGUIDialog::OnMessage(message);
-    Update();
-    break;
   case GUI_MSG_CLICKED:
     return OnClickButtonOK(message) ||
            OnClickButtonRecord(message) ||
-           OnClickButtonSwitch(message);
+           OnClickButtonSwitch(message) ||
+           OnClickButtonFind(message);
   }
 
   return CGUIDialog::OnMessage(message);
@@ -205,9 +244,11 @@ CFileItemPtr CGUIDialogPVRGuideInfo::GetCurrentListItem(int offset)
   return m_progItem;
 }
 
-void CGUIDialogPVRGuideInfo::Update()
+void CGUIDialogPVRGuideInfo::OnInitWindow()
 {
-  const CEpgInfoTag *tag = m_progItem->GetEPGInfoTag();
+  CGUIDialog::OnInitWindow();
+
+  const CEpgInfoTagPtr tag(m_progItem->GetEPGInfoTag());
   if (!tag)
   {
     /* no epg event selected */

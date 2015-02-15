@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -92,7 +92,7 @@ signed int CDVDTeletextTools::deh24(unsigned char *p)
 
 
 CDVDTeletextData::CDVDTeletextData()
-: CThread("CDVDTeletextData")
+: CThread("DVDTeletextData")
 , m_messageQueue("teletext")
 {
   m_speed = DVD_PLAYSPEED_NORMAL;
@@ -113,26 +113,24 @@ CDVDTeletextData::~CDVDTeletextData()
 
 bool CDVDTeletextData::CheckStream(CDVDStreamInfo &hints)
 {
-#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(52,38,1)
-  if (hints.codec == CODEC_ID_DVB_TELETEXT)
+  if (hints.codec == AV_CODEC_ID_DVB_TELETEXT)
     return true;
-#endif
 
   return false;
 }
 
 bool CDVDTeletextData::OpenStream(CDVDStreamInfo &hints)
 {
+  CloseStream(true);
+
   m_messageQueue.Init();
 
-#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(52,38,1)
-  if (hints.codec == CODEC_ID_DVB_TELETEXT)
+  if (hints.codec == AV_CODEC_ID_DVB_TELETEXT)
   {
     CLog::Log(LOGNOTICE, "Creating teletext data thread");
     Create();
     return true;
   }
-#endif
 
   return false;
 }
@@ -254,7 +252,7 @@ void CDVDTeletextData::Process()
       continue;
     }
 
-    if (MSGQ_IS_ERROR(ret) || ret == MSGQ_ABORT)
+    if (MSGQ_IS_ERROR(ret))
     {
       CLog::Log(LOGERROR, "Got MSGQ_ABORT or MSGO_IS_ERROR return true (%i)", ret);
       break;

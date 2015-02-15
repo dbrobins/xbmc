@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2014 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,20 +20,27 @@
  *
  */
 
-#include "settings/GUIDialogSettings.h"
+#include "settings/dialogs/GUIDialogSettingsManualBase.h"
 
-class CGUIDialogVideoSettings :
-      public CGUIDialogSettings
+class CGUIDialogVideoSettings : public CGUIDialogSettingsManualBase
 {
 public:
-  CGUIDialogVideoSettings(void);
-  virtual ~CGUIDialogVideoSettings(void);
-
-  static CStdString FormatInteger(float value, float minimum);
-  static CStdString FormatFloat(float value, float minimum);
+  CGUIDialogVideoSettings();
+  virtual ~CGUIDialogVideoSettings();
 
 protected:
-  virtual void CreateSettings();
-  virtual void OnSettingChanged(SettingInfo &setting);
-};
+  // implementations of ISettingCallback
+  virtual void OnSettingChanged(const CSetting *setting);
+  virtual void OnSettingAction(const CSetting *setting);
 
+  // specialization of CGUIDialogSettingsBase
+  virtual bool AllowResettingSettings() const { return false; }
+  virtual void Save();
+  virtual void SetupView();
+
+  // specialization of CGUIDialogSettingsManualBase
+  virtual void InitializeSettings();
+
+private:
+  bool m_viewModeChanged;
+};

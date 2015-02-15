@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,10 +18,13 @@
  *
  */
 
+#include <stdlib.h>
 #include "utils/log.h"
 #include "utils/RegExp.h"
 #include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
+#include "utils/StringUtils.h"
+#include "CompileInfo.h"
 
 #include "test/TestUtils.h"
 
@@ -33,24 +36,22 @@ protected:
   Testlog(){}
   ~Testlog()
   {
-    /* Reset globals used by CLog after each test. */
-    g_log_globalsRef->m_file = NULL;
-    g_log_globalsRef->m_repeatCount = 0;
-    g_log_globalsRef->m_repeatLogLevel = -1;
-    g_log_globalsRef->m_logLevel = LOG_LEVEL_DEBUG;
+    CLog::Close();
   }
 };
 
 TEST_F(Testlog, Log)
 {
-  CStdString logfile, logstring;
+  std::string logfile, logstring;
   char buf[100];
   unsigned int bytesread;
   XFILE::CFile file;
   CRegExp regex;
 
-  logfile = CSpecialProtocol::TranslatePath("special://temp/") + "xbmc.log";
-  EXPECT_TRUE(CLog::Init(CSpecialProtocol::TranslatePath("special://temp/")));
+  std::string appName = CCompileInfo::GetAppName();
+  StringUtils::ToLower(appName);
+  logfile = CSpecialProtocol::TranslatePath("special://temp/") + appName + ".log";
+  EXPECT_TRUE(CLog::Init(CSpecialProtocol::TranslatePath("special://temp/").c_str()));
   EXPECT_TRUE(XFILE::CFile::Exists(logfile));
 
   CLog::Log(LOGDEBUG, "debug log message");
@@ -96,15 +97,17 @@ TEST_F(Testlog, Log)
 
 TEST_F(Testlog, MemDump)
 {
-  CStdString logfile, logstring;
+  std::string logfile, logstring;
   char buf[100];
   unsigned int bytesread;
   XFILE::CFile file;
   CRegExp regex;
   char refdata[] = "0123456789abcdefghijklmnopqrstuvwxyz";
 
-  logfile = CSpecialProtocol::TranslatePath("special://temp/") + "xbmc.log";
-  EXPECT_TRUE(CLog::Init(CSpecialProtocol::TranslatePath("special://temp/")));
+  std::string appName = CCompileInfo::GetAppName();
+  StringUtils::ToLower(appName);
+  logfile = CSpecialProtocol::TranslatePath("special://temp/") + appName + ".log";
+  EXPECT_TRUE(CLog::Init(CSpecialProtocol::TranslatePath("special://temp/").c_str()));
   EXPECT_TRUE(XFILE::CFile::Exists(logfile));
 
   CLog::MemDump(refdata, sizeof(refdata));
@@ -133,10 +136,12 @@ TEST_F(Testlog, MemDump)
 
 TEST_F(Testlog, SetLogLevel)
 {
-  CStdString logfile;
+  std::string logfile;
 
-  logfile = CSpecialProtocol::TranslatePath("special://temp/") + "xbmc.log";
-  EXPECT_TRUE(CLog::Init(CSpecialProtocol::TranslatePath("special://temp/")));
+  std::string appName = CCompileInfo::GetAppName();
+  StringUtils::ToLower(appName);
+  logfile = CSpecialProtocol::TranslatePath("special://temp/") + appName + ".log";
+  EXPECT_TRUE(CLog::Init(CSpecialProtocol::TranslatePath("special://temp/").c_str()));
   EXPECT_TRUE(XFILE::CFile::Exists(logfile));
 
   EXPECT_EQ(LOG_LEVEL_DEBUG, CLog::GetLogLevel());

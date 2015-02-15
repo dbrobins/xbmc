@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ CSIDFileDirectory::~CSIDFileDirectory(void)
 {
 }
 
-int CSIDFileDirectory::GetTrackCount(const CStdString& strPath)
+int CSIDFileDirectory::GetTrackCount(const std::string& strPath)
 {
   DllSidplay2 m_dll;
   if (!m_dll.Load())

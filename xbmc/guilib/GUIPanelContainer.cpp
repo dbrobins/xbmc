@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@
 #include "GUIListItem.h"
 #include "GUIInfoManager.h"
 #include "Key.h"
+
+#include <cassert>
 
 using namespace std;
 
@@ -89,7 +91,9 @@ void CGUIPanelContainer::Process(unsigned int currentTime, CDirtyRegionList &dir
     current++;
   }
 
-  UpdatePageControl(offset);
+  // when we are scrolling up, offset will become lower (integer division, see offset calc)
+  // to have same behaviour when scrolling down, we need to set page control to offset+1
+  UpdatePageControl(offset + (m_scroller.IsScrollingDown() ? 1 : 0));
 
   CGUIControl::Process(currentTime, dirtyregions);
 }
@@ -257,7 +261,8 @@ bool CGUIPanelContainer::OnMessage(CGUIMessage& message)
 
 void CGUIPanelContainer::OnLeft()
 {
-  bool wrapAround = m_actionLeft.GetNavigation() == GetID() || !m_actionLeft.HasActionsMeetingCondition();
+  CGUIAction action = GetNavigateAction(ACTION_MOVE_LEFT);
+  bool wrapAround = action.GetNavigation() == GetID() || !action.HasActionsMeetingCondition();
   if (m_orientation == VERTICAL && MoveLeft(wrapAround))
     return;
   if (m_orientation == HORIZONTAL && MoveUp(wrapAround))
@@ -267,7 +272,8 @@ void CGUIPanelContainer::OnLeft()
 
 void CGUIPanelContainer::OnRight()
 {
-  bool wrapAround = m_actionRight.GetNavigation() == GetID() || !m_actionRight.HasActionsMeetingCondition();
+  CGUIAction action = GetNavigateAction(ACTION_MOVE_RIGHT);
+  bool wrapAround = action.GetNavigation() == GetID() || !action.HasActionsMeetingCondition();
   if (m_orientation == VERTICAL && MoveRight(wrapAround))
     return;
   if (m_orientation == HORIZONTAL && MoveDown(wrapAround))
@@ -277,7 +283,8 @@ void CGUIPanelContainer::OnRight()
 
 void CGUIPanelContainer::OnUp()
 {
-  bool wrapAround = m_actionUp.GetNavigation() == GetID() || !m_actionUp.HasActionsMeetingCondition();
+  CGUIAction action = GetNavigateAction(ACTION_MOVE_UP);
+  bool wrapAround = action.GetNavigation() == GetID() || !action.HasActionsMeetingCondition();
   if (m_orientation == VERTICAL && MoveUp(wrapAround))
     return;
   if (m_orientation == HORIZONTAL && MoveLeft(wrapAround))
@@ -287,7 +294,8 @@ void CGUIPanelContainer::OnUp()
 
 void CGUIPanelContainer::OnDown()
 {
-  bool wrapAround = m_actionDown.GetNavigation() == GetID() || !m_actionDown.HasActionsMeetingCondition();
+  CGUIAction action = GetNavigateAction(ACTION_MOVE_DOWN);
+  bool wrapAround = action.GetNavigation() == GetID() || !action.HasActionsMeetingCondition();
   if (m_orientation == VERTICAL && MoveDown(wrapAround))
     return;
   if (m_orientation == HORIZONTAL && MoveRight(wrapAround))

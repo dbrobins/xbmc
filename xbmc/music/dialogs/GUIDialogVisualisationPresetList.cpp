@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,14 +21,15 @@
 #include "GUIDialogVisualisationPresetList.h"
 #include "addons/Visualisation.h"
 #include "guilib/GUIWindowManager.h"
-#include "guilib/GUIListContainer.h"
 #include "GUIUserMessages.h"
 #include "FileItem.h"
+#include "guilib/Key.h"
 #include "guilib/LocalizeStrings.h"
+#include "utils/StringUtils.h"
 
-#define CONTROL_LIST           2
-#define CONTROL_PRESETS_LABEL  3
+#define CONTROL_HEADER_LABEL   2
 #define CONTROL_NONE_AVAILABLE 4
+#define CONTROL_LIST           5
 
 using ADDON::CVisualisation;
 
@@ -56,10 +57,10 @@ bool CGUIDialogVisualisationPresetList::OnMessage(CGUIMessage &message)
                                                     message.GetParam1() == ACTION_MOUSE_LEFT_CLICK))
       {
         //clicked - ask for the preset to be changed to the new one
-        CGUIListContainer *pList = (CGUIListContainer *)GetControl(CONTROL_LIST);
-        if (pList)
+        CGUIMessage msg(GUI_MSG_ITEM_SELECTED, GetID(), CONTROL_LIST);
+        if (OnMessage(msg))
         {
-          int iItem = pList->GetSelectedItem();
+          int iItem = (int)msg.GetParam1();
           if (m_viz)
             m_viz->OnAction(VIS_ACTION_LOAD_PRESET, (void *)&iItem);
         }
@@ -67,22 +68,9 @@ bool CGUIDialogVisualisationPresetList::OnMessage(CGUIMessage &message)
       }
     }
     break;
-  case GUI_MSG_WINDOW_INIT:
-    {
-      CGUIDialog::OnMessage(message);
-
-      CGUIMessage msg(GUI_MSG_GET_VISUALISATION, 0, 0);
-      g_windowManager.SendMessage(msg);
-      SetVisualisation((CVisualisation*)msg.GetPointer());
-      return true;
-    }
-    break;
-  case GUI_MSG_WINDOW_DEINIT:
   case GUI_MSG_VISUALISATION_UNLOADING:
     {
       m_viz = NULL;
-      CGUIMessage msg(GUI_MSG_LABEL_RESET, GetID(), CONTROL_LIST);
-      OnMessage(msg);
       Update();
     }
     break;
@@ -122,18 +110,35 @@ void CGUIDialogVisualisationPresetList::FrameMove()
   CGUIDialog::FrameMove();
 }
 
+void CGUIDialogVisualisationPresetList::OnInitWindow()
+{
+  CGUIMessage msg(GUI_MSG_GET_VISUALISATION, 0, 0);
+  g_windowManager.SendMessage(msg);
+  SetVisualisation((CVisualisation*)msg.GetPointer());
+  CGUIDialog::OnInitWindow();
+}
+
+void CGUIDialogVisualisationPresetList::OnDeinitWindow(int nextWindowID)
+{
+  CGUIDialog::OnDeinitWindow(nextWindowID);
+  CGUIMessage msg(GUI_MSG_LABEL_RESET, GetID(), CONTROL_LIST);
+  OnMessage(msg);
+  SET_CONTROL_LABEL(CONTROL_HEADER_LABEL, "");
+  m_vecPresets->Clear();
+}
+
 void CGUIDialogVisualisationPresetList::Update()
 {
   m_vecPresets->Clear();
-  CStdString strHeading;
+  std::string strHeading;
   if (m_viz)
   {
-    strHeading.Format(g_localizeStrings.Get(13407).c_str(), m_viz->Name().c_str());
+    strHeading = StringUtils::Format(g_localizeStrings.Get(13407).c_str(), m_viz->Name().c_str());
 
     //clear filelist
     CGUIMessage msg(GUI_MSG_LABEL_RESET, GetID(), CONTROL_LIST);
     OnMessage(msg);
-    std::vector<CStdString> presets;
+    std::vector<std::string> presets;
     if (m_viz->GetPresetList(presets))
     {
       m_currentPreset = m_viz->GetPreset();
@@ -146,13 +151,13 @@ void CGUIDialogVisualisationPresetList::Update()
         pItem->SetLabel2(" ");
         m_vecPresets->Add(pItem);
       }
-      CGUIMessage msg(GUI_MSG_LABEL_BIND, GetID(), CONTROL_LIST, 0, 0, m_vecPresets);
+      CGUIMessage msg(GUI_MSG_LABEL_BIND, GetID(), CONTROL_LIST, m_currentPreset, 0, m_vecPresets);
       OnMessage(msg);
     }
   }
 
   // update our dialog's label
-  SET_CONTROL_LABEL(CONTROL_PRESETS_LABEL, strHeading);
+  SET_CONTROL_LABEL(CONTROL_HEADER_LABEL, strHeading);
 
   // if there is no presets, add a label saying so
   if (m_vecPresets->Size() == 0)

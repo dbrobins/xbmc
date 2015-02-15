@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,8 +19,10 @@
  */
 
 #include "GUIDialogFileStacking.h"
+#include "guilib/Key.h"
 #include "guilib/LocalizeStrings.h"
 #include "FileItem.h"
+#include "utils/StringUtils.h"
 
 using namespace std;
 
@@ -92,8 +94,7 @@ void CGUIDialogFileStacking::OnInitWindow()
     SendMessage(GUI_MSG_LABEL_RESET, GetID(), STACK_LIST);
     for (int i = 0; i < m_iNumberOfFiles; i++)
     {
-      CStdString label;
-      label.Format(g_localizeStrings.Get(23051).c_str(), i+1);
+      std::string label = StringUtils::Format(g_localizeStrings.Get(23051).c_str(), i+1);
       CFileItemPtr item(new CFileItem(label));
       m_stackItems->Add(item);
     }

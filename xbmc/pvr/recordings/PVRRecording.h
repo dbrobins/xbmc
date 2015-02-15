@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -39,30 +39,63 @@
 #include "video/VideoInfoTag.h"
 #include "XBDateTime.h"
 
+class CVideoDatabase;
+
 namespace PVR
 {
+  class CPVRRecording;
+
+  typedef std::shared_ptr<PVR::CPVRRecording> CPVRRecordingPtr;
+
+  /*!
+   * @brief Representation of a CPVRRecording unique ID.
+   */
+  class CPVRRecordingUid
+  {
+  public:
+    int           m_iClientId;        /*!< ID of the backend */
+    std::string   m_strRecordingId;   /*!< unique ID of the recording on the client */
+
+    CPVRRecordingUid();
+    CPVRRecordingUid(const CPVRRecordingUid& recordingId);
+    CPVRRecordingUid(int iClientId, const std::string &strRecordingId);
+
+    bool operator >(const CPVRRecordingUid& right) const;
+    bool operator <(const CPVRRecordingUid& right) const;
+    bool operator ==(const CPVRRecordingUid& right) const;
+    bool operator !=(const CPVRRecordingUid& right) const;
+  };
+
   class CPVRRecording : public CVideoInfoTag
   {
   public:
     int           m_iClientId;        /*!< ID of the backend */
-    CStdString    m_strRecordingId;   /*!< unique id of the recording on the client */
-    CStdString    m_strChannelName;   /*!< name of the channel this was recorded from */
+    std::string   m_strRecordingId;   /*!< unique ID of the recording on the client */
+    std::string   m_strChannelName;   /*!< name of the channel this was recorded from */
     CDateTimeSpan m_duration;         /*!< duration of this recording */
     int           m_iPriority;        /*!< priority of this recording */
     int           m_iLifetime;        /*!< lifetime of this recording */
-    CStdString    m_strStreamURL;     /*!< stream URL. if empty use pvr client */
-    CStdString    m_strDirectory;     /*!< directory of this recording on the client */
-    int           m_iRecPlayCount;    /*!< play count of this recording on the client */
-    CStdString    m_strIconPath;      /*!< icon path */
-    CStdString    m_strThumbnailPath; /*!< thumbnail path */
-    CStdString    m_strFanartPath;    /*!< fanart path */
+    std::string   m_strStreamURL;     /*!< stream URL. if empty use pvr client */
+    std::string   m_strDirectory;     /*!< directory of this recording on the client */
+    std::string   m_strIconPath;      /*!< icon path */
+    std::string   m_strThumbnailPath; /*!< thumbnail path */
+    std::string   m_strFanartPath;    /*!< fanart path */
+    unsigned      m_iRecordingId;     /*!< id that won't change while xbmc is running */
 
     CPVRRecording(void);
     CPVRRecording(const PVR_RECORDING &recording, unsigned int iClientId);
+
+  private:
+    CPVRRecording(const CPVRRecording &tag); // intentionally not implemented.
+    CPVRRecording &operator =(const CPVRRecording &other); // intentionally not implemented.
+
+  public:
     virtual ~CPVRRecording() {};
 
     bool operator ==(const CPVRRecording& right) const;
     bool operator !=(const CPVRRecording& right) const;
+
+    virtual void Serialize(CVariant& value) const;
 
     /*!
      * @brief Reset this tag to it's initial state.
@@ -86,7 +119,7 @@ namespace PVR
      * @param strNewName The new name.
      * @return True if it was renamed successfully, false otherwise.
      */
-    bool Rename(const CStdString &strNewName);
+    bool Rename(const std::string &strNewName);
 
     /*!
      * @brief Set this recording's play count on the client (if supported).
@@ -115,6 +148,18 @@ namespace PVR
     int GetLastPlayedPosition() const;
 
     /*!
+     * @brief Retrieve the edit decision list (EDL) of a recording on the backend.
+     * @return The edit decision list (empty on error)
+     */
+    std::vector<PVR_EDL_ENTRY> GetEdl() const;
+
+    /*!
+     * @brief Get the resume point and play count from the database if the 
+     * client doesn't handle it itself.
+     */
+    void UpdateMetadata(CVideoDatabase &db);
+
+    /*!
      * @brief Update this tag with the contents of the given tag.
      * @param tag The new tag info.
      */
@@ -125,8 +170,22 @@ namespace PVR
     void SetRecordingTimeFromUTC(CDateTime &recordingTime) { m_recordingTime = recordingTime; }
     void SetRecordingTimeFromLocalTime(CDateTime &recordingTime) { m_recordingTime = recordingTime.GetAsUTCDateTime(); }
 
+    /*!
+     * @brief Retrieve the recording title from the URL path
+     * @param url the URL for the recording
+     * @return Title of the recording
+     */
+    static std::string GetTitleFromURL(const std::string &url);
+
+    /*!
+     * @brief Copy some information from the client to the given video info tag
+     * @param target video info tag to which the information will be copied
+     */
+    void CopyClientInfo(CVideoInfoTag *target) const;
+
   private:
     CDateTime m_recordingTime; /*!< start time of the recording */
+    bool      m_bGotMetaData;
 
     void UpdatePath(void);
     void DisplayError(PVR_ERROR err) const;

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 
 using namespace XFILE::MUSICDATABASEDIRECTORY;
 
-CDirectoryNodeAlbumTop100Song::CDirectoryNodeAlbumTop100Song(const CStdString& strName, CDirectoryNode* pParent)
+CDirectoryNodeAlbumTop100Song::CDirectoryNodeAlbumTop100Song(const std::string& strName, CDirectoryNode* pParent)
   : CDirectoryNode(NODE_TYPE_ALBUM_TOP100_SONGS, strName, pParent)
 {
 
@@ -35,7 +35,7 @@ bool CDirectoryNodeAlbumTop100Song::GetContent(CFileItemList& items) const
   if (!musicdatabase.Open())
     return false;
 
-  CStdString strBaseDir=BuildPath();
+  std::string strBaseDir=BuildPath();
   bool bSuccess=musicdatabase.GetTop100AlbumSongs(strBaseDir, items);
 
   musicdatabase.Close();

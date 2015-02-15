@@ -6,7 +6,7 @@ SET MSYS_INSTALL_PATH="%CD%\msys"
 SET MINGW_INSTALL_PATH="%CD%\msys\mingw"
 
 SET CUR_PATH=%CD%
-SET XBMC_PATH=%CD%\..\..
+SET APP_PATH=%CD%\..\..
 SET TMP_PATH=%CD%\scripts\tmp
 
 rem can't run rmdir and md back to back. access denied error otherwise.
@@ -41,28 +41,15 @@ SET FSTAB=%MINGW_INSTALL_PATH%
 SET FSTAB=%FSTAB:\=/%
 SET FSTAB=%FSTAB:"=%
 ECHO %FSTAB% /mingw>>"%MSYS_INSTALL_PATH%\etc\fstab"
-SET FSTAB=%XBMC_PATH%
+SET FSTAB=%APP_PATH%
 SET FSTAB=%FSTAB:\=/%
 SET FSTAB=%FSTAB:"=%
 ECHO %FSTAB% /xbmc>>"%MSYS_INSTALL_PATH%\etc\fstab"
 
-rem patch mingw headers to compile ffmpeg
-xcopy mingw_support\postinstall\* "%MSYS_INSTALL_PATH%\postinstall\" /E /Q /I /Y
-cd "%MSYS_INSTALL_PATH%\postinstall"
-CALL pi_patches.bat
-
-cd %CUR_PATH%
-
-rem insert call to vcvars32.bat in msys.bat
-SET NET90VARS="%VS90COMNTOOLS%..\..\VC\bin\vcvars32.bat"
-SET NET100VARS="%VS100COMNTOOLS%..\..\VC\bin\vcvars32.bat"
+rem insert call to vsvars32.bat in msys.bat
 cd %MSYS_INSTALL_PATH%
 Move msys.bat msys.bat_dist
-IF EXIST %NET100VARS% (
-	ECHO CALL %NET100VARS%>>msys.bat
-) ELSE IF EXIST %NET90VARS% (
-	ECHO CALL %NET90VARS%>>msys.bat
-)
+ECHO CALL "%VS120COMNTOOLS%vsvars32.bat">>msys.bat
 TYPE msys.bat_dist>>msys.bat
 
 cd %CUR_PATH%

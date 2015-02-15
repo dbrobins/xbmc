@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 #include "DynamicDll.h"
 #include "Util.h"
 #include "utils/log.h"
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
 #include "cores/DllLoader/Win32DllLoader.h"
 #endif
 
@@ -36,7 +36,7 @@ using namespace XFILE;
 
 SPCCodec::SPCCodec()
 {
-  m_CodecName = "SPC";
+  m_CodecName = "spc";
   m_szBuffer = NULL;
   m_pApuRAM = NULL;
   m_iDataPos = 0;
@@ -44,7 +44,7 @@ SPCCodec::SPCCodec()
   m_dll.EmuAPU = NULL;
   m_dll.LoadSPCFile = NULL;
   m_dll.SeekAPU = NULL;
-#ifdef _LINUX
+#ifdef TARGET_POSIX
   m_dll.ResetAPU = NULL;
   m_dll.InitAPU = NULL;
 #endif
@@ -55,7 +55,7 @@ SPCCodec::~SPCCodec()
   DeInit();
 }
 
-bool SPCCodec::Init(const CStdString &strFile, unsigned int filecache)
+bool SPCCodec::Init(const std::string &strFile, unsigned int filecache)
 {
   // SNESAPU can ONLY be opened and used by one instance (lot's of statics).
   // So to work around this problem with SNESAPU, we need to make sure that
@@ -63,14 +63,14 @@ bool SPCCodec::Init(const CStdString &strFile, unsigned int filecache)
   // coping DLL_PATH_SPC_CODEC into special://temp and using a unique name. Then
   // loading this unique named SNESAPU as the library.
   // This forces the shared lib loader to load a per-instance copy of SNESAPU.
-#ifdef _LINUX
+#ifdef TARGET_POSIX
   m_loader_name = CUtil::GetNextFilename("special://temp/SNESAPU-%03d.so", 999);
-  XFILE::CFile::Cache(DLL_PATH_SPC_CODEC, m_loader_name);
+  XFILE::CFile::Copy(DLL_PATH_SPC_CODEC, m_loader_name);
 
   m_loader = new SoLoader(m_loader_name);
 #else
   m_loader_name = CUtil::GetNextFilename("special://temp/SNESAPU-%03d.dll", 999);
-  XFILE::CFile::Cache(DLL_PATH_SPC_CODEC, m_loader_name);
+  XFILE::CFile::Copy(DLL_PATH_SPC_CODEC, m_loader_name);
 
   m_loader = new Win32DllLoader(m_loader_name);
 #endif
@@ -91,7 +91,7 @@ bool SPCCodec::Init(const CStdString &strFile, unsigned int filecache)
   m_loader->ResolveExport("LoadSPCFile",(void**)&m_dll.LoadSPCFile);
   m_loader->ResolveExport("EmuAPU",(void**)&m_dll.EmuAPU);
   m_loader->ResolveExport("SeekAPU",(void**)&m_dll.SeekAPU);
-#ifdef _LINUX
+#ifdef TARGET_POSIX
   m_loader->ResolveExport("InitAPU",(void**)&m_dll.InitAPU);
   m_loader->ResolveExport("ResetAPU",(void**)&m_dll.ResetAPU);
 #endif
@@ -103,7 +103,7 @@ bool SPCCodec::Init(const CStdString &strFile, unsigned int filecache)
     return false;
   }
   m_szBuffer = new char[0x10200];
-  if (!file.Read(m_szBuffer,0x10200))
+  if (file.Read(m_szBuffer,0x10200) <= 0)
   {
     delete[] m_szBuffer;
     m_szBuffer = NULL;
@@ -114,7 +114,7 @@ bool SPCCodec::Init(const CStdString &strFile, unsigned int filecache)
   file.Close();
 
   m_pApuRAM = new u8[65536];
-#ifdef _LINUX
+#ifdef TARGET_POSIX
   m_dll.InitAPU();
   m_dll.ResetAPU();
 #endif

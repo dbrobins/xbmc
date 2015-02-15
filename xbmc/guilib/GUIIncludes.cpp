@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include "GUIInfoManager.h"
 #include "utils/log.h"
 #include "utils/XBMCTinyXML.h"
+#include "utils/XMLUtils.h"
 #include "utils/StringUtils.h"
 #include "interfaces/info/SkinVariable.h"
 
@@ -46,9 +47,18 @@ CGUIIncludes::CGUIIncludes()
   m_constantAttributes.insert("end");
   m_constantAttributes.insert("center");
   m_constantAttributes.insert("border");
+  m_constantAttributes.insert("repeat");
   
   m_constantNodes.insert("posx");
   m_constantNodes.insert("posy");
+  m_constantNodes.insert("left");
+  m_constantNodes.insert("centerleft");
+  m_constantNodes.insert("right");
+  m_constantNodes.insert("centerright");
+  m_constantNodes.insert("top");
+  m_constantNodes.insert("centertop");
+  m_constantNodes.insert("bottom");
+  m_constantNodes.insert("centerbottom");
   m_constantNodes.insert("width");
   m_constantNodes.insert("height");
   m_constantNodes.insert("offsetx");
@@ -88,7 +98,7 @@ void CGUIIncludes::ClearIncludes()
   m_files.clear();
 }
 
-bool CGUIIncludes::LoadIncludes(const CStdString &includeFile)
+bool CGUIIncludes::LoadIncludes(const std::string &includeFile)
 {
   // check to see if we already have this loaded
   if (HasIncludeFile(includeFile))
@@ -121,8 +131,8 @@ bool CGUIIncludes::LoadIncludesFromXML(const TiXmlElement *root)
   {
     if (node->Attribute("name") && node->FirstChild())
     {
-      CStdString tagName = node->Attribute("name");
-      m_includes.insert(pair<CStdString, TiXmlElement>(tagName, *node));
+      std::string tagName = node->Attribute("name");
+      m_includes.insert(pair<std::string, TiXmlElement>(tagName, *node));
     }
     else if (node->Attribute("file"))
     { // load this file in as well
@@ -136,8 +146,8 @@ bool CGUIIncludes::LoadIncludesFromXML(const TiXmlElement *root)
   {
     if (node->Attribute("type") && node->FirstChild())
     {
-      CStdString tagName = node->Attribute("type");
-      m_defaults.insert(pair<CStdString, TiXmlElement>(tagName, *node));
+      std::string tagName = node->Attribute("type");
+      m_defaults.insert(pair<std::string, TiXmlElement>(tagName, *node));
     }
     node = node->NextSiblingElement("default");
   }
@@ -147,7 +157,7 @@ bool CGUIIncludes::LoadIncludesFromXML(const TiXmlElement *root)
   {
     if (node->Attribute("name") && node->FirstChild())
     {
-      CStdString tagName = node->Attribute("name");
+      std::string tagName = node->Attribute("name");
       m_constants.insert(make_pair(tagName, node->FirstChild()->ValueStr()));
     }
     node = node->NextSiblingElement("constant");
@@ -158,7 +168,7 @@ bool CGUIIncludes::LoadIncludesFromXML(const TiXmlElement *root)
   {
     if (node->Attribute("name") && node->FirstChild())
     {
-      CStdString tagName = node->Attribute("name");
+      std::string tagName = node->Attribute("name");
       m_skinvariables.insert(make_pair(tagName, *node));
     }
     node = node->NextSiblingElement("variable");
@@ -167,14 +177,14 @@ bool CGUIIncludes::LoadIncludesFromXML(const TiXmlElement *root)
   return true;
 }
 
-bool CGUIIncludes::HasIncludeFile(const CStdString &file) const
+bool CGUIIncludes::HasIncludeFile(const std::string &file) const
 {
   for (iFiles it = m_files.begin(); it != m_files.end(); ++it)
     if (*it == file) return true;
   return false;
 }
 
-void CGUIIncludes::ResolveIncludes(TiXmlElement *node, std::map<int, bool>* xmlIncludeConditions /* = NULL */)
+void CGUIIncludes::ResolveIncludes(TiXmlElement *node, std::map<INFO::InfoPtr, bool>* xmlIncludeConditions /* = NULL */)
 {
   if (!node)
     return;
@@ -188,26 +198,37 @@ void CGUIIncludes::ResolveIncludes(TiXmlElement *node, std::map<int, bool>* xmlI
   }
 }
 
-void CGUIIncludes::ResolveIncludesForNode(TiXmlElement *node, std::map<int, bool>* xmlIncludeConditions /* = NULL */)
+void CGUIIncludes::ResolveIncludesForNode(TiXmlElement *node, std::map<INFO::InfoPtr, bool>* xmlIncludeConditions /* = NULL */)
 {
   // we have a node, find any <include file="fileName">tagName</include> tags and replace
   // recursively with their real includes
   if (!node) return;
 
   // First add the defaults if this is for a control
-  CStdString type;
+  std::string type;
   if (node->ValueStr() == "control")
   {
-    type = node->Attribute("type");
-    map<CStdString, TiXmlElement>::const_iterator it = m_defaults.find(type);
+    type = XMLUtils::GetAttribute(node, "type");
+    map<std::string, TiXmlElement>::const_iterator it = m_defaults.find(type);
     if (it != m_defaults.end())
     {
+      // we don't insert <left> et. al. if <posx> or <posy> is specified
+      bool hasPosX(node->FirstChild("posx") != NULL);
+      bool hasPosY(node->FirstChild("posy") != NULL);
+
       const TiXmlElement &element = (*it).second;
       const TiXmlElement *tag = element.FirstChildElement();
       while (tag)
       {
+        std::string value = tag->ValueStr();
+        bool skip(false);
+        if (hasPosX && (value == "left" || value == "right" || value == "centerleft" || value == "centerright"))
+          skip = true;
+        if (hasPosY && (value == "top" || value == "bottom" || value == "centertop" || value == "centerbottom"))
+          skip = true;
         // we insert at the end of block
-        node->InsertEndChild(*tag);
+        if (!skip)
+          node->InsertEndChild(*tag);
         tag = tag->NextSiblingElement();
       }
     }
@@ -225,8 +246,8 @@ void CGUIIncludes::ResolveIncludesForNode(TiXmlElement *node, std::map<int, bool
     const char *condition = include->Attribute("condition");
     if (condition)
     { // check this condition
-      int conditionID = g_infoManager.Register(condition);
-      bool value = g_infoManager.GetBoolValue(conditionID);
+      INFO::InfoPtr conditionID = g_infoManager.Register(condition);
+      bool value = conditionID->Get();
 
       if (xmlIncludeConditions)
         (*xmlIncludeConditions)[conditionID] = value;
@@ -237,8 +258,8 @@ void CGUIIncludes::ResolveIncludesForNode(TiXmlElement *node, std::map<int, bool
         continue;
       }
     }
-    CStdString tagName = include->FirstChild()->Value();
-    map<CStdString, TiXmlElement>::const_iterator it = m_includes.find(tagName);
+    std::string tagName = include->FirstChild()->Value();
+    map<std::string, TiXmlElement>::const_iterator it = m_includes.find(tagName);
     if (it != m_includes.end())
     { // found the tag(s) to include - let's replace it
       const TiXmlElement &element = (*it).second;
@@ -274,24 +295,21 @@ void CGUIIncludes::ResolveIncludesForNode(TiXmlElement *node, std::map<int, bool
     node->FirstChild()->SetValue(ResolveConstant(node->FirstChild()->ValueStr()));
 }
 
-CStdString CGUIIncludes::ResolveConstant(const CStdString &constant) const
+std::string CGUIIncludes::ResolveConstant(const std::string &constant) const
 {
-  CStdStringArray values;
-  StringUtils::SplitString(constant, ",", values);
-  for (unsigned int i = 0; i < values.size(); ++i)
+  vector<string> values = StringUtils::Split(constant, ",");
+  for (vector<string>::iterator i = values.begin(); i != values.end(); ++i)
   {
-    map<CStdString, CStdString>::const_iterator it = m_constants.find(values[i]);
+    map<std::string, std::string>::const_iterator it = m_constants.find(*i);
     if (it != m_constants.end())
-      values[i] = it->second;
+      *i = it->second;
   }
-  CStdString value;
-  StringUtils::JoinString(values, ",", value);
-  return value;
+  return StringUtils::Join(values, ",");
 }
 
-const INFO::CSkinVariableString* CGUIIncludes::CreateSkinVariable(const CStdString& name, int context)
+const INFO::CSkinVariableString* CGUIIncludes::CreateSkinVariable(const std::string& name, int context)
 {
-  map<CStdString, TiXmlElement>::const_iterator it = m_skinvariables.find(name);
+  map<std::string, TiXmlElement>::const_iterator it = m_skinvariables.find(name);
   if (it != m_skinvariables.end())
     return INFO::CSkinVariable::CreateFromXML(it->second, context);
   return NULL;

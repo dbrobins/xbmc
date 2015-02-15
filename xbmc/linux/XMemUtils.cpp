@@ -3,8 +3,8 @@
 #include <unistd.h>
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
  */
 
 #include "XMemUtils.h"
+#include "Util.h"
 
 #if defined(TARGET_DARWIN)
 #include <mach/mach.h>
@@ -52,9 +53,9 @@ void _aligned_free(void *p) {
   free(pFull);
 }
 
-#ifndef _WIN32
+#ifndef TARGET_WINDOWS
 
-#if defined(_LINUX) && !defined(TARGET_DARWIN) && !defined(__FreeBSD__)
+#if defined(TARGET_POSIX) && !defined(TARGET_DARWIN) && !defined(TARGET_FREEBSD)
 static FILE* procMeminfoFP = NULL;
 #endif
 
@@ -70,7 +71,7 @@ void GlobalMemoryStatusEx(LPMEMORYSTATUSEX lpBuffer)
   uint64_t physmem;
   size_t len = sizeof physmem;
   int mib[2] = { CTL_HW, HW_MEMSIZE };
-  size_t miblen = sizeof(mib) / sizeof(mib[0]);
+  size_t miblen = ARRAY_SIZE(mib);
 
   // Total physical memory.
   if (sysctl(mib, miblen, &physmem, &len, NULL, 0) == 0 && len == sizeof (physmem))
@@ -104,7 +105,7 @@ void GlobalMemoryStatusEx(LPMEMORYSTATUSEX lpBuffer)
           lpBuffer->ullAvailVirtual  = lpBuffer->ullAvailPhys; // FIXME.
       }
   }
-#elif defined(__FreeBSD__)
+#elif defined(TARGET_FREEBSD)
   /* sysctl hw.physmem */
   size_t physmem = 0, mem_free = 0, pagesize = 0, swap_free = 0;
   size_t mem_avail = 0, mem_inactive = 0, mem_cache = 0, len = 0;

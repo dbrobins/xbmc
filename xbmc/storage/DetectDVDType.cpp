@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,12 +28,13 @@
 #include "utils/log.h"
 #include "cdioSupport.h"
 #include "filesystem/iso9660.h"
+#include "filesystem/File.h"
 #include "threads/SingleLock.h"
-#ifdef _LINUX
+#ifdef TARGET_POSIX
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
-#if !defined(TARGET_DARWIN) && !defined(__FreeBSD__)
+#if !defined(TARGET_DARWIN) && !defined(TARGET_FREEBSD)
 #include <linux/cdrom.h>
 #endif
 #endif
@@ -60,10 +61,10 @@ int CDetectDVDMedia::m_DriveState = DRIVE_CLOSED_NO_MEDIA;
 CCdInfo* CDetectDVDMedia::m_pCdInfo = NULL;
 time_t CDetectDVDMedia::m_LastPoll = 0;
 CDetectDVDMedia* CDetectDVDMedia::m_pInstance = NULL;
-CStdString CDetectDVDMedia::m_diskLabel = "";
-CStdString CDetectDVDMedia::m_diskPath = "";
+std::string CDetectDVDMedia::m_diskLabel = "";
+std::string CDetectDVDMedia::m_diskPath = "";
 
-CDetectDVDMedia::CDetectDVDMedia() : CThread("CDetectDVDMedia")
+CDetectDVDMedia::CDetectDVDMedia() : CThread("DetectDVDMedia")
 {
   m_bAutorun = false;
   m_bStop = false;
@@ -97,7 +98,7 @@ void CDetectDVDMedia::Process()
 
   while (( !m_bStop ))
   {
-    if (g_application.IsPlayingVideo())
+    if (g_application.m_pPlayer->IsPlayingVideo())
     {
       Sleep(10000);
     }
@@ -220,7 +221,7 @@ void CDetectDVDMedia::DetectMediaType()
   bool bCDDA(false);
   CLog::Log(LOGINFO, "Detecting DVD-ROM media filesystem...");
 
-  CStdString strNewUrl;
+  std::string strNewUrl;
   CCdIoSupport cdio;
 
   // Delete old CD-Information
@@ -286,7 +287,7 @@ void CDetectDVDMedia::DetectMediaType()
     CLog::Log(LOGWARNING, "Filesystem is not supported");
   }
 
-  CStdString strLabel = "";
+  std::string strLabel;
   if (bCDDA)
   {
     strLabel = "Audio-CD";
@@ -294,15 +295,15 @@ void CDetectDVDMedia::DetectMediaType()
   else
   {
     strLabel = m_pCdInfo->GetDiscLabel();
-    strLabel.TrimRight(" ");
+    StringUtils::TrimRight(strLabel);
   }
 
   SetNewDVDShareUrl( strNewUrl , bCDDA, strLabel);
 }
 
-void CDetectDVDMedia::SetNewDVDShareUrl( const CStdString& strNewUrl, bool bCDDA, const CStdString& strDiscLabel )
+void CDetectDVDMedia::SetNewDVDShareUrl( const std::string& strNewUrl, bool bCDDA, const std::string& strDiscLabel )
 {
-  CStdString strDescription = "DVD";
+  std::string strDescription = "DVD";
   if (bCDDA) strDescription = "CD";
 
   if (strDiscLabel != "") strDescription = strDiscLabel;
@@ -314,7 +315,7 @@ void CDetectDVDMedia::SetNewDVDShareUrl( const CStdString& strNewUrl, bool bCDDA
 
 DWORD CDetectDVDMedia::GetTrayState()
 {
-#ifdef _LINUX
+#ifdef TARGET_POSIX
 
   char* dvdDevice = m_cdio->GetDeviceFileName();
   if (strlen(dvdDevice) == 0)
@@ -400,7 +401,7 @@ DWORD CDetectDVDMedia::GetTrayState()
     return DRIVE_NOT_READY;
 
 #endif // USING_CDIO78
-#endif // _LINUX
+#endif // TARGET_POSIX
 
   if (m_dwTrayState == TRAY_CLOSED_MEDIA_PRESENT)
   {
@@ -489,12 +490,12 @@ CCdInfo* CDetectDVDMedia::GetCdInfo()
   return pCdInfo;
 }
 
-const CStdString &CDetectDVDMedia::GetDVDLabel()
+const std::string &CDetectDVDMedia::GetDVDLabel()
 {
   return m_diskLabel;
 }
 
-const CStdString &CDetectDVDMedia::GetDVDPath()
+const std::string &CDetectDVDMedia::GetDVDPath()
 {
   return m_diskPath;
 }

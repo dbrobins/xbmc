@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,11 +20,12 @@
 
 #include "GUIDialogAccessPoints.h"
 #include "guilib/GUIKeyboardFactory.h"
-#ifdef _LINUX
+#ifdef TARGET_POSIX
 #include "linux/NetworkLinux.h"
 #endif
 #include "Application.h"
 #include "FileItem.h"
+#include "guilib/Key.h"
 #include "guilib/LocalizeStrings.h"
 
 #define CONTROL_ACCESS_POINTS 3
@@ -83,7 +84,7 @@ void CGUIDialogAccessPoints::OnInitWindow()
 
   m_accessPoints->Clear();
 
-  CStdString ifaceName(m_interfaceName);
+  std::string ifaceName(m_interfaceName);
   CNetworkInterface* iface = g_application.getNetwork().GetInterfaceByName(ifaceName);
   m_aps = iface->GetAccessPoints();
 
@@ -92,11 +93,11 @@ void CGUIDialogAccessPoints::OnInitWindow()
       CFileItemPtr item(new CFileItem(m_aps[i].getEssId()));
 
       int q = m_aps[i].getQuality();
-      if (q <= 20) item->SetThumbnailImage("ap-signal1.png");
-      else if (q <= 40) item->SetThumbnailImage("ap-signal2.png");
-      else if (q <= 60) item->SetThumbnailImage("ap-signal3.png");
-      else if (q <= 80) item->SetThumbnailImage("ap-signal4.png");
-      else if (q <= 100) item->SetThumbnailImage("ap-signal5.png");
+      if (q <= 20) item->SetArt("thumb", "ap-signal1.png");
+      else if (q <= 40) item->SetArt("thumb", "ap-signal2.png");
+      else if (q <= 60) item->SetArt("thumb", "ap-signal3.png");
+      else if (q <= 80) item->SetArt("thumb", "ap-signal4.png");
+      else if (q <= 100) item->SetArt("thumb", "ap-signal5.png");
 
       if (m_aps[i].getEncryptionMode() != ENC_NONE)
          item->SetIconImage("ap-lock.png");
@@ -111,12 +112,12 @@ void CGUIDialogAccessPoints::OnInitWindow()
   OnMessage(msg);
 }
 
-void CGUIDialogAccessPoints::SetInterfaceName(CStdString interfaceName)
+void CGUIDialogAccessPoints::SetInterfaceName(std::string interfaceName)
 {
   m_interfaceName = interfaceName;
 }
 
-CStdString CGUIDialogAccessPoints::GetSelectedAccessPointEssId()
+std::string CGUIDialogAccessPoints::GetSelectedAccessPointEssId()
 {
   return m_selectedAPEssId;
 }

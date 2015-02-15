@@ -6,8 +6,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -39,7 +39,8 @@ public:
                          float posX, float posY, float width, float height,
                          const CTextureInfo& textureFocus, const CTextureInfo& textureNoFocus,
                          const CLabelInfo& labelInfo,
-                         const CTextureInfo& radioOn, const CTextureInfo& radioOff);
+                         const CTextureInfo& radioOnFocus, const CTextureInfo& radioOnNoFocus,
+                         const CTextureInfo& radioOffFocus, const CTextureInfo& radioOffNoFocus);
 
   virtual ~CGUIRadioButtonControl(void);
   virtual CGUIRadioButtonControl *Clone() const { return new CGUIRadioButtonControl(*this); };
@@ -55,15 +56,17 @@ public:
   virtual void SetPosition(float posX, float posY);
   virtual void SetWidth(float width);
   virtual void SetHeight(float height);
-  virtual CStdString GetDescription() const;
+  virtual std::string GetDescription() const;
   void SetRadioDimensions(float posX, float posY, float width, float height);
-  void SetToggleSelect(const CStdString &toggleSelect);
+  void SetToggleSelect(const std::string &toggleSelect);
   bool IsSelected() const { return m_bSelected; };
 protected:
   virtual bool UpdateColors();
-  CGUITexture m_imgRadioOn;
-  CGUITexture m_imgRadioOff;
+  CGUITexture m_imgRadioOnFocus;
+  CGUITexture m_imgRadioOnNoFocus;
+  CGUITexture m_imgRadioOffFocus;
+  CGUITexture m_imgRadioOffNoFocus;
   float m_radioPosX;
   float m_radioPosY;
-  unsigned int m_toggleSelect;
+  INFO::InfoPtr m_toggleSelect;
 };

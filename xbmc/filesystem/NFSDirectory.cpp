@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2011-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2011-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,9 +32,11 @@
 #include "FileItem.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
+#include "utils/StringUtils.h"
 #include "threads/SingleLock.h"
 using namespace XFILE;
 using namespace std;
+#include <limits.h>
 #include <nfsc/libnfs-raw-mount.h>
 #include <nfsc/libnfs-raw-nfs.h>
 
@@ -48,20 +50,20 @@ CNFSDirectory::~CNFSDirectory(void)
   gNfsConnection.AddIdleConnection();
 }
 
-bool CNFSDirectory::GetDirectoryFromExportList(const CStdString& strPath, CFileItemList &items)
+bool CNFSDirectory::GetDirectoryFromExportList(const std::string& strPath, CFileItemList &items)
 {
   CURL url(strPath);
-  CStdString nonConstStrPath(strPath);
-  std::list<CStdString> exportList=gNfsConnection.GetExportList(url);
-  std::list<CStdString>::iterator it;
+  std::string nonConstStrPath(strPath);
+  std::list<std::string> exportList=gNfsConnection.GetExportList(url);
+  std::list<std::string>::iterator it;
   
-  for(it=exportList.begin();it!=exportList.end();it++)
+  for(it=exportList.begin();it!=exportList.end();++it)
   {
-      CStdString currentExport(*it);     
+      std::string currentExport(*it);     
       URIUtils::RemoveSlashAtEnd(nonConstStrPath);
            
       CFileItemPtr pItem(new CFileItem(currentExport));
-      CStdString path(nonConstStrPath + currentExport);
+      std::string path(nonConstStrPath + currentExport);
       URIUtils::AddSlashAtEnd(path);
       pItem->SetPath(path);
       pItem->m_dateTime=0;
@@ -88,10 +90,10 @@ bool CNFSDirectory::GetServerList(CFileItemList &items)
 
   for (srv=srvrs; srv; srv = srv->next) 
   {
-      CStdString currentExport(srv->addr);
+      std::string currentExport(srv->addr);
 
       CFileItemPtr pItem(new CFileItem(currentExport));
-      CStdString path("nfs://" + currentExport);
+      std::string path("nfs://" + currentExport);
       URIUtils::AddSlashAtEnd(path);
       pItem->m_dateTime=0;
 
@@ -105,12 +107,12 @@ bool CNFSDirectory::GetServerList(CFileItemList &items)
   return ret;
 }
 
-bool CNFSDirectory::ResolveSymlink( const CStdString &dirName, struct nfsdirent *dirent, CURL &resolvedUrl)
+bool CNFSDirectory::ResolveSymlink( const std::string &dirName, struct nfsdirent *dirent, CURL &resolvedUrl)
 {
   CSingleLock lock(gNfsConnection); 
   int ret = 0;  
   bool retVal = true;
-  CStdString fullpath = dirName;
+  std::string fullpath = dirName;
   char resolvedLink[MAX_PATH];
   
   URIUtils::AddSlashAtEnd(fullpath);
@@ -125,7 +127,7 @@ bool CNFSDirectory::ResolveSymlink( const CStdString &dirName, struct nfsdirent 
   
   if(ret == 0)
   {
-    struct stat tmpBuffer = {0};      
+    NFSSTAT tmpBuffer = {0};
     fullpath = dirName;
     URIUtils::AddSlashAtEnd(fullpath);
     fullpath.append(resolvedLink);
@@ -180,23 +182,22 @@ bool CNFSDirectory::ResolveSymlink( const CStdString &dirName, struct nfsdirent 
   return retVal;
 }
 
-bool CNFSDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
+bool CNFSDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
   // We accept nfs://server/path[/file]]]]
   int ret = 0;
   FILETIME fileTime, localTime;    
   CSingleLock lock(gNfsConnection); 
-  CURL url(strPath);
-  CStdString strDirName="";
-  CStdString myStrPath(strPath);
+  std::string strDirName="";
+  std::string myStrPath(url.Get());
   URIUtils::AddSlashAtEnd(myStrPath); //be sure the dir ends with a slash
    
   if(!gNfsConnection.Connect(url,strDirName))
   {
     //connect has failed - so try to get the exported filesystms if no path is given to the url
-    if(url.GetShareName().Equals(""))
+    if(url.GetShareName().empty())
     {
-      if(url.GetHostName().Equals(""))
+      if(url.GetHostName().empty())
       {
         return GetServerList(items);
       }
@@ -225,8 +226,8 @@ bool CNFSDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
   
   while((nfsdirent = gNfsConnection.GetImpl()->nfs_readdir(gNfsConnection.GetNfsContext(), nfsdir)) != NULL) 
   {
-    CStdString strName = nfsdirent->name;
-    CStdString path(myStrPath + strName);    
+    std::string strName = nfsdirent->name;
+    std::string path(myStrPath + strName);    
     int64_t iSize = 0;
     bool bIsDir = false;
     int64_t lTimeDate = 0;
@@ -248,8 +249,8 @@ bool CNFSDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
     bIsDir = nfsdirent->type == NF3DIR;
     lTimeDate = nfsdirent->mtime.tv_sec;
 
-    if (!strName.Equals(".") && !strName.Equals("..")
-      && !strName.Equals("lost+found"))
+    if (!StringUtils::EqualsNoCase(strName,".") && !StringUtils::EqualsNoCase(strName,"..")
+        && !StringUtils::EqualsNoCase(strName,"lost+found"))
     {
       if(lTimeDate == 0) // if modification date is missing, use create date
       {
@@ -290,13 +291,13 @@ bool CNFSDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
   return true;
 }
 
-bool CNFSDirectory::Create(const char* strPath)
+bool CNFSDirectory::Create(const CURL& url2)
 {
   int ret = 0;
   bool success=true;
   
   CSingleLock lock(gNfsConnection);
-  CStdString folderName(strPath);
+  std::string folderName(url2.Get());
   URIUtils::RemoveSlashAtEnd(folderName);//mkdir fails if a slash is at the end!!! 
   CURL url(folderName); 
   folderName = "";
@@ -312,12 +313,12 @@ bool CNFSDirectory::Create(const char* strPath)
   return success;
 }
 
-bool CNFSDirectory::Remove(const char* strPath)
+bool CNFSDirectory::Remove(const CURL& url2)
 {
   int ret = 0;
 
   CSingleLock lock(gNfsConnection);
-  CStdString folderName(strPath);
+  std::string folderName(url2.Get());
   URIUtils::RemoveSlashAtEnd(folderName);//rmdir fails if a slash is at the end!!!   
   CURL url(folderName);
   folderName = "";
@@ -335,12 +336,12 @@ bool CNFSDirectory::Remove(const char* strPath)
   return true;
 }
 
-bool CNFSDirectory::Exists(const char* strPath)
+bool CNFSDirectory::Exists(const CURL& url2)
 {
   int ret = 0;
 
   CSingleLock lock(gNfsConnection); 
-  CStdString folderName(strPath);  
+  std::string folderName(url2.Get());
   URIUtils::RemoveSlashAtEnd(folderName);//remove slash at end or URIUtils::GetFileName won't return what we want...
   CURL url(folderName);
   folderName = "";
@@ -348,7 +349,7 @@ bool CNFSDirectory::Exists(const char* strPath)
   if(!gNfsConnection.Connect(url,folderName))
     return false;
   
-  struct stat info;
+  NFSSTAT info;
   ret = gNfsConnection.GetImpl()->nfs_stat(gNfsConnection.GetNfsContext(), folderName.c_str(), &info);
   
   if (ret != 0)

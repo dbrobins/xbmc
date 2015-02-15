@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,12 +19,11 @@
  *
  */
 
-#include "File.h"
-#include "IFile.h"
+#include "filesystem/OverrideFile.h"
 
 namespace XFILE
 {
-  class CMultiPathFile: public IFile
+  class CMultiPathFile : public COverrideFile
   {
   public:
     CMultiPathFile(void);
@@ -33,13 +32,7 @@ namespace XFILE
     virtual bool Exists(const CURL& url);
     virtual int Stat(const CURL& url, struct __stat64* buffer);
 
-    virtual unsigned int Read(void* lpBuf, int64_t uiBufSize);
-    virtual int64_t Seek(int64_t iFilePosition, int iWhence = SEEK_SET);
-    virtual void Close();
-    virtual int64_t GetPosition();
-    virtual int64_t GetLength();
-
   protected:
-    CFile m_file;
+    virtual std::string TranslatePath(const CURL &url);
   };
 }

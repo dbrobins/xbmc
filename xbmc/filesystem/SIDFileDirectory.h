@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
  *
  */
 
-
 #include "MusicFileDirectory.h"
 #include "DllSidplay2.h"
 
@@ -32,6 +31,6 @@ namespace XFILE
     virtual ~CSIDFileDirectory(void);
   private:
     DllSidplay2 m_dll;
-    virtual int GetTrackCount(const CStdString& strPath);
+    virtual int GetTrackCount(const std::string& strPath);
   };
 }

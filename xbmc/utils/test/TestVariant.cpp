@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -135,6 +135,31 @@ TEST(TestVariant, VariantTypeNull)
 
   EXPECT_TRUE(a.isNull());
   EXPECT_EQ(CVariant::VariantTypeNull, a.type());
+}
+
+TEST(TestVariant, VariantFromMap)
+{
+  std::map<std::string, std::string> strMap;
+  strMap["key"] = "value";
+  CVariant a = strMap;
+  
+  EXPECT_TRUE(a.isObject());
+  EXPECT_TRUE(a.size() == 1);
+  EXPECT_EQ(CVariant::VariantTypeObject, a.type());
+  EXPECT_TRUE(a.isMember("key"));
+  EXPECT_TRUE(a["key"].isString());
+  EXPECT_STREQ(a["key"].asString().c_str(), "value");
+  
+  std::map<std::string, CVariant> variantMap;
+  variantMap["key"] = CVariant("value");
+  CVariant b = variantMap;
+  
+  EXPECT_TRUE(b.isObject());
+  EXPECT_TRUE(b.size() == 1);
+  EXPECT_EQ(CVariant::VariantTypeObject, b.type());
+  EXPECT_TRUE(b.isMember("key"));
+  EXPECT_TRUE(b["key"].isString());
+  EXPECT_STREQ(b["key"].asString().c_str(), "value");
 }
 
 TEST(TestVariant, operatorTest)

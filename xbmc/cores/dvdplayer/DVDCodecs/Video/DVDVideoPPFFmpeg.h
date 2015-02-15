@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,23 +21,23 @@
  */
 
 #include "DVDVideoCodec.h"
-#include "DllPostProc.h"
+#include <string>
 
 class CDVDVideoPPFFmpeg
 {
 public:
 
-  CDVDVideoPPFFmpeg(const CStdString& mType);
+  CDVDVideoPPFFmpeg(const std::string& mType);
   ~CDVDVideoPPFFmpeg();
 
 
-  void SetType(const CStdString& mType, bool deinterlace);
+  void SetType(const std::string& mType, bool deinterlace);
   void SetTarget(DVDVideoPicture *pPicture){ m_pTarget = pPicture; };
   bool Process   (DVDVideoPicture *pPicture);
   bool GetPicture(DVDVideoPicture *pPicture);
 
 protected:
-  CStdString m_sType;
+  std::string m_sType;
 
   void *m_pContext;
   void *m_pMode;
@@ -52,8 +52,6 @@ protected:
   int m_iInitWidth, m_iInitHeight;
   bool CheckInit(int iWidth, int iHeight);
   bool CheckFrameBuffer(const DVDVideoPicture* pSource);
-
-  DllPostProc m_dll;
 };
 
 

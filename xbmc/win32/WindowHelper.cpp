@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ using namespace std;
 
 CWHelper g_windowHelper;
 
-CWHelper::CWHelper(void) : CThread("CWHelper")
+CWHelper::CWHelper(void) : CThread("WindowHelper")
 {
   m_hwnd = NULL;
   m_hProcess = NULL;

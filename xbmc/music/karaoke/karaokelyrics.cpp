@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -67,7 +67,7 @@ bool CKaraokeLyrics::InitGraphics()
   return true;
 }
 
-void CKaraokeLyrics::initData( const CStdString & songPath )
+void CKaraokeLyrics::initData( const std::string & songPath )
 {
   m_songPath = songPath;
 
@@ -113,7 +113,7 @@ double CKaraokeLyrics::getSongTime() const
   return songtime >= 0 ? songtime : 0.0;
 }
 
-CStdString CKaraokeLyrics::getSongFile() const
+std::string CKaraokeLyrics::getSongFile() const
 {
   return m_songPath;
 }

@@ -1,31 +1,30 @@
 /*
-*      Copyright (C) 2005-2012 Team XBMC
-*      http://www.xbmc.org
-*
-*  This Program is free software; you can redistribute it and/or modify
-*  it under the terms of the GNU General Public License as published by
-*  the Free Software Foundation; either version 2, or (at your option)
-*  any later version.
-*
-*  This Program is distributed in the hope that it will be useful,
-*  but WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-*  GNU General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with XBMC; see the file COPYING.  If not, see
-*  <http://www.gnu.org/licenses/>.
-*
-*/
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 
 #include "Texture.h"
 #include "windowing/WindowingFactory.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
-#include "pictures/DllImageLib.h"
 #include "DDSImage.h"
 #include "filesystem/SpecialProtocol.h"
-#include "JpegIO.h"
+#include "filesystem/File.h"
 #if defined(TARGET_DARWIN_IOS)
 #include <ImageIO/ImageIO.h>
 #include "filesystem/File.h"
@@ -34,10 +33,6 @@
 #if defined(TARGET_ANDROID)
 #include "URL.h"
 #include "filesystem/AndroidAppFile.h"
-#endif
-
-#if defined(HAS_OMXPLAYER)
-#include "xbmc/cores/omxplayer/OMXImage.h"
 #endif
 
 /************************************************************************/
@@ -88,7 +83,11 @@ void CBaseTexture::Allocate(unsigned int width, unsigned int height, unsigned in
     // we crash in CPicture::ScaleImage in ffmpegs swscale
     // because it tries to access beyond the source memory
     // (happens on osx and ios)
-    m_textureWidth = ((m_textureWidth + 1) / 2) * 2;
+    // UPDATE: don't just update to be on an even width;
+    // ffmpegs swscale relies on a 16-byte stride on some systems
+    // so the textureWidth needs to be a multiple of 16. see ffmpeg
+    // swscale headers for more info.
+    m_textureWidth = ((m_textureWidth + 15) / 16) * 16;
   }
 
   // check for max texture size
@@ -97,8 +96,13 @@ void CBaseTexture::Allocate(unsigned int width, unsigned int height, unsigned in
   CLAMP(m_textureHeight, g_Windowing.GetMaxTextureSize());
   CLAMP(m_imageWidth, m_textureWidth);
   CLAMP(m_imageHeight, m_textureHeight);
+
   delete[] m_pixels;
-  m_pixels = new unsigned char[GetPitch() * GetRows()];
+  m_pixels = NULL;
+  if (GetPitch() * GetRows() > 0)
+  {
+    m_pixels = new unsigned char[GetPitch() * GetRows()];
+  }
 }
 
 void CBaseTexture::Update(unsigned int width, unsigned int height, unsigned int pitch, unsigned int format, const unsigned char *pixels, bool loadToGPU)
@@ -170,11 +174,11 @@ void CBaseTexture::ClampToEdge()
   }
 }
 
-CBaseTexture *CBaseTexture::LoadFromFile(const CStdString& texturePath, unsigned int idealWidth, unsigned int idealHeight, bool autoRotate)
+CBaseTexture *CBaseTexture::LoadFromFile(const std::string& texturePath, unsigned int idealWidth, unsigned int idealHeight, bool autoRotate, bool requirePixels, const std::string& strMimeType)
 {
 #if defined(TARGET_ANDROID)
   CURL url(texturePath);
-  if (url.GetProtocol() == "androidapp")
+  if (url.IsProtocol("androidapp"))
   {
     XFILE::CFileAndroidApp file;
     if (file.Open(url))
@@ -198,7 +202,7 @@ CBaseTexture *CBaseTexture::LoadFromFile(const CStdString& texturePath, unsigned
   }
 #endif
   CTexture *texture = new CTexture();
-  if (texture->LoadFromFileInternal(texturePath, idealWidth, idealHeight, autoRotate))
+  if (texture->LoadFromFileInternal(texturePath, idealWidth, idealHeight, autoRotate, requirePixels, strMimeType))
     return texture;
   delete texture;
   return NULL;
@@ -213,62 +217,9 @@ CBaseTexture *CBaseTexture::LoadFromFileInMemory(unsigned char *buffer, size_t b
   return NULL;
 }
 
-bool CBaseTexture::LoadFromFileInternal(const CStdString& texturePath, unsigned int maxWidth, unsigned int maxHeight, bool autoRotate)
+bool CBaseTexture::LoadFromFileInternal(const std::string& texturePath, unsigned int maxWidth, unsigned int maxHeight, bool autoRotate, bool requirePixels, const std::string& strMimeType)
 {
-#if defined(HAS_OMXPLAYER)
-  if (URIUtils::GetExtension(texturePath).Equals(".jpg") || 
-      URIUtils::GetExtension(texturePath).Equals(".tbn") 
-      /*|| URIUtils::GetExtension(texturePath).Equals(".png")*/)
-  {
-    COMXImage omx_image;
-
-    if(omx_image.ReadFile(texturePath))
-    {
-      int width = omx_image.GetWidth();
-      int height = omx_image.GetHeight();
-
-      // We restict textures to the maximum GUI size. This is a workaround for the PI memory limitation
-      g_Windowing.ClampToGUIDisplayLimits(width, height);
-
-      if(omx_image.Decode(width, height))
-      {
-        Allocate(omx_image.GetDecodedWidth(), omx_image.GetDecodedHeight(), XB_FMT_A8R8G8B8);
-
-        if(!m_pixels)
-        {
-          CLog::Log(LOGERROR, "Texture manager (OMX) out of memory");
-          omx_image.Close();
-          return false;
-        }
-
-        m_originalWidth  = omx_image.GetOriginalWidth();
-        m_originalHeight = omx_image.GetOriginalHeight();
-
-        m_hasAlpha = omx_image.IsAlpha();
-
-        if (autoRotate && omx_image.GetOrientation())
-          m_orientation = omx_image.GetOrientation() - 1;
-
-        if(omx_image.GetDecodedData())
-        {
-          int size = ( ( GetPitch() * GetRows() ) > omx_image.GetDecodedSize() ) ?
-                           omx_image.GetDecodedSize() : ( GetPitch() * GetRows() );
-
-          memcpy(m_pixels, (unsigned char *)omx_image.GetDecodedData(), size);
-        }
-
-        omx_image.Close();
-
-        return true;
-      }
-      else
-      {
-        omx_image.Close();
-      }
-    }
-  }
-#endif
-  if (URIUtils::GetExtension(texturePath).Equals(".dds"))
+  if (URIUtils::HasExtension(texturePath, ".dds"))
   { // special case for DDS images
     CDDSImage image;
     if (image.ReadFile(texturePath))
@@ -279,46 +230,35 @@ bool CBaseTexture::LoadFromFileInternal(const CStdString& texturePath, unsigned 
     return false;
   }
 
-  //ImageLib is sooo sloow for jpegs. Try our own decoder first. If it fails, fall back to ImageLib.
-  if (URIUtils::GetExtension(texturePath).Equals(".jpg") || URIUtils::GetExtension(texturePath).Equals(".tbn"))
-  {
-    CJpegIO jpegfile;
-    if (jpegfile.Open(texturePath, maxWidth, maxHeight))
-    {
-      if (jpegfile.Width() > 0 && jpegfile.Height() > 0)
-      {
-        Allocate(jpegfile.Width(), jpegfile.Height(), XB_FMT_A8R8G8B8);
-        if (jpegfile.Decode(m_pixels, GetPitch(), XB_FMT_A8R8G8B8))
-        {
-          if (autoRotate && jpegfile.Orientation())
-            m_orientation = jpegfile.Orientation() - 1;
-          m_hasAlpha=false;
-          ClampToEdge();
-          return true;
-        }
-      }
-    }
-    CLog::Log(LOGDEBUG, "%s - Load of %s failed. Falling back to ImageLib", __FUNCTION__, texturePath.c_str());
-  }
-
-  DllImageLib dll;
-  if (!dll.Load())
-    return false;
-
-  ImageInfo image;
-  memset(&image, 0, sizeof(image));
-
   unsigned int width = maxWidth ? std::min(maxWidth, g_Windowing.GetMaxTextureSize()) : g_Windowing.GetMaxTextureSize();
   unsigned int height = maxHeight ? std::min(maxHeight, g_Windowing.GetMaxTextureSize()) : g_Windowing.GetMaxTextureSize();
 
-  if(!dll.LoadImage(texturePath.c_str(), width, height, &image))
-  {
-    CLog::Log(LOGERROR, "Texture manager unable to load file: %s", texturePath.c_str());
-    return false;
-  }
+  // Read image into memory to use our vfs
+  XFILE::CFile file;
+  XFILE::auto_buffer buf;
 
-  LoadFromImage(image, autoRotate);
-  dll.ReleaseImage(&image);
+  if (file.LoadFile(texturePath, buf) <= 0)
+    return false;
+
+  IImage* pImage;
+
+  if(strMimeType.empty())
+    pImage = ImageFactory::CreateLoader(texturePath);
+  else
+    pImage = ImageFactory::CreateLoaderFromMimeType(strMimeType);
+
+  if (!LoadIImage(pImage, (unsigned char *)buf.get(), buf.size(), width, height, autoRotate))
+  {
+    delete pImage;
+    pImage = ImageFactory::CreateFallbackLoader(texturePath);
+    if (!LoadIImage(pImage, (unsigned char *)buf.get(), buf.size(), width, height))
+    {
+      CLog::Log(LOGDEBUG, "%s - Load of %s failed.", __FUNCTION__, texturePath.c_str());
+      delete pImage;
+      return false;
+    }
+  }
+  delete pImage;
 
   return true;
 }
@@ -328,98 +268,44 @@ bool CBaseTexture::LoadFromFileInMem(unsigned char* buffer, size_t size, const s
   if (!buffer || !size)
     return false;
 
-  //ImageLib is sooo sloow for jpegs. Try our own decoder first. If it fails, fall back to ImageLib.
-  if (mimeType == "image/jpeg")
-  {
-    CJpegIO jpegfile;
-    if (jpegfile.Read(buffer, size, maxWidth, maxHeight))
-    {
-      if (jpegfile.Width() > 0 && jpegfile.Height() > 0)
-      {
-        Allocate(jpegfile.Width(), jpegfile.Height(), XB_FMT_A8R8G8B8);
-        if (jpegfile.Decode(m_pixels, GetPitch(), XB_FMT_A8R8G8B8))
-        {
-          m_hasAlpha=false;
-          ClampToEdge();
-          return true;
-        }
-      }
-    }
-  }
-  DllImageLib dll;
-  if (!dll.Load())
-    return false;
-
-  ImageInfo image;
-  memset(&image, 0, sizeof(image));
-
   unsigned int width = maxWidth ? std::min(maxWidth, g_Windowing.GetMaxTextureSize()) : g_Windowing.GetMaxTextureSize();
   unsigned int height = maxHeight ? std::min(maxHeight, g_Windowing.GetMaxTextureSize()) : g_Windowing.GetMaxTextureSize();
 
-  CStdString ext = mimeType;
-  int nPos = ext.Find('/');
-  if (nPos > -1)
-    ext.Delete(0, nPos + 1);
-
-  if(!dll.LoadImageFromMemory(buffer, size, ext.c_str(), width, height, &image))
+  IImage* pImage = ImageFactory::CreateLoaderFromMimeType(mimeType);
+  if(!LoadIImage(pImage, buffer, size, width, height))
   {
-    CLog::Log(LOGERROR, "Texture manager unable to load image from memory");
-    return false;
+    delete pImage;
+    pImage = ImageFactory::CreateFallbackLoader(mimeType);
+    if(!LoadIImage(pImage, buffer, size, width, height))
+    {
+      delete pImage;
+      return false;
+    }
   }
-  LoadFromImage(image);
-  dll.ReleaseImage(&image);
-
+  delete pImage;
   return true;
 }
 
-void CBaseTexture::LoadFromImage(ImageInfo &image, bool autoRotate)
+bool CBaseTexture::LoadIImage(IImage *pImage, unsigned char* buffer, unsigned int bufSize, unsigned int width, unsigned int height, bool autoRotate)
 {
-  m_hasAlpha = NULL != image.alpha;
-
-  Allocate(image.width, image.height, XB_FMT_A8R8G8B8);
-  if (autoRotate && image.exifInfo.Orientation)
-    m_orientation = image.exifInfo.Orientation - 1;
-  m_originalWidth = image.originalwidth;
-  m_originalHeight = image.originalheight;
-
-  unsigned int dstPitch = GetPitch();
-  unsigned int srcPitch = ((image.width + 1)* 3 / 4) * 4; // bitmap row length is aligned to 4 bytes
-
-  unsigned char *dst = m_pixels;
-  unsigned char *src = image.texture + (m_imageHeight - 1) * srcPitch;
-
-  for (unsigned int y = 0; y < m_imageHeight; y++)
+  if(pImage != NULL && pImage->LoadImageFromMemory(buffer, bufSize, width, height))
   {
-    unsigned char *dst2 = dst;
-    unsigned char *src2 = src;
-    for (unsigned int x = 0; x < m_imageWidth; x++, dst2 += 4, src2 += 3)
+    if (pImage->Width() > 0 && pImage->Height() > 0)
     {
-      dst2[0] = src2[0];
-      dst2[1] = src2[1];
-      dst2[2] = src2[2];
-      dst2[3] = 0xff;
-    }
-    src -= srcPitch;
-    dst += dstPitch;
-  }
-
-  if(image.alpha)
-  {
-    dst = m_pixels + 3;
-    src = image.alpha + (m_imageHeight - 1) * m_imageWidth;
-
-    for (unsigned int y = 0; y < m_imageHeight; y++)
-    {
-      unsigned char *dst2 = dst;
-      unsigned char *src2 = src;
-
-      for (unsigned int x = 0; x < m_imageWidth; x++,  dst2+=4, src2++)
-        *dst2 = *src2;
-      src -= m_imageWidth;
-      dst += dstPitch;
+      Allocate(pImage->Width(), pImage->Height(), XB_FMT_A8R8G8B8);
+      if (pImage->Decode(m_pixels, GetPitch(), XB_FMT_A8R8G8B8))
+      {
+        if (autoRotate && pImage->Orientation())
+          m_orientation = pImage->Orientation() - 1;
+        m_hasAlpha = pImage->hasAlpha();
+        m_originalWidth = pImage->originalWidth();
+        m_originalHeight = pImage->originalHeight();
+        ClampToEdge();
+        return true;
+      }
     }
   }
-  ClampToEdge();
+  return false;
 }
 
 bool CBaseTexture::LoadFromMemory(unsigned int width, unsigned int height, unsigned int pitch, unsigned int format, bool hasAlpha, unsigned char* pixels)

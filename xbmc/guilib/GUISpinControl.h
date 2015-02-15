@@ -9,8 +9,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -65,11 +65,14 @@ public:
   void SetRange(int iStart, int iEnd);
   void SetFloatRange(float fStart, float fEnd);
   void SetValue(int iValue);
-  void SetValueFromLabel(const CStdString &label);
+  void SetValueFromLabel(const std::string &label);
   void SetFloatValue(float fValue);
+  void SetStringValue(const std::string& strValue);
   int GetValue() const;
   float GetFloatValue() const;
+  std::string GetStringValue() const;
   void AddLabel(const std::string& strLabel, int iValue);
+  void AddLabel(const std::string& strLabel, const std::string& strValue);
   const std::string GetLabel() const;
   void SetReverse(bool bOnOff);
   int GetMaximum() const;
@@ -82,7 +85,7 @@ public:
   void SetShowRange(bool bOnoff) ;
   void SetShowOnePage(bool showOnePage) { m_showOnePage = showOnePage; };
   void Clear();
-  virtual CStdString GetDescription() const;
+  virtual std::string GetDescription() const;
   bool IsFocusedOnUp() const;
 
   virtual bool IsVisible() const;
@@ -92,9 +95,11 @@ protected:
   virtual bool UpdateColors();
   /*! \brief Render the spinner text
    \param posX position of the left edge of the text
+   \param posY positing of the top edge of the text
    \param width width of the text
+   \param height height of the text
    */
-  virtual void RenderText(float posX, float width);
+  virtual void RenderText(float posX, float posY, float width, float height);
   CGUILabel::COLOR GetTextColor() const;
   void PageUp();
   void PageDown();
@@ -115,6 +120,7 @@ protected:
   float m_fInterval;
   std::vector<std::string> m_vecLabels;
   std::vector<int> m_vecValues;
+  std::vector<std::string> m_vecStrValues;
   CGUITexture m_imgspinUp;
   CGUITexture m_imgspinDown;
   CGUITexture m_imgspinUpFocus;

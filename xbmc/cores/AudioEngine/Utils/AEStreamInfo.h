@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2010-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2010-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,8 +26,12 @@
 
 /* ffmpeg re-defines this, so undef it to squash the warning */
 #undef restrict
-#include "DllAvCodec.h"
-#include "DllAvFormat.h"
+
+extern "C" {
+#include "libavcodec/avcodec.h"
+#include "libavformat/avformat.h"
+#include "libavutil/crc.h"
+}
 
 class CAEStreamInfo
 {
@@ -61,13 +65,12 @@ public:
   unsigned int              GetFrameSize     () { return m_fsize         ; }
   unsigned int              GetDTSBlocks     () { return m_dtsBlocks     ; }
   unsigned int              GetDTSPeriod     () { return m_dtsPeriod     ; }
+  unsigned int              GetEAC3BlocksDiv () { return m_repeat        ; }
   enum DataType             GetDataType      () { return m_dataType      ; }
   bool                      IsLittleEndian   () { return m_dataIsLE      ; }
   CAEPackIEC61937::PackFunc GetPackFunc      () { return m_packFunc      ; }
   unsigned int              GetBufferSize    () { return m_bufferSize    ; }
 private:
-  DllAvUtil m_dllAvUtil;
-
   uint8_t      m_buffer[MAX_IEC61937_PACKET];
   unsigned int m_bufferSize;
   unsigned int m_skipBytes;
@@ -87,6 +90,7 @@ private:
   unsigned int              m_dtsBlocks;
   unsigned int              m_dtsPeriod;        /* used for dtsHD */
   unsigned int              m_fsize;
+  unsigned int              m_fsizeMain;        /* used for EAC3 substreams */
   unsigned int              m_repeat;
   int                       m_substreams;       /* used for TrueHD  */
   AVCRC                     m_crcTrueHD[1024];  /* TrueHD crc table */

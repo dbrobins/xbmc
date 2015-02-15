@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,10 @@
 class CJob;
 
 #include <stddef.h>
+
+#define kJobTypeMediaFlags  "mediaflags"
+#define kJobTypeCacheImage  "cacheimage"
+#define kJobTypeDDSCompress "ddscompress"
 
 /*!
  \ingroup jobs
@@ -102,7 +106,8 @@ public:
    \sa CJobManager
    */
   enum PRIORITY {
-    PRIORITY_LOW = 0,
+    PRIORITY_LOW_PAUSABLE = 0,
+    PRIORITY_LOW,
     PRIORITY_NORMAL,
     PRIORITY_HIGH
   };

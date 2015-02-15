@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,9 @@
 #include "GUIDialogSelect.h"
 #include "guilib/GUIWindowManager.h"
 #include "FileItem.h"
+#include "guilib/Key.h"
 #include "guilib/LocalizeStrings.h"
+#include "utils/StringUtils.h"
 
 #define CONTROL_HEADING       1
 #define CONTROL_LIST          3
@@ -35,17 +37,16 @@ CGUIDialogSelect::CGUIDialogSelect(void)
   m_bButtonEnabled = false;
   m_buttonString = -1;
   m_useDetails = false;
-  m_vecListInternal = new CFileItemList;
+  m_vecList = new CFileItemList;
   m_selectedItems = new CFileItemList;
   m_multiSelection = false;
-  m_vecList = m_vecListInternal;
   m_iSelected = -1;
   m_loadType = KEEP_IN_MEMORY;
 }
 
 CGUIDialogSelect::~CGUIDialogSelect(void)
 {
-  delete m_vecListInternal;
+  delete m_vecList;
   delete m_selectedItems;
 }
 
@@ -76,8 +77,7 @@ bool CGUIDialogSelect::OnMessage(CGUIMessage& message)
         }
       }
 
-      m_vecListInternal->Clear();
-      m_vecList = m_vecListInternal;
+      m_vecList->Clear();
 
       m_buttonString = -1;
       SET_CONTROL_LABEL(CONTROL_BUTTON, "");
@@ -132,6 +132,14 @@ bool CGUIDialogSelect::OnMessage(CGUIMessage& message)
     break;
   case GUI_MSG_SETFOCUS:
     {
+      // make sure the additional button is focused in case the list is empty
+      // (otherwise it is impossible to navigate to the additional button)
+      if (m_vecList->IsEmpty() && m_bButtonEnabled &&
+          m_viewControl.HasControl(message.GetControlId()))
+      {
+        SET_CONTROL_FOCUS(CONTROL_BUTTON, 0);
+        return true;
+      }
       if (m_viewControl.HasControl(message.GetControlId()) && m_viewControl.GetCurrentControl() != message.GetControlId())
       {
         m_viewControl.SetFocused();
@@ -158,15 +166,15 @@ void CGUIDialogSelect::Reset()
   m_useDetails = false;
   m_multiSelection = false;
   m_iSelected = -1;
-  m_vecListInternal->Clear();
+  m_vecList->Clear();
   m_selectedItems->Clear();
-  m_vecList = m_vecListInternal;
 }
 
-void CGUIDialogSelect::Add(const CStdString& strLabel)
+int CGUIDialogSelect::Add(const std::string& strLabel)
 {
   CFileItemPtr pItem(new CFileItem(strLabel));
-  m_vecListInternal->Add(pItem);
+  m_vecList->Add(pItem);
+  return m_vecList->Size() - 1;
 }
 
 void CGUIDialogSelect::Add(const CFileItemList& items)
@@ -178,15 +186,19 @@ void CGUIDialogSelect::Add(const CFileItemList& items)
   }
 }
 
-void CGUIDialogSelect::Add(const CFileItem* pItem)
+int CGUIDialogSelect::Add(const CFileItem* pItem)
 {
   CFileItemPtr item(new CFileItem(*pItem));
-  m_vecListInternal->Add(item);
+  m_vecList->Add(item);
+  return m_vecList->Size() - 1;
 }
 
 void CGUIDialogSelect::SetItems(CFileItemList* pList)
 {
-  m_vecList = pList;
+  // need to make internal copy of list to be sure dialog is owner of it
+  m_vecList->Clear();
+  if (pList)
+    m_vecList->Copy(*pList);
 }
 
 int CGUIDialogSelect::GetSelectedLabel() const
@@ -194,12 +206,12 @@ int CGUIDialogSelect::GetSelectedLabel() const
   return m_iSelected;
 }
 
-const CFileItemPtr CGUIDialogSelect::GetSelectedItem()
+const CFileItemPtr CGUIDialogSelect::GetSelectedItem() const
 {
   return m_selectedItems->Size() > 0 ? m_selectedItems->Get(0) : CFileItemPtr(new CFileItem);
 }
 
-const CStdString& CGUIDialogSelect::GetSelectedLabelText()
+const std::string& CGUIDialogSelect::GetSelectedLabelText() const
 {
   return GetSelectedItem()->GetLabel();
 }
@@ -225,7 +237,7 @@ bool CGUIDialogSelect::IsButtonPressed()
 
 void CGUIDialogSelect::Sort(bool bSortOrder /*=true*/)
 {
-  m_vecList->Sort(SORT_METHOD_LABEL, bSortOrder ? SortOrderAscending : SortOrderDescending);
+  m_vecList->Sort(SortByLabel, bSortOrder ? SortOrderAscending : SortOrderDescending);
 }
 
 void CGUIDialogSelect::SetSelected(int iSelected)
@@ -244,14 +256,14 @@ void CGUIDialogSelect::SetSelected(int iSelected)
   m_selectedItems->Add(m_vecList->Get(iSelected));
 }
 
-void CGUIDialogSelect::SetSelected(const CStdString &strSelectedLabel)
+void CGUIDialogSelect::SetSelected(const std::string &strSelectedLabel)
 {
   if (strSelectedLabel.empty())
     return;
 
   for (int index = 0; index < m_vecList->Size(); index++)
   {
-    if (strSelectedLabel.Equals(m_vecList->Get(index)->GetLabel()))
+    if (strSelectedLabel == m_vecList->Get(index)->GetLabel())
     {
       SetSelected(index);
       return;
@@ -264,16 +276,16 @@ void CGUIDialogSelect::SetSelected(std::vector<int> selectedIndexes)
   if (selectedIndexes.empty())
     return;
 
-  for (std::vector<int>::const_iterator it = selectedIndexes.begin(); it != selectedIndexes.end(); it++)
+  for (std::vector<int>::const_iterator it = selectedIndexes.begin(); it != selectedIndexes.end(); ++it)
     SetSelected(*it);
 }
 
-void CGUIDialogSelect::SetSelected(const std::vector<CStdString> &selectedLabels)
+void CGUIDialogSelect::SetSelected(const std::vector<std::string> &selectedLabels)
 {
   if (selectedLabels.empty())
     return;
 
-  for (std::vector<CStdString>::const_iterator it = selectedLabels.begin(); it != selectedLabels.end(); it++)
+  for (std::vector<std::string>::const_iterator it = selectedLabels.begin(); it != selectedLabels.end(); ++it)
     SetSelected(*it);
 }
 
@@ -320,8 +332,7 @@ void CGUIDialogSelect::OnInitWindow()
   }
   m_viewControl.SetCurrentView(m_useDetails ? CONTROL_DETAILS : CONTROL_LIST);
 
-  CStdString items;
-  items.Format("%i %s", m_vecList->Size(), g_localizeStrings.Get(127).c_str());
+  std::string items = StringUtils::Format("%i %s", m_vecList->Size(), g_localizeStrings.Get(127).c_str());
   SET_CONTROL_LABEL(CONTROL_NUMBEROFFILES, items);
   
   if (m_multiSelection)
@@ -330,8 +341,8 @@ void CGUIDialogSelect::OnInitWindow()
   SetupButton();
   CGUIDialogBoxBase::OnInitWindow();
 
-  if (m_iSelected >= 0)
-    m_viewControl.SetSelectedItem(m_iSelected);
+  // if m_iSelected < 0 focus first item
+  m_viewControl.SetSelectedItem(std::max(m_iSelected, 0));
 }
 
 void CGUIDialogSelect::OnWindowUnload()

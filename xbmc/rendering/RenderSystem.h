@@ -1,22 +1,22 @@
 /*
-*      Copyright (C) 2005-2012 Team XBMC
-*      http://www.xbmc.org
-*
-*  This Program is free software; you can redistribute it and/or modify
-*  it under the terms of the GNU General Public License as published by
-*  the Free Software Foundation; either version 2, or (at your option)
-*  any later version.
-*
-*  This Program is distributed in the hope that it will be useful,
-*  but WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-*  GNU General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with XBMC; see the file COPYING.  If not, see
-*  <http://www.gnu.org/licenses/>.
-*
-*/
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 
 #ifndef RENDER_SYSTEM_H
 #define RENDER_SYSTEM_H
@@ -26,8 +26,8 @@
 #include "guilib/Geometry.h"
 #include "guilib/TransformMatrix.h"
 #include "guilib/DirtyRegion.h"
-#include "utils/StdString.h"
 #include <stdint.h>
+#include <string>
 
 typedef enum _RenderingSystemType
 {
@@ -60,6 +60,31 @@ enum
   RENDER_QUIRKS_BROKEN_OCCLUSION_QUERY       = 1 << 2,
 };
 
+enum RENDER_STEREO_VIEW
+{
+  RENDER_STEREO_VIEW_OFF,
+  RENDER_STEREO_VIEW_LEFT,
+  RENDER_STEREO_VIEW_RIGHT,
+};
+
+enum RENDER_STEREO_MODE
+{
+  RENDER_STEREO_MODE_OFF,
+  RENDER_STEREO_MODE_SPLIT_HORIZONTAL,
+  RENDER_STEREO_MODE_SPLIT_VERTICAL,
+  RENDER_STEREO_MODE_ANAGLYPH_RED_CYAN,
+  RENDER_STEREO_MODE_ANAGLYPH_GREEN_MAGENTA,
+  RENDER_STEREO_MODE_INTERLACED,
+  RENDER_STEREO_MODE_HARDWAREBASED,
+  RENDER_STEREO_MODE_MONO,
+  RENDER_STEREO_MODE_COUNT,
+
+  // psuevdo modes
+  RENDER_STEREO_MODE_AUTO = 100,
+  RENDER_STEREO_MODE_UNDEFINED = 999,
+};
+
+
 class CRenderSystemBase
 {
 public:
@@ -84,7 +109,10 @@ public:
 
   virtual void SetViewPort(CRect& viewPort) = 0;
   virtual void GetViewPort(CRect& viewPort) = 0;
+  virtual void RestoreViewPort() {};
 
+  virtual bool ScissorsCanEffectClipping() { return false; }
+  virtual CRect ClipRectToScissorRect(const CRect &rect) { return CRect(); }
   virtual void SetScissors(const CRect &rect) = 0;
   virtual void ResetScissors() = 0;
 
@@ -94,6 +122,11 @@ public:
   virtual void SetCameraPosition(const CPoint &camera, int screenWidth, int screenHeight) = 0;
   virtual void ApplyHardwareTransform(const TransformMatrix &matrix) = 0;
   virtual void RestoreHardwareTransform() = 0;
+  virtual void SetStereoMode(RENDER_STEREO_MODE mode, RENDER_STEREO_VIEW view)
+  {
+    m_stereoMode = mode;
+    m_stereoView = view;
+  }
 
   virtual bool TestRender() = 0;
 
@@ -103,13 +136,14 @@ public:
   virtual void Project(float &x, float &y, float &z) { }
 
   void GetRenderVersion(unsigned int& major, unsigned int& minor) const;
-  const CStdString& GetRenderVendor() const { return m_RenderVendor; }
-  const CStdString& GetRenderRenderer() const { return m_RenderRenderer; }
-  const CStdString& GetRenderVersionString() const { return m_RenderVersion; }
+  const std::string& GetRenderVendor() const { return m_RenderVendor; }
+  const std::string& GetRenderRenderer() const { return m_RenderRenderer; }
+  const std::string& GetRenderVersionString() const { return m_RenderVersion; }
   bool SupportsDXT() const;
   bool SupportsBGRA() const;
   bool SupportsBGRAApple() const;
   bool SupportsNPOT(bool dxt) const;
+  bool SupportsStereo(RENDER_STEREO_MODE mode) const;
   unsigned int GetMaxTextureSize() const { return m_maxTextureSize; }
   unsigned int GetMinDXTPitch() const { return m_minDXTPitch; }
   unsigned int GetRenderQuirks() const { return m_renderQuirks; }
@@ -121,13 +155,15 @@ protected:
   unsigned int        m_maxTextureSize;
   unsigned int        m_minDXTPitch;
 
-  CStdString   m_RenderRenderer;
-  CStdString   m_RenderVendor;
-  CStdString   m_RenderVersion;
+  std::string   m_RenderRenderer;
+  std::string   m_RenderVendor;
+  std::string   m_RenderVersion;
   int          m_RenderVersionMinor;
   int          m_RenderVersionMajor;
   unsigned int m_renderCaps;
   unsigned int m_renderQuirks;
+  RENDER_STEREO_VIEW m_stereoView;
+  RENDER_STEREO_MODE m_stereoMode;
 };
 
 #endif // RENDER_SYSTEM_H

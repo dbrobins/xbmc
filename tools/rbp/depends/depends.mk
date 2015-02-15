@@ -4,7 +4,7 @@ ifeq ($(USE_BUILDROOT),1)
 	export BUILD=i686-linux
 	export PREFIX=$(XBMCPREFIX)
 	export SYSROOT=$(BUILDROOT)/output/host/usr/arm-unknown-linux-gnueabi/sysroot
-	export CFLAGS+=-isystem$(SYSROOT)/usr/include -isystem$(SYSROOT)/opt/vc/include -isystem$(SDKSTAGE)/opt/vc/include/interface/vcos/pthreads -isystem$(PREFIX)/include -isystem$(PREFIX)/usr/include/mysql --sysroot=$(SYSROOT)
+	export CFLAGS+=-isystem$(SYSROOT)/usr/include -isystem$(SYSROOT)/opt/vc/include -isystem$(SDKSTAGE)/opt/vc/include/interface/vcos/pthreads -isystem$(PREFIX)/include -isystem$(PREFIX)/usr/include/mysql --sysroot=$(SYSROOT) -isystem$(SDKSTAGE)/opt/vc/include/interface/vmcs_host/linux/
 	export CXXFLAGS=$(CFLAGS) --sysroot=$(SYSROOT)
 	export CPPFLAGS=$(CFLAGS) --sysroot=$(SYSROOT)
 	export LDFLAGS=-L$(SYSROOT)/opt/vc/lib -L$(XBMCPREFIX)/lib
@@ -19,7 +19,7 @@ ifeq ($(USE_BUILDROOT),1)
 	export PKG_CONFIG_PATH=$(PREFIX)/lib/pkgconfig
 	export PYTHON_VERSION=2.7
 	export PATH:=$(PREFIX)/bin:$(BUILDROOT)/output/host/usr/bin:$(PATH)
-	export TEXTUREPACKER_NATIVE_ROOT=/usr
+	export NATIVE_ROOT=/usr
 	export PYTHON_LDFLAGS=-L$(SDKSTAGE)/usr/lib -lpython$(PYTHON_VERSION) -lpthread -ldl -lutil -lm
 else
 	export CFLAGS=-pipe -O3 -mcpu=arm1176jzf-s -mtune=arm1176jzf-s -mfloat-abi=softfp -mfpu=vfp -mabi=aapcs-linux -Wno-psabi -Wa,-mno-warn-deprecated -Wno-deprecated-declarations
@@ -29,7 +29,7 @@ else
 	export TARGETFS
 	export SYSROOT=/usr/local/bcm-gcc/arm-bcm2708-linux-gnueabi/sys-root
 	export RLINK_PATH=-Wl,-rpath-link,${SYSROOT}/lib -Wl,-rpath-link,${TARGETFS}/lib -Wl,-rpath-link,${TARGETFS}/usr/lib -Wl,-rpath-link,${TARGETFS}/opt/vc/
-	export CFLAGS+=-isystem${XBMCPREFIX}/include -isystem${SDKSTAGE}/usr/include -isystem${SDKSTAGE}/opt/vc/include -isystem$(SDKSTAGE)/opt/vc/include/interface/vcos/pthreads -isystem${SDKSTAGE}/opt/vc 
+	export CFLAGS+=-isystem${XBMCPREFIX}/include -isystem${SDKSTAGE}/usr/include -isystem${SDKSTAGE}/opt/vc/include -isystem$(SDKSTAGE)/opt/vc/include/interface/vcos/pthreads -isystem${SDKSTAGE}/opt/vc -isystem$(SDKSTAGE)/opt/vc/include/interface/vmcs_host/linux/
 	export CFLAGS+=-L${XBMCPREFIX}/lib -L${SYSROOT}/lib -L${TARGETFS}/lib -L${TARGETFS}/usr/lib -L${TARGETFS}/opt/vc/lib ${RLINK_PATH}
 	export CXXFLAGS=${CFLAGS}
 	export CPPFLAGS=${CFLAGS}
@@ -47,7 +47,7 @@ else
 	export PKG_CONFIG_PATH=$(PREFIX)/bin/pkg-config
 	export PYTHON_VERSION=2.6
 	export PATH:=${PREFIX}/bin:$(PATH):${TOOLCHAIN}/bin
-	export TEXTUREPACKER_NATIVE_ROOT=/usr
+	export NATIVE_ROOT=/usr
 	export PYTHON_LDFLAGS=-L$(SDKSTAGE)/usr/lib -lpython$(PYTHON_VERSION)
 endif
 export PYTHON_CPPFLAGS=-I$(SDKSTAGE)/usr/include/python$(PYTHON_VERSION)

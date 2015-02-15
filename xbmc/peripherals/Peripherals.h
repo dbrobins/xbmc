@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -22,8 +22,10 @@
 #include "system.h"
 #include "bus/PeripheralBus.h"
 #include "devices/Peripheral.h"
+#include "settings/lib/ISettingCallback.h"
 #include "threads/CriticalSection.h"
 #include "threads/Thread.h"
+#include "utils/Observer.h"
 
 class CFileItemList;
 class CSetting;
@@ -36,7 +38,8 @@ namespace PERIPHERALS
 {
   #define g_peripherals CPeripherals::Get()
 
-  class CPeripherals
+  class CPeripherals :  public ISettingCallback,
+                        public Observable
   {
   public:
     static CPeripherals &Get(void);
@@ -58,7 +61,7 @@ namespace PERIPHERALS
      * @param busType The bus to query. Default (PERIPHERAL_BUS_UNKNOWN) searches all busses.
      * @return The peripheral or NULL if it wasn't found.
      */
-    virtual CPeripheral *GetPeripheralAtLocation(const CStdString &strLocation, PeripheralBusType busType = PERIPHERAL_BUS_UNKNOWN) const;
+    virtual CPeripheral *GetPeripheralAtLocation(const std::string &strLocation, PeripheralBusType busType = PERIPHERAL_BUS_UNKNOWN) const;
 
     /*!
      * @brief Check whether a peripheral is present at the given location.
@@ -66,14 +69,14 @@ namespace PERIPHERALS
      * @param busType The bus to query. Default (PERIPHERAL_BUS_UNKNOWN) searches all busses.
      * @return True when a peripheral was found, false otherwise.
      */
-    virtual bool HasPeripheralAtLocation(const CStdString &strLocation, PeripheralBusType busType = PERIPHERAL_BUS_UNKNOWN) const;
+    virtual bool HasPeripheralAtLocation(const std::string &strLocation, PeripheralBusType busType = PERIPHERAL_BUS_UNKNOWN) const;
 
     /*!
      * @brief Get the bus that holds the device with the given location.
      * @param strLocation The location.
      * @return The bus or NULL if no device was found.
      */
-    virtual CPeripheralBus *GetBusWithDevice(const CStdString &strLocation) const;
+    virtual CPeripheralBus *GetBusWithDevice(const std::string &strLocation) const;
 
     /*!
      * @brief Get all peripheral instances that have the given feature.
@@ -111,11 +114,10 @@ namespace PERIPHERALS
     /*!
      * @brief Creates a new instance of a peripheral.
      * @param bus The bus on which this peripheral is present.
-     * @param type The type of the new peripheral.
-     * @param strLocation The location on the bus.
+     * @param result The scan result from the device scanning code.
      * @return The new peripheral or NULL if it could not be created.
      */
-    CPeripheral *CreatePeripheral(CPeripheralBus &bus, const PeripheralType type, const CStdString &strLocation, int iVendorId = 0, int iProductId = 0);
+    CPeripheral *CreatePeripheral(CPeripheralBus &bus, const PeripheralScanResult& result);
 
     /*!
      * @brief Add the settings that are defined in the mappings file to the peripheral (if there is anything defined).
@@ -140,14 +142,14 @@ namespace PERIPHERALS
      * @param strPath The path to the directory to get the items from.
      * @param items The item list.
      */
-    virtual void GetDirectory(const CStdString &strPath, CFileItemList &items) const;
+    virtual void GetDirectory(const std::string &strPath, CFileItemList &items) const;
 
     /*!
      * @brief Get the instance of a peripheral given it's path.
      * @param strPath The path to the peripheral.
      * @return The peripheral or NULL if it wasn't found.
      */
-    virtual CPeripheral *GetByPath(const CStdString &strPath) const;
+    virtual CPeripheral *GetByPath(const std::string &strPath) const;
 
     /*!
      * @brief Try to let one of the peripherals handle an action.
@@ -167,6 +169,14 @@ namespace PERIPHERALS
      * @return True when this change was handled by a peripheral (and should not be handled by anything else), false otherwise.
      */
     virtual bool ToggleMute(void);
+
+    /*!
+     * @brief Try to toggle the playing device state via a peripheral.
+     * @param mode Whether to activate, put on standby or toggle the source.
+     * @param iPeripheral Optional CPeripheralCecAdapter pointer to a specific device, instead of iterating through all of them.
+     * @return True when the playing device has been switched on, false otherwise.
+     */
+    virtual bool ToggleDeviceState(const CecStateChange mode = STATE_SWITCH_TOGGLE, const unsigned int iPeripheral = 0);
 
     /*!
      * @brief Try to mute the audio via a peripheral.
@@ -196,12 +206,15 @@ namespace PERIPHERALS
       return false;
 #endif
     }
+    
+    virtual void OnSettingChanged(const CSetting *setting);
+    virtual void OnSettingAction(const CSetting *setting);
 
   private:
     CPeripherals(void);
     bool LoadMappings(void);
-    int GetMappingForDevice(const CPeripheralBus &bus, const PeripheralType classType, int iVendorId, int iProductId) const;
-    static void GetSettingsFromMappingsFile(TiXmlElement *xmlNode, std::map<CStdString, CSetting *> &m_settings);
+    bool GetMappingForDevice(const CPeripheralBus &bus, PeripheralScanResult& result) const;
+    static void GetSettingsFromMappingsFile(TiXmlElement *xmlNode, std::map<std::string, PeripheralDeviceSetting> &m_settings);
 
     bool                                 m_bInitialised;
     bool                                 m_bIsStarted;

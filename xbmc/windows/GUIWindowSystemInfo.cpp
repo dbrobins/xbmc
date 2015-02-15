@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,11 +22,13 @@
 #include "GUIWindowSystemInfo.h"
 #include "GUIInfoManager.h"
 #include "guilib/GUIWindowManager.h"
-#include "guilib/Key.h"
+#include "guilib/WindowIDs.h"
 #include "guilib/LocalizeStrings.h"
+#include "pvr/PVRManager.h"
 #ifdef HAS_SYSINFO
 #include "utils/SystemInfo.h"
 #endif
+#include "utils/StringUtils.h"
 #include "storage/MediaManager.h"
 
 #define CONTROL_BT_STORAGE  94
@@ -55,9 +57,10 @@ bool CGUIWindowSystemInfo::OnMessage(CGUIMessage& message)
   case GUI_MSG_WINDOW_INIT:
     {
       CGUIWindow::OnMessage(message);
-      ResetLabels();
-      SET_CONTROL_LABEL(52, "XBMC " + g_infoManager.GetLabel(SYSTEM_BUILD_VERSION) +
-                            " (Compiled: " + g_infoManager.GetLabel(SYSTEM_BUILD_DATE)+")");
+      SET_CONTROL_LABEL(52, CSysInfo::GetAppName() + " " + g_infoManager.GetLabel(SYSTEM_BUILD_VERSION).c_str() +
+                            " (Compiled: " + g_infoManager.GetLabel(SYSTEM_BUILD_DATE).c_str() +")");
+      CONTROL_ENABLE_ON_CONDITION(CONTROL_BT_PVR,
+                                  PVR::CPVRManager::Get().IsStarted());
       return true;
     }
     break;
@@ -65,7 +68,6 @@ bool CGUIWindowSystemInfo::OnMessage(CGUIMessage& message)
     {
       CGUIWindow::OnMessage(message);
       m_diskUsage.clear();
-      ResetLabels();
       return true;
     }
     break;
@@ -73,8 +75,11 @@ bool CGUIWindowSystemInfo::OnMessage(CGUIMessage& message)
     {
       CGUIWindow::OnMessage(message);
       int focusedControl = GetFocusedControlID();
-      if (focusedControl >= CONTROL_START && focusedControl <= CONTROL_END)
+      if (m_section != focusedControl && focusedControl >= CONTROL_START && focusedControl <= CONTROL_END)
+      {
+        ResetLabels();
         m_section = focusedControl;
+      }
       return true;
     }
     break;
@@ -84,7 +89,6 @@ bool CGUIWindowSystemInfo::OnMessage(CGUIMessage& message)
 
 void CGUIWindowSystemInfo::FrameMove()
 {
-  ResetLabels();
   int i = 2;
   if (m_section == CONTROL_BT_DEFAULT)
   {
@@ -93,7 +97,7 @@ void CGUIWindowSystemInfo::FrameMove()
     SetControlLabel(i++, "%s: %s", 150, NETWORK_IP_ADDRESS);
     SetControlLabel(i++, "%s %s", 13287, SYSTEM_SCREEN_RESOLUTION);
 #ifdef HAS_SYSINFO
-    SetControlLabel(i++, "%s %s", 13283, SYSTEM_KERNEL_VERSION);
+    SetControlLabel(i++, "%s %s", 13283, SYSTEM_OS_VERSION_INFO);
 #endif
     SetControlLabel(i++, "%s: %s", 12390, SYSTEM_UPTIME);
     SetControlLabel(i++, "%s: %s", 12394, SYSTEM_TOTALUPTIME);
@@ -138,7 +142,9 @@ void CGUIWindowSystemInfo::FrameMove()
     SetControlLabel(i++, "%s %s", 22023, SYSTEM_RENDER_VENDOR);
     SetControlLabel(i++, "%s %s", 22024, SYSTEM_RENDER_VERSION);
 #endif
+#ifndef __arm__
     SetControlLabel(i++, "%s %s", 22010, SYSTEM_GPU_TEMPERATURE);
+#endif
   }
   else if (m_section == CONTROL_BT_HARDWARE)
   {
@@ -152,7 +158,7 @@ void CGUIWindowSystemInfo::FrameMove()
     SET_CONTROL_LABEL(i++, g_sysinfo.GetCPUSerial());
 #endif
     SetControlLabel(i++, "%s %s", 22011, SYSTEM_CPU_TEMPERATURE);
-#if !defined(__arm__)
+#if !defined(__arm__) || defined(TARGET_RASPBERRY_PI)
     SetControlLabel(i++, "%s %s", 13284, SYSTEM_CPUFREQUENCY);
 #endif
 #endif
@@ -192,7 +198,6 @@ void CGUIWindowSystemInfo::ResetLabels()
 
 void CGUIWindowSystemInfo::SetControlLabel(int id, const char *format, int label, int info)
 {
-  CStdString tmpStr;
-  tmpStr.Format(format, g_localizeStrings.Get(label).c_str(), g_infoManager.GetLabel(info).c_str());
+  std::string tmpStr = StringUtils::Format(format, g_localizeStrings.Get(label).c_str(), g_infoManager.GetLabel(info).c_str());
   SET_CONTROL_LABEL(id, tmpStr);
 }

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
  *
  */
 
+#include "system.h"
 #include "GUIListItemLayout.h"
 #include "FileItem.h"
 #include "GUIControlFactory.h"
@@ -33,7 +34,6 @@ CGUIListItemLayout::CGUIListItemLayout()
 {
   m_width = 0;
   m_height = 0;
-  m_condition = 0;
   m_focused = false;
   m_invalidated = true;
   m_group.SetPushUpdates(true);
@@ -107,16 +107,22 @@ unsigned int CGUIListItemLayout::GetFocusedItem() const
 
 void CGUIListItemLayout::SetWidth(float width)
 {
-  m_group.EnlargeWidth(width - m_width);
-  m_width = width;
-  SetInvalid();
+  if (m_width != width)
+  {
+    m_group.EnlargeWidth(width - m_width);
+    m_width = width;
+    SetInvalid();
+  }
 }
 
 void CGUIListItemLayout::SetHeight(float height)
 {
-  m_group.EnlargeHeight(height - m_height);
-  m_height = height;
-  SetInvalid();
+  if (m_height != height)
+  {
+    m_group.EnlargeHeight(height - m_height);
+    m_height = height;
+    SetInvalid();
+  }
 }
 
 void CGUIListItemLayout::SelectItemFromPoint(const CPoint &point)
@@ -136,7 +142,7 @@ bool CGUIListItemLayout::MoveRight()
 
 bool CGUIListItemLayout::CheckCondition()
 {
-  return !m_condition || g_infoManager.GetBoolValue(m_condition);
+  return !m_condition || m_condition->Get();
 }
 
 void CGUIListItemLayout::LoadControl(TiXmlElement *child, CGUIControlGroup *group)
@@ -185,8 +191,8 @@ void CGUIListItemLayout::LoadLayout(TiXmlElement *layout, int context, bool focu
   m_height = std::max(1.0f, m_height);
 }
 
-//#ifdef PRE_SKIN_VERSION_9_10_COMPATIBILITY
-void CGUIListItemLayout::CreateListControlLayouts(float width, float height, bool focused, const CLabelInfo &labelInfo, const CLabelInfo &labelInfo2, const CTextureInfo &texture, const CTextureInfo &textureFocus, float texHeight, float iconWidth, float iconHeight, const CStdString &nofocusCondition, const CStdString &focusCondition)
+//#ifdef GUILIB_PYTHON_COMPATIBILITY
+void CGUIListItemLayout::CreateListControlLayouts(float width, float height, bool focused, const CLabelInfo &labelInfo, const CLabelInfo &labelInfo2, const CTextureInfo &texture, const CTextureInfo &textureFocus, float texHeight, float iconWidth, float iconHeight, const std::string &nofocusCondition, const std::string &focusCondition)
 {
   m_width = width;
   m_height = height;
@@ -206,10 +212,10 @@ void CGUIListItemLayout::CreateListControlLayouts(float width, float height, boo
   image->SetAspectRatio(CAspectRatio::AR_KEEP);
   m_group.AddControl(image);
   float x = iconWidth + labelInfo.offsetX + 10;
-  CGUIListLabel *label = new CGUIListLabel(0, 0, x, labelInfo.offsetY, width - x - 18, height, labelInfo, CGUIInfoLabel("$INFO[ListItem.Label]", "", m_group.GetParentID()), false);
+  CGUIListLabel *label = new CGUIListLabel(0, 0, x, labelInfo.offsetY, width - x - 18, height, labelInfo, CGUIInfoLabel("$INFO[ListItem.Label]", "", m_group.GetParentID()), CGUIControl::FOCUS);
   m_group.AddControl(label);
   x = labelInfo2.offsetX ? labelInfo2.offsetX : m_width - 16;
-  label = new CGUIListLabel(0, 0, x, labelInfo2.offsetY, x - iconWidth - 20, height, labelInfo2, CGUIInfoLabel("$INFO[ListItem.Label2]", "", m_group.GetParentID()), false);
+  label = new CGUIListLabel(0, 0, x, labelInfo2.offsetY, x - iconWidth - 20, height, labelInfo2, CGUIInfoLabel("$INFO[ListItem.Label2]", "", m_group.GetParentID()), CGUIControl::FOCUS);
   m_group.AddControl(label);
 }
 //#endif

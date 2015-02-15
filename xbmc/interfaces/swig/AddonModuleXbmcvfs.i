@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -36,41 +35,8 @@ using namespace xbmcvfs;
 
 %}
 
-// TODO: replace this with a correct API
-%feature("python:method:read") File
-{
-    TRACE;
-    static const char *keywords[] = {
-      "bytes",
-      NULL};
-
-    unsigned long readBytes = 0;
-    if (!PyArg_ParseTupleAndKeywords(args,kwds,(char*)"|k",
-         (char**)keywords,
-           &readBytes
-         ))
-    {
-      return NULL;
-    }
-
-    XBMCAddon::xbmcvfs::File* file = ((XBMCAddon::xbmcvfs::File*)retrieveApiInstance((PyObject*)self,&PyXBMCAddon_xbmcvfs_File_Type,"read","XBMCAddon::xbmcvfs::File"));
-
-    XFILE::CFile* cfile = (XFILE::CFile*)file->getFile();
-    int64_t size = cfile->GetLength();
-    if (!readBytes || (((int64_t)readBytes) > size))
-      readBytes = (unsigned long) size;
-    char* buffer = new char[readBytes + 1];
-    PyObject* ret = NULL;
-    if (buffer)
-    {
-      unsigned long bytesRead = file->read(  buffer,  readBytes  );
-      buffer[std::min(bytesRead, readBytes)] = 0;
-      ret = Py_BuildValue((char*)"s#", buffer,bytesRead);
-      delete[] buffer;
-    }
-    return ret;
-}
-
+%include "interfaces/legacy/swighelper.h"
+%include "interfaces/legacy/AddonString.h"
 %include "interfaces/legacy/File.h"
 
 %rename ("st_atime") XBMCAddon::xbmcvfs::Stat::atime;

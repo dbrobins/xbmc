@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,9 @@
 #include "utils/TimeUtils.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "guilib/GraphicContext.h"
+#include "guilib/Key.h"
 #include "guilib/LocalizeStrings.h"
+#include "utils/StringUtils.h"
 
 using namespace EVENTCLIENT;
 using namespace EVENTPACKET;
@@ -87,7 +89,7 @@ void CEventButtonState::Load()
         m_iKeyCode = CButtonTranslator::TranslateUniversalRemoteString( m_buttonName.c_str() );
       }
       else if ( (m_mapName.length() > 3) &&
-                (m_mapName.compare(0, 3, "LI:") == 0) ) // starts with LI: ?
+                (StringUtils::StartsWith(m_mapName, "LI:")) ) // starts with LI: ?
       {
 #if defined(HAS_LIRC) || defined(HAS_IRSERVERSUITE)
         string lircDevice = m_mapName.substr(3);
@@ -108,7 +110,7 @@ void CEventButtonState::Load()
   else
   {
     if (m_mapName.length() > 3 &&
-        (m_mapName.compare(0, 2, "JS") == 0) )
+        (StringUtils::StartsWith(m_mapName, "JS")) )
     {
       m_joystickName = m_mapName.substr(2);  // <num>:joyname
       m_iControllerNumber = (unsigned char)(*(m_joystickName.c_str()))
@@ -185,7 +187,7 @@ bool CEventClient::AddPacket(CEventPacket *packet)
 
 void CEventClient::ProcessEvents()
 {
-  if (m_readyPackets.size() > 0)
+  if (!m_readyPackets.empty())
   {
     while ( ! m_readyPackets.empty() )
     {
@@ -202,7 +204,7 @@ void CEventClient::ProcessEvents()
 bool CEventClient::GetNextAction(CEventAction &action)
 {
   CSingleLock lock(m_critSection);
-  if (m_actionQueue.size() > 0)
+  if (!m_actionQueue.empty())
   {
     // grab the next action in line
     action = m_actionQueue.front();
@@ -320,12 +322,7 @@ bool CEventClient::OnPacketHELO(CEventPacket *packet)
       break;
     }
     XFILE::CFile file;
-    if (file.OpenForWrite(iconfile, true))
-    {
-      file.Write((const void *)payload, psize);
-      file.Close();
-    }
-    else
+    if (!file.OpenForWrite(iconfile, true) || file.Write((const void *)payload, psize) != psize)
     {
       CLog::Log(LOGERROR, "ES: Could not write icon file");
       m_eLogoType = LT_NONE;
@@ -392,11 +389,13 @@ bool CEventClient::OnPacketBUTTON(CEventPacket *packet)
       return false;
   }
 
-  unsigned short keycode;
+  unsigned int keycode;
   if(flags & PTB_USE_NAME)
     keycode = 0;
   else if(flags & PTB_VKEY)
     keycode = bcode|KEY_VKEY;
+  else if(flags & PTB_UNICODE)
+    keycode = bcode|ES_FLAG_UNICODE;
   else
     keycode = bcode;
 
@@ -592,12 +591,7 @@ bool CEventClient::OnPacketNOTIFICATION(CEventPacket *packet)
     }
 
     XFILE::CFile file;
-    if (file.OpenForWrite(iconfile, true))
-    {
-      file.Write((const void *)payload, psize);
-      file.Close();
-    }
-    else
+    if (!file.OpenForWrite(iconfile, true) || file.Write((const void *)payload, psize) != psize)
     {
       CLog::Log(LOGERROR, "ES: Could not write icon file");
       m_eLogoType = LT_NONE;
@@ -728,15 +722,15 @@ void CEventClient::FreePacketQueues()
     {
       delete iter->second;
     }
-    iter++;
+    ++iter;
   }
   m_seqPackets.clear();
 }
 
-unsigned short CEventClient::GetButtonCode(string& joystickName, bool& isAxis, float& amount)
+unsigned int CEventClient::GetButtonCode(string& joystickName, bool& isAxis, float& amount)
 {
   CSingleLock lock(m_critSection);
-  unsigned short bcode = 0;
+  unsigned int bcode = 0;
 
   if ( m_currentButton.Active() )
   {
@@ -761,7 +755,7 @@ unsigned short CEventClient::GetButtonCode(string& joystickName, bool& isAxis, f
 
   list<CEventButtonState> repeat;
   list<CEventButtonState>::iterator it;
-  for(it = m_buttonQueue.begin(); bcode == 0 && it != m_buttonQueue.end(); it++)
+  for(it = m_buttonQueue.begin(); bcode == 0 && it != m_buttonQueue.end(); ++it)
   {
     bcode        = it->KeyCode();
     joystickName = it->JoystickName();
@@ -792,12 +786,8 @@ bool CEventClient::GetMousePos(float& x, float& y)
   CSingleLock lock(m_critSection);
   if (m_bMouseMoved)
   {
-    x = (float)((m_iMouseX / 65535.0f) *
-                (g_graphicsContext.GetViewWindow().x2
-                 -g_graphicsContext.GetViewWindow().x1));
-    y = (float)((m_iMouseY / 65535.0f) *
-                (g_graphicsContext.GetViewWindow().y2
-                 -g_graphicsContext.GetViewWindow().y1));
+    x = (float)((m_iMouseX / 65535.0f) * g_graphicsContext.GetWidth());
+    y = (float)((m_iMouseY / 65535.0f) * g_graphicsContext.GetHeight());
     m_bMouseMoved = false;
     return true;
   }

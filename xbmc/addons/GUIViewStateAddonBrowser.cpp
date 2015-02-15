@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,22 +20,32 @@
 
 #include "GUIViewStateAddonBrowser.h"
 #include "FileItem.h"
-#include "guilib/Key.h"
-#include "ViewState.h"
-#include "settings/Settings.h"
+#include "filesystem/File.h"
+#include "guilib/GraphicContext.h"
+#include "guilib/WindowIDs.h"
+#include "view/ViewState.h"
 #include "addons/Addon.h"
 #include "addons/AddonManager.h"
+#include "addons/AddonInstaller.h"
 #include "AddonDatabase.h"
+#include "utils/StringUtils.h"
 
 using namespace XFILE;
 using namespace ADDON;
 
 CGUIViewStateAddonBrowser::CGUIViewStateAddonBrowser(const CFileItemList& items) : CGUIViewState(items)
 {
-  AddSortMethod(SORT_METHOD_LABEL_IGNORE_FOLDERS, 551, LABEL_MASKS("%L", "%I", "%L", ""));  // Filename, Size | Foldername, empty
-  AddSortMethod(SORT_METHOD_DATE, 552, LABEL_MASKS("%L", "%J", "%L", "%J"));  // Filename, Date | Foldername, Date
-  SetSortMethod(SORT_METHOD_LABEL_IGNORE_FOLDERS);
-
+  if (items.IsVirtualDirectoryRoot())
+  {
+    AddSortMethod(SortByNone, 551, LABEL_MASKS("%F", "", "%L", ""));
+    SetSortMethod(SortByNone);
+  }
+  else
+  {
+    AddSortMethod(SortByLabel, SortAttributeIgnoreFolders, 551, LABEL_MASKS("%L", "%I", "%L", ""));  // Filename, Size | Foldername, empty
+    AddSortMethod(SortByDate, 552, LABEL_MASKS("%L", "%J", "%L", "%J"));  // Filename, Date | Foldername, Date
+    SetSortMethod(SortByLabel);
+  }
   SetViewAsControl(DEFAULT_VIEW_AUTO);
 
   SetSortOrder(SortOrderAscending);
@@ -47,7 +57,7 @@ void CGUIViewStateAddonBrowser::SaveViewState()
   SaveViewToDb(m_items.GetPath(), WINDOW_ADDON_BROWSER);
 }
 
-CStdString CGUIViewStateAddonBrowser::GetExtensions()
+std::string CGUIViewStateAddonBrowser::GetExtensions()
 {
   return "";
 }
@@ -56,12 +66,23 @@ VECSOURCES& CGUIViewStateAddonBrowser::GetSources()
 {
   m_sources.clear();
 
-  // we always have some enabled addons
+  { // check for updates
+    CMediaSource share;
+    share.strPath = "addons://check/";
+    share.m_iDriveType = CMediaSource::SOURCE_TYPE_REMOTE; // hack for sorting
+    share.strName = g_localizeStrings.Get(24055); // "Check for updates"
+    CDateTime lastChecked = CAddonInstaller::Get().LastRepoUpdate();
+    if (lastChecked.IsValid())
+      share.strStatus = StringUtils::Format(g_localizeStrings.Get(24056).c_str(),
+                                            lastChecked.GetAsLocalizedDateTime(false, false).c_str());
+    m_sources.push_back(share);
+  }
+  if (CAddonMgr::Get().HasOutdatedAddons())
   {
     CMediaSource share;
-    share.strPath = "addons://enabled/";
+    share.strPath = "addons://outdated/";
     share.m_iDriveType = CMediaSource::SOURCE_TYPE_LOCAL;
-    share.strName = g_localizeStrings.Get(24062);
+    share.strName = g_localizeStrings.Get(24043); // "Available updates"
     m_sources.push_back(share);
   }
   CAddonDatabase db;
@@ -73,12 +94,12 @@ VECSOURCES& CGUIViewStateAddonBrowser::GetSources()
     share.strName = g_localizeStrings.Get(24039);
     m_sources.push_back(share);
   }
-  if (CAddonMgr::Get().HasOutdatedAddons())
+  // we always have some enabled addons
   {
     CMediaSource share;
-    share.strPath = "addons://outdated/";
+    share.strPath = "addons://enabled/";
     share.m_iDriveType = CMediaSource::SOURCE_TYPE_LOCAL;
-    share.strName = g_localizeStrings.Get(24043);
+    share.strName = g_localizeStrings.Get(24062);
     m_sources.push_back(share);
   }
   if (CAddonMgr::Get().HasAddons(ADDON_REPOSITORY,true))

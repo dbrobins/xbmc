@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
  *
  */
 
-#include "utils/StdString.h"
+#include <string>
 
 class CScreenshotSurface
 {
@@ -31,6 +31,7 @@ public:
   unsigned char* m_buffer;
 
   CScreenshotSurface(void);
+  ~CScreenshotSurface();
   bool capture( void );
 };
 
@@ -39,5 +40,5 @@ class CScreenShot
 
 public:
   static void TakeScreenshot();
-  static void TakeScreenshot(const CStdString &filename, bool sync);
+  static void TakeScreenshot(const std::string &filename, bool sync);
 };

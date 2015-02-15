@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2011-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2011-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,45 +22,15 @@
 #include "system.h"
 #include "URL.h"
 #include "FileItem.h"
-#include "DllHDHomeRun.h"
 #include "HDHomeRunFile.h"
 #include "utils/TimeUtils.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
 #include "Util.h"
+#include "DllHDHomeRun.h"
 
 using namespace XFILE;
 using namespace std;
-
-class CUrlOptions
-  : public map<CStdString, CStdString>
-{
-public:
-  CUrlOptions(const CStdString& data)
-  {
-    vector<CStdString> options;
-    CUtil::Tokenize(data, options, "&");
-    for(vector<CStdString>::iterator it = options.begin();it != options.end(); it++)
-    {
-      CStdString name, value;
-      size_t pos = it->find_first_of('=');
-      if(pos != CStdString::npos)
-      {
-        name = it->substr(0, pos);
-        value = it->substr(pos+1);
-      }
-      else
-      {
-        name = *it;
-        value = "";
-      }
-
-      CURL::Decode(name);
-      CURL::Decode(value);
-      insert(value_type(name, value));
-    }
-  }
-};
 
 // -------------------------------------------
 // ------------------ File -------------------
@@ -80,18 +50,15 @@ CHomeRunFile::~CHomeRunFile()
 
 bool CHomeRunFile::Exists(const CURL& url)
 {
-  CStdString path(url.GetFileName());
+  std::string path(url.GetFileName());
 
   /*
    * HDHomeRun URLs are of the form hdhomerun://1014F6D1/tuner0?channel=qam:108&program=10
    * The filename starts with "tuner" and has no extension. This check will cover off requests
    * for *.tbn, *.jpg, *.jpeg, *.edl etc. that do not exist.
    */
-  if(path.Left(5) == "tuner"
-  && URIUtils::GetExtension(path).IsEmpty())
-    return true;
-
-  return false;
+  return StringUtils::StartsWith(path, "tuner") &&
+        !URIUtils::HasExtension(path);
 }
 
 int64_t CHomeRunFile::Seek(int64_t iFilePosition, int iWhence)
@@ -126,14 +93,11 @@ bool CHomeRunFile::Open(const CURL &url)
 
   m_pdll->device_set_tuner_from_str(m_device, url.GetFileName().c_str());
 
-  CUrlOptions options(url.GetOptions().Mid(1));
-  CUrlOptions::iterator it;
+  if(url.HasOption("channel"))
+    m_pdll->device_set_tuner_channel(m_device, url.GetOption("channel").c_str());
 
-  if( (it = options.find("channel")) != options.end() )
-    m_pdll->device_set_tuner_channel(m_device, it->second.c_str());
-
-  if( (it = options.find("program")) != options.end() )
-    m_pdll->device_set_tuner_program(m_device, it->second.c_str());
+  if(url.HasOption("program"))
+    m_pdll->device_set_tuner_program(m_device, url.GetOption("program").c_str());
 
   // start streaming from selected device and tuner
   if( m_pdll->device_stream_start(m_device) <= 0 )
@@ -142,8 +106,11 @@ bool CHomeRunFile::Open(const CURL &url)
   return true;
 }
 
-unsigned int CHomeRunFile::Read(void* lpBuf, int64_t uiBufSize)
+ssize_t CHomeRunFile::Read(void* lpBuf, size_t uiBufSize)
 {
+  if (uiBufSize > SSIZE_MAX)
+    uiBufSize = SSIZE_MAX;
+
   size_t datasize;
 
   if(uiBufSize < VIDEO_DATA_PACKET_SIZE)
@@ -161,7 +128,7 @@ unsigned int CHomeRunFile::Read(void* lpBuf, int64_t uiBufSize)
     if(ptr)
     {
       memcpy(lpBuf, ptr, datasize);
-      return (unsigned int)datasize;
+      return datasize;
     }
 
     if(timestamp.IsTimePast())
@@ -169,7 +136,7 @@ unsigned int CHomeRunFile::Read(void* lpBuf, int64_t uiBufSize)
 
     Sleep(64);
   }
-  return (unsigned int)datasize;
+  return datasize;
 }
 
 void CHomeRunFile::Close()

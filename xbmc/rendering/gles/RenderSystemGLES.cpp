@@ -1,22 +1,22 @@
 /*
-*      Copyright (C) 2005-2012 Team XBMC
-*      http://www.xbmc.org
-*
-*  This Program is free software; you can redistribute it and/or modify
-*  it under the terms of the GNU General Public License as published by
-*  the Free Software Foundation; either version 2, or (at your option)
-*  any later version.
-*
-*  This Program is distributed in the hope that it will be useful,
-*  but WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-*  GNU General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with XBMC; see the file COPYING.  If not, see
-*  <http://www.gnu.org/licenses/>.
-*
-*/
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 
 
 #include "system.h"
@@ -27,6 +27,7 @@
 #include "settings/AdvancedSettings.h"
 #include "RenderSystemGLES.h"
 #include "guilib/MatrixGLES.h"
+#include "windowing/WindowingFactory.h"
 #include "utils/log.h"
 #include "utils/GLUtils.h"
 #include "utils/TimeUtils.h"
@@ -41,7 +42,10 @@ static const char* ShaderNames[SM_ESHADERCOUNT] =
      "guishader_frag_texture_noblend.glsl",
      "guishader_frag_multi_blendcolor.glsl",
      "guishader_frag_rgba.glsl",
-     "guishader_frag_rgba_blendcolor.glsl"
+     "guishader_frag_rgba_oes.glsl",
+     "guishader_frag_rgba_blendcolor.glsl",
+     "guishader_frag_rgba_bob.glsl",
+     "guishader_frag_rgba_bob_oes.glsl"
     };
 
 CRenderSystemGLES::CRenderSystemGLES()
@@ -135,18 +139,19 @@ bool CRenderSystemGLES::ResetRenderSystem(int width, int height, bool fullScreen
 
   glEnable(GL_SCISSOR_TEST); 
 
-  g_matrices.MatrixMode(MM_PROJECTION);
-  g_matrices.LoadIdentity();
+  glMatrixProject.Clear();
+  glMatrixModview->LoadIdentity();
+  glMatrixProject->Ortho(0.0f, width-1, height-1, 0.0f, -1.0f, 1.0f);
+  glMatrixProject.Load();
 
-#ifdef TARGET_RASPBERRY_PI
-  g_matrices.Ortho(0.0f, width-1, height-1, 0.0f, +1.0f, 1.0f);
-#else
-  g_matrices.Ortho(0.0f, width-1, height-1, 0.0f, -1.0f, 1.0f);
-#endif
+  glMatrixModview.Clear();
+  glMatrixModview->LoadIdentity();
+  glMatrixModview.Load();
 
-  g_matrices.MatrixMode(MM_MODELVIEW);
-  g_matrices.LoadIdentity();
-  
+  glMatrixTexture.Clear();
+  glMatrixTexture->LoadIdentity();
+  glMatrixTexture.Load();
+
   glBlendFunc(GL_SRC_ALPHA, GL_ONE);
   glEnable(GL_BLEND);          // Turn Blending On
   glDisable(GL_DEPTH_TEST);  
@@ -172,6 +177,15 @@ bool CRenderSystemGLES::DestroyRenderSystem()
     delete[] m_pGUIshader;
     m_pGUIshader = NULL;
   }
+
+  ResetScissors();
+  CDirtyRegionList dirtyRegions;
+  CDirtyRegion dirtyWindow(g_graphicsContext.GetViewWindow());
+  dirtyRegions.push_back(dirtyWindow);
+
+  ClearBuffers(0);
+  glFinish();
+  PresentRenderImpl(dirtyRegions);
 
   m_bRenderCreated = false;
 
@@ -231,7 +245,7 @@ bool CRenderSystemGLES::IsExtSupported(const char* extension)
   }
   else
   {
-    CStdString name;
+    std::string name;
     name  = " ";
     name += extension;
     name += " ";
@@ -350,12 +364,10 @@ void CRenderSystemGLES::CaptureStateBlock()
   if (!m_bRenderCreated)
     return;
 
-  g_matrices.MatrixMode(MM_PROJECTION);
-  g_matrices.PushMatrix();
-  g_matrices.MatrixMode(MM_TEXTURE);
-  g_matrices.PushMatrix();
-  g_matrices.MatrixMode(MM_MODELVIEW);
-  g_matrices.PushMatrix();
+  glMatrixProject.Push();
+  glMatrixModview.Push();
+  glMatrixTexture.Push();
+
   glDisable(GL_SCISSOR_TEST); // fixes FBO corruption on Macs
   glActiveTexture(GL_TEXTURE0);
 //TODO - NOTE: Only for Screensavers & Visualisations
@@ -367,12 +379,9 @@ void CRenderSystemGLES::ApplyStateBlock()
   if (!m_bRenderCreated)
     return;
 
-  g_matrices.MatrixMode(MM_PROJECTION);
-  g_matrices.PopMatrix();
-  g_matrices.MatrixMode(MM_TEXTURE);
-  g_matrices.PopMatrix();
-  g_matrices.MatrixMode(MM_MODELVIEW);
-  g_matrices.PopMatrix();
+  glMatrixProject.PopLoad();
+  glMatrixModview.PopLoad();
+  glMatrixTexture.PopLoad();
   glActiveTexture(GL_TEXTURE0);
   glEnable(GL_BLEND);
   glEnable(GL_SCISSOR_TEST);  
@@ -388,27 +397,17 @@ void CRenderSystemGLES::SetCameraPosition(const CPoint &camera, int screenWidth,
   
   CPoint offset = camera - CPoint(screenWidth*0.5f, screenHeight*0.5f);
   
-  GLint viewport[4];
-  glGetIntegerv(GL_VIEWPORT, viewport);
+  float w = (float)m_viewPort[2]*0.5f;
+  float h = (float)m_viewPort[3]*0.5f;
 
-  float w = (float)viewport[2]*0.5f;
-  float h = (float)viewport[3]*0.5f;
+  glMatrixModview->LoadIdentity();
+  glMatrixModview->Translatef(-(w + offset.x), +(h + offset.y), 0);
+  glMatrixModview->LookAt(0.0, 0.0, -2.0*h, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0);
+  glMatrixModview.Load();
 
-  g_matrices.MatrixMode(MM_MODELVIEW);
-  g_matrices.LoadIdentity();
-  g_matrices.Translatef(-(viewport[0] + w + offset.x), +(viewport[1] + h + offset.y), 0);
-  g_matrices.LookAt(0.0, 0.0, -2.0*h, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0);
-  g_matrices.MatrixMode(MM_PROJECTION);
-  g_matrices.LoadIdentity();
-  g_matrices.Frustum( (-w - offset.x)*0.5f, (w - offset.x)*0.5f, (-h + offset.y)*0.5f, (h + offset.y)*0.5f, h, 100*h);
-  g_matrices.MatrixMode(MM_MODELVIEW);
-
-  glGetIntegerv(GL_VIEWPORT, m_viewPort);
-  GLfloat* matx;
-  matx = g_matrices.GetMatrix(MM_MODELVIEW);
-  memcpy(m_view, matx, 16 * sizeof(GLfloat));
-  matx = g_matrices.GetMatrix(MM_PROJECTION);
-  memcpy(m_projection, matx, 16 * sizeof(GLfloat));
+  glMatrixProject->LoadIdentity();
+  glMatrixProject->Frustum( (-w - offset.x)*0.5f, (w - offset.x)*0.5f, (-h + offset.y)*0.5f, (h + offset.y)*0.5f, h, 100*h);
+  glMatrixProject.Load();
 
   g_graphicsContext.EndPaint();
 }
@@ -416,10 +415,10 @@ void CRenderSystemGLES::SetCameraPosition(const CPoint &camera, int screenWidth,
 void CRenderSystemGLES::Project(float &x, float &y, float &z)
 {
   GLfloat coordX, coordY, coordZ;
-  if (g_matrices.Project(x, y, z, m_view, m_projection, m_viewPort, &coordX, &coordY, &coordZ))
+  if (CMatrixGL::Project(x, y, z, glMatrixModview.Get(), glMatrixProject.Get(), m_viewPort, &coordX, &coordY, &coordZ))
   {
     x = coordX;
-    y = (float)(m_viewPort[3] - coordY);
+    y = (float)(m_viewPort[1] + m_viewPort[3] - coordY);
     z = 0;
   }
 }
@@ -428,15 +427,15 @@ bool CRenderSystemGLES::TestRender()
 {
   static float theta = 0.0;
 
-  //RESOLUTION_INFO resInfo = g_settings.m_ResInfo[g_guiSettings.m_LookAndFeelResolution];
+  //RESOLUTION_INFO resInfo = CDisplaySettings::Get().GetCurrentResolutionInfo();
   //glViewport(0, 0, resInfo.iWidth, resInfo.iHeight);
 
-  g_matrices.PushMatrix();
-  g_matrices.Rotatef( theta, 0.0f, 0.0f, 1.0f );
+  glMatrixModview.Push();
+  glMatrixModview->Rotatef( theta, 0.0f, 0.0f, 1.0f );
 
   EnableGUIShader(SM_DEFAULT);
 
-  GLfloat col[3][4];
+  GLfloat col[4] = {1.0f, 0.0f, 0.0f, 1.0f};
   GLfloat ver[3][2];
   GLint   posLoc = GUIShaderGetPos();
   GLint   colLoc = GUIShaderGetCol();
@@ -446,10 +445,6 @@ bool CRenderSystemGLES::TestRender()
 
   glEnableVertexAttribArray(posLoc);
   glEnableVertexAttribArray(colLoc);
-
-  // Setup Colour values
-  col[0][0] = col[0][3] = col[1][1] = col[1][3] = col[2][2] = col[2][3] = 1.0f;
-  col[0][1] = col[0][2] = col[1][0] = col[1][2] = col[2][0] = col[2][1] = 0.0f;
 
   // Setup vertex position values
   ver[0][0] =  0.0f;
@@ -466,7 +461,7 @@ bool CRenderSystemGLES::TestRender()
 
   DisableGUIShader();
 
-  g_matrices.PopMatrix();
+  glMatrixModview.Pop();
 
   theta += 1.0f;
 
@@ -478,8 +473,7 @@ void CRenderSystemGLES::ApplyHardwareTransform(const TransformMatrix &finalMatri
   if (!m_bRenderCreated)
     return;
 
-  g_matrices.MatrixMode(MM_MODELVIEW);
-  g_matrices.PushMatrix();
+  glMatrixModview.Push();
   GLfloat matrix[4][4];
 
   for(int i = 0; i < 3; i++)
@@ -491,7 +485,8 @@ void CRenderSystemGLES::ApplyHardwareTransform(const TransformMatrix &finalMatri
   matrix[2][3] = 0.0f;
   matrix[3][3] = 1.0f;
 
-  g_matrices.MultMatrixf(&matrix[0][0]);
+  glMatrixModview->MultMatrixf(&matrix[0][0]);
+  glMatrixModview.Load();
 }
 
 void CRenderSystemGLES::RestoreHardwareTransform()
@@ -499,8 +494,7 @@ void CRenderSystemGLES::RestoreHardwareTransform()
   if (!m_bRenderCreated)
     return;
 
-  g_matrices.MatrixMode(MM_MODELVIEW);
-  g_matrices.PopMatrix();
+  glMatrixModview.PopLoad();
 }
 
 void CRenderSystemGLES::CalculateMaxTexturesize()
@@ -513,14 +507,11 @@ void CRenderSystemGLES::GetViewPort(CRect& viewPort)
 {
   if (!m_bRenderCreated)
     return;
-  
-  GLint glvp[4];
-  glGetIntegerv(GL_VIEWPORT, glvp);
-  
-  viewPort.x1 = glvp[0];
-  viewPort.y1 = m_height - glvp[1] - glvp[3];
-  viewPort.x2 = glvp[0] + glvp[2];
-  viewPort.y2 = viewPort.y1 + glvp[3];
+
+  viewPort.x1 = m_viewPort[0];
+  viewPort.y1 = m_height - m_viewPort[1] - m_viewPort[3];
+  viewPort.x2 = m_viewPort[0] + m_viewPort[2];
+  viewPort.y2 = viewPort.y1 + m_viewPort[3];
 }
 
 // FIXME make me const so that I can accept temporary objects
@@ -531,6 +522,32 @@ void CRenderSystemGLES::SetViewPort(CRect& viewPort)
 
   glScissor((GLint) viewPort.x1, (GLint) (m_height - viewPort.y1 - viewPort.Height()), (GLsizei) viewPort.Width(), (GLsizei) viewPort.Height());
   glViewport((GLint) viewPort.x1, (GLint) (m_height - viewPort.y1 - viewPort.Height()), (GLsizei) viewPort.Width(), (GLsizei) viewPort.Height());
+  m_viewPort[0] = viewPort.x1;
+  m_viewPort[1] = m_height - viewPort.y1 - viewPort.Height();
+  m_viewPort[2] = viewPort.Width();
+  m_viewPort[3] = viewPort.Height();
+}
+
+bool CRenderSystemGLES::ScissorsCanEffectClipping()
+{
+  if (m_pGUIshader[m_method])
+    return m_pGUIshader[m_method]->HardwareClipIsPossible();
+
+  return false;
+}
+
+CRect CRenderSystemGLES::ClipRectToScissorRect(const CRect &rect)
+{
+  if (!m_pGUIshader[m_method])
+    return CRect();
+  float xFactor = m_pGUIshader[m_method]->GetClipXFactor();
+  float xOffset = m_pGUIshader[m_method]->GetClipXOffset();
+  float yFactor = m_pGUIshader[m_method]->GetClipYFactor();
+  float yOffset = m_pGUIshader[m_method]->GetClipYOffset();
+  return CRect(rect.x1 * xFactor + xOffset,
+               rect.y1 * yFactor + yOffset,
+               rect.x2 * xFactor + xOffset,
+               rect.y2 * yFactor + yOffset);
 }
 
 void CRenderSystemGLES::SetScissors(const CRect &rect)
@@ -556,6 +573,15 @@ void CRenderSystemGLES::InitialiseGUIShader()
     m_pGUIshader = new CGUIShader*[SM_ESHADERCOUNT];
     for (int i = 0; i < SM_ESHADERCOUNT; i++)
     {
+      if (i == SM_TEXTURE_RGBA_OES)
+      {
+        if (!g_Windowing.IsExtSupported("GL_OES_EGL_image_external"))
+        {
+          m_pGUIshader[i] = NULL;
+          continue;
+        }
+      }
+
       m_pGUIshader[i] = new CGUIShader( ShaderNames[i] );
 
       if (!m_pGUIshader[i]->CompileAndLink())
@@ -627,6 +653,75 @@ GLint CRenderSystemGLES::GUIShaderGetCoord1()
 {
   if (m_pGUIshader[m_method])
     return m_pGUIshader[m_method]->GetCord1Loc();
+
+  return -1;
+}
+
+GLint CRenderSystemGLES::GUIShaderGetUniCol()
+{
+  if (m_pGUIshader[m_method])
+    return m_pGUIshader[m_method]->GetUniColLoc();
+
+  return -1;
+}
+
+GLint CRenderSystemGLES::GUIShaderGetCoord0Matrix()
+{
+  if (m_pGUIshader[m_method])
+    return m_pGUIshader[m_method]->GetCoord0MatrixLoc();
+
+  return -1;
+}
+
+GLint CRenderSystemGLES::GUIShaderGetField()
+{
+  if (m_pGUIshader[m_method])
+    return m_pGUIshader[m_method]->GetFieldLoc();
+
+  return -1;
+}
+
+GLint CRenderSystemGLES::GUIShaderGetStep()
+{
+  if (m_pGUIshader[m_method])
+    return m_pGUIshader[m_method]->GetStepLoc();
+
+  return -1;
+}
+
+GLint CRenderSystemGLES::GUIShaderGetContrast()
+{
+  if (m_pGUIshader[m_method])
+    return m_pGUIshader[m_method]->GetContrastLoc();
+
+  return -1;
+}
+
+GLint CRenderSystemGLES::GUIShaderGetBrightness()
+{
+  if (m_pGUIshader[m_method])
+    return m_pGUIshader[m_method]->GetBrightnessLoc();
+
+  return -1;
+}
+
+bool CRenderSystemGLES::SupportsStereo(RENDER_STEREO_MODE mode)
+{
+  switch(mode)
+  {
+    case RENDER_STEREO_MODE_INTERLACED:
+      if (g_sysinfo.HasHW3DInterlaced())
+        return true;
+
+    default:
+      return CRenderSystemBase::SupportsStereo(mode);
+  }
+}
+
+GLint CRenderSystemGLES::GUIShaderGetModel()
+{
+  if (m_pGUIshader[m_method])
+    return m_pGUIshader[m_method]->GetModelLoc();
 
   return -1;
 }

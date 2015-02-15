@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 
 #include "Application.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/Key.h"
 #include "settings/AdvancedSettings.h"
 
 #include "GUIDialogKaraokeSongSelector.h"
@@ -47,7 +48,7 @@ bool CGUIWindowKaraokeLyrics::OnAction(const CAction &action)
 {
   CSingleLock lock (m_CritSection);
 
-  if ( !m_Lyrics || !g_application.IsPlayingAudio() )
+  if ( !m_Lyrics || !g_application.m_pPlayer->IsPlayingAudio() )
     return false;
 
   CGUIDialogKaraokeSongSelectorSmall * songSelector = (CGUIDialogKaraokeSongSelectorSmall *)
@@ -110,6 +111,10 @@ bool CGUIWindowKaraokeLyrics::OnMessage(CGUIMessage& message)
   return CGUIWindow::OnMessage(message);
 }
 
+void CGUIWindowKaraokeLyrics::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
+{
+  dirtyregions.push_back(CRect(0.0f, 0.0f, (float)g_graphicsContext.GetWidth(), (float)g_graphicsContext.GetHeight()));
+}
 
 void CGUIWindowKaraokeLyrics::Render()
 {
@@ -136,12 +141,12 @@ void CGUIWindowKaraokeLyrics::newSong(CKaraokeLyrics * lyrics)
   // Set up current background mode
   if ( m_Lyrics->HasVideo() )
   {
-    CStdString path;
+    std::string path;
     int64_t offset;
 
     // Start the required video
     m_Lyrics->GetVideoParameters( path, offset );
-    m_Background->StartVideo( path, offset );
+    m_Background->StartVideo( path );
   }
   else if ( m_Lyrics->HasBackground() && g_advancedSettings.m_karaokeAlwaysEmptyOnCdgs )
   {

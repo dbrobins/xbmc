@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include "DVDStreamInfo.h"
 #include "DVDMessageQueue.h"
 #include "DVDDemuxSPU.h"
+#include "IDVDPlayer.h"
 
 class CDVDInputStream;
 class CDVDSubtitleStream;
@@ -32,26 +33,27 @@ class CDVDSubtitleParser;
 class CDVDInputStreamNavigator;
 class CDVDOverlayCodec;
 
-class CDVDPlayerSubtitle
+class CDVDPlayerSubtitle : public IDVDStreamPlayer
 {
 public:
   CDVDPlayerSubtitle(CDVDOverlayContainer* pOverlayContainer);
   ~CDVDPlayerSubtitle();
 
-  void Process(double pts);
+  void Process(double pts, double offset);
   void Flush();
   void FindSubtitles(const char* strFilename);
-  void GetCurrentSubtitle(CStdString& strSubtitle, double pts);
   int GetSubtitleCount();
 
   void UpdateOverlayInfo(CDVDInputStreamNavigator* pStream, int iAction) { m_pOverlayContainer->UpdateOverlayInfo(pStream, &m_dvdspus, iAction); }
 
-  bool AcceptsData();
-  void SendMessage(CDVDMsg* pMsg);
+  bool AcceptsData() const;
+  void SendMessage(CDVDMsg* pMsg, int priority = 0);
+  bool OpenStream(CDVDStreamInfo &hints) { return OpenStream(hints, hints.filename); }
   bool OpenStream(CDVDStreamInfo &hints, std::string& filename);
-  void CloseStream(bool flush);
+  void CloseStream(bool bWaitForBuffers);
 
-  bool IsStalled() { return m_pOverlayContainer->GetSize() == 0; }
+  bool IsInited() const { return true; }
+  bool IsStalled() const { return m_pOverlayContainer->GetSize() == 0; }
 private:
   CDVDOverlayContainer* m_pOverlayContainer;
 
@@ -62,6 +64,9 @@ private:
 
   CDVDStreamInfo      m_streaminfo;
   double              m_lastPts;
+
+
+  CCriticalSection    m_section;
 };
 
 

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
  *
  */
 
-
 #include "TuxBoxDirectory.h"
 #include "DirectoryCache.h"
 #include "CurlFile.h"
@@ -30,6 +29,7 @@
 #include "FileItem.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
+#include "utils/StringUtils.h"
 
 using namespace XFILE;
 
@@ -41,59 +41,57 @@ CTuxBoxDirectory::~CTuxBoxDirectory(void)
 {
 }
 
-bool CTuxBoxDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
+bool CTuxBoxDirectory::GetDirectory(const CURL& url2, CFileItemList &items)
 {
+  const std::string strPath = url2.Get();
   // so we know that we have enigma2
   static bool enigma2 = false;
   // Detect and delete slash at end
-  CStdString strRoot = strPath;
+  std::string strRoot = strPath;
   URIUtils::RemoveSlashAtEnd(strRoot);
 
   //Get the request strings
-  CStdString strBQRequest;
-  CStdString strXMLRootString;
-  CStdString strXMLChildString;
+  std::string strBQRequest;
+  std::string strXMLRootString;
+  std::string strXMLChildString;
   if(!GetRootAndChildString(strRoot, strBQRequest, strXMLRootString, strXMLChildString))
     return false;
 
   //Set url Protocol
   CURL url(strRoot);
-  CStdString strFilter;
-  CStdString protocol = url.GetProtocol();
-  CStdString strOptions = url.GetOptions();
+  std::string strFilter;
+  std::string protocol = url.GetProtocol();
   url.SetProtocol("http");
   bool bIsBouquet=false;
 
-  int ipoint = strOptions.Find("?path=");
-  if (ipoint >=0)
+  if (url.HasOption("path"))
   {
     // send Zap!
-    return g_tuxbox.ZapToUrl(url, strOptions, ipoint);
+    return g_tuxbox.ZapToUrl(url, url.GetOption("path"));
   }
   else
   {
-    ipoint = strOptions.Find("&reference=");
-    if (ipoint >=0 || enigma2)
+    if (url.HasOption("reference") || enigma2)
     {
       //List reference
-      strFilter = strOptions.Right((strOptions.size()-(ipoint+11)));
+      strFilter = url.GetOption("reference");
       bIsBouquet = false; //On Empty is Bouquet
       if (enigma2)
       {
-        CStdString strPort;
-        strPort.Format(":%i",url.GetPort());
-        if (strRoot.Right(strPort.GetLength()) != strPort) // If not root dir, enable Channels
+        std::string strPort = StringUtils::Format(":%i",url.GetPort());
+        if (!StringUtils::EndsWith(strRoot, strPort)) // If not root dir, enable Channels
           strFilter = "e2"; // Disable Bouquets for Enigma2
 
         GetRootAndChildStringEnigma2(strBQRequest, strXMLRootString, strXMLChildString);
-        url.SetOptions("");
-        url.SetFileName(strBQRequest);
       }
+      url.SetOptions("");
+      url.SetFileName(strBQRequest);
     }
   }
-  if(strFilter.IsEmpty())
+  if(strFilter.empty())
   {
-    url.SetOptions(strBQRequest);
+    url.SetOptions("");
+    url.SetFileName(strBQRequest);
     bIsBouquet = true;
   }
   //Open
@@ -116,7 +114,7 @@ bool CTuxBoxDirectory::GetDirectory(const CStdString& strPath, CFileItemList &it
       int size_read = 0;
       int size_total = (int)http.GetLength();
       int data_size = 0;
-      CStdString data;
+      std::string data;
       data.reserve(size_total);
 
       // read response from server into string buffer
@@ -131,8 +129,8 @@ bool CTuxBoxDirectory::GetDirectory(const CStdString& strPath, CFileItemList &it
 
       // parse returned xml
       CXBMCTinyXML doc;
-      data.Replace("></",">-</"); //FILL EMPTY ELEMENTS WITH "-"!
-      doc.Parse(data.c_str());
+      StringUtils::Replace(data, "></",">-</"); //FILL EMPTY ELEMENTS WITH "-"!
+      doc.Parse(data, http.GetServerReportedCharset());
       TiXmlElement *root = doc.RootElement();
       if(root == NULL)
       {
@@ -140,17 +138,17 @@ bool CTuxBoxDirectory::GetDirectory(const CStdString& strPath, CFileItemList &it
         CLog::Log(LOGERROR, "%s - Sample follows...\n%s", __FUNCTION__, data.c_str());
         return false;
       }
-      if( strXMLRootString.Equals(root->Value()) && bIsBouquet)
+      if(strXMLRootString == root->Value() && bIsBouquet)
       {
-        data.Empty();
+        data.clear();
         if (enigma2)
           result = g_tuxbox.ParseBouquetsEnigma2(root, items, url, strFilter, strXMLChildString);
         else
           result = g_tuxbox.ParseBouquets(root, items, url, strFilter, strXMLChildString);
       }
-      else if( strXMLRootString.Equals(root->Value()) && !strFilter.IsEmpty() )
+      else if( strXMLRootString == root->Value() && !strFilter.empty() )
       {
-        data.Empty();
+        data.clear();
         if (enigma2)
           result = g_tuxbox.ParseChannelsEnigma2(root, items, url, strFilter, strXMLChildString);
         else
@@ -160,7 +158,7 @@ bool CTuxBoxDirectory::GetDirectory(const CStdString& strPath, CFileItemList &it
       {
         CLog::Log(LOGERROR, "%s - Invalid root xml element for TuxBox", __FUNCTION__);
         CLog::Log(LOGERROR, "%s - Sample follows...\n%s", __FUNCTION__, data.c_str());
-        data.Empty();
+        data.clear();
         result = false;
       }
     }
@@ -188,23 +186,23 @@ bool CTuxBoxDirectory::GetDirectory(const CStdString& strPath, CFileItemList &it
   return result;
 }
 
-void CTuxBoxDirectory::GetRootAndChildStringEnigma2(CStdString& strBQRequest, CStdString& strXMLRootString, CStdString& strXMLChildString )
+void CTuxBoxDirectory::GetRootAndChildStringEnigma2(std::string& strBQRequest, std::string& strXMLRootString, std::string& strXMLChildString )
 {
   // Allways take getallservices for Enigma2
   strBQRequest = "web/getallservices"; //Bouquets and Channels
-  strXMLRootString.Format("e2servicelistrecursive");
-  strXMLChildString.Format("e2bouquet");
+  strXMLRootString = StringUtils::Format("e2servicelistrecursive");
+  strXMLChildString = StringUtils::Format("e2bouquet");
 }
 
-bool CTuxBoxDirectory::GetRootAndChildString(const CStdString strPath, CStdString& strBQRequest, CStdString& strXMLRootString, CStdString& strXMLChildString )
+bool CTuxBoxDirectory::GetRootAndChildString(const std::string& strPath, std::string& strBQRequest, std::string& strXMLRootString, std::string& strXMLChildString )
 {
   //Advanced Settings: RootMode! Movies:
   if(g_advancedSettings.m_iTuxBoxDefaultRootMenu == 3) //Movies! Fixed-> mode=3&submode=4
   {
     CLog::Log(LOGDEBUG, "%s - Default defined RootMenu : (3) Movies", __FUNCTION__);
     strBQRequest = "xml/services?mode=3&submode=4";
-    strXMLRootString.Format("movies");
-    strXMLChildString.Format("service");
+    strXMLRootString = StringUtils::Format("movies");
+    strXMLChildString = StringUtils::Format("service");
   }
   else if(g_advancedSettings.m_iTuxBoxDefaultRootMenu <= 0 || g_advancedSettings.m_iTuxBoxDefaultRootMenu == 1 ||
     g_advancedSettings.m_iTuxBoxDefaultRootMenu > 4 )
@@ -222,9 +220,9 @@ bool CTuxBoxDirectory::GetRootAndChildString(const CStdString strPath, CStdStrin
       // DeActivated: Timing Problems, bug in TuxBox.. etc.!
       bool bReqMoRe = true;
       // Detect the RootMode !
-      if (strPath.Find("?mode=")>=0)
+      if (strPath.find("?mode=") != std::string::npos)
       {
-        CStdString strMode;
+        std::string strMode;
         bReqMoRe=false;
         strMode = g_tuxbox.DetectSubMode(strPath, strXMLRootString, strXMLChildString);
       }
@@ -232,11 +230,11 @@ bool CTuxBoxDirectory::GetRootAndChildString(const CStdString strPath, CStdStrin
       {
         //PopUp Context and Request SubMode with root and child string
         strBQRequest = g_tuxbox.GetSubMode(g_advancedSettings.m_iTuxBoxDefaultRootMenu, strXMLRootString, strXMLChildString);
-        if(strBQRequest.IsEmpty())
+        if(strBQRequest.empty())
         {
           strBQRequest = "xml/services?mode=0&submode=4"; //Bouquets
-          strXMLRootString.Format("bouquets");
-          strXMLChildString.Format("bouquet");
+          strXMLRootString = StringUtils::Format("bouquets");
+          strXMLChildString = StringUtils::Format("bouquet");
         }
       }
     }
@@ -247,33 +245,33 @@ bool CTuxBoxDirectory::GetRootAndChildString(const CStdString strPath, CStdStrin
       {
         CLog::Log(LOGDEBUG, "%s - Default defined SubMenu : (1) Services", __FUNCTION__);
         strBQRequest = "xml/services?mode=0&submode=1"; //Services
-        strXMLRootString.Format("services");
-        strXMLChildString.Format("service");
+        strXMLRootString = StringUtils::Format("services");
+        strXMLChildString = StringUtils::Format("service");
       }
       else if(g_advancedSettings.m_iTuxBoxDefaultSubMenu == 2)
       {
         CLog::Log(LOGDEBUG, "%s - Default defined SubMenu : (2) Satellites", __FUNCTION__);
         strBQRequest = "xml/services?mode=0&submode=2"; //Satellites
-        strXMLRootString.Format("satellites");
-        strXMLChildString.Format("satellite");
+        strXMLRootString = StringUtils::Format("satellites");
+        strXMLChildString = StringUtils::Format("satellite");
       }
       else if(g_advancedSettings.m_iTuxBoxDefaultSubMenu == 3)
       {
         CLog::Log(LOGDEBUG, "%s - Default defined SubMenu : (3) Providers", __FUNCTION__);
         strBQRequest = "xml/services?mode=0&submode=3"; //Providers
-        strXMLRootString.Format("providers");
-        strXMLChildString.Format("provider");
+        strXMLRootString = StringUtils::Format("providers");
+        strXMLChildString = StringUtils::Format("provider");
       }
       else
       {
         CLog::Log(LOGDEBUG, "%s - Default defined SubMenu : (4) Bouquets", __FUNCTION__);
         strBQRequest = "xml/services?mode=0&submode=4"; //Bouquets
-        strXMLRootString.Format("bouquets");
-        strXMLChildString.Format("bouquet");
+        strXMLRootString = StringUtils::Format("bouquets");
+        strXMLChildString = StringUtils::Format("bouquet");
       }
     }
   }
-  if(strBQRequest.IsEmpty() || strXMLRootString.IsEmpty() || strXMLChildString.IsEmpty())
+  if(strBQRequest.empty() || strXMLRootString.empty() || strXMLChildString.empty())
     return false;
   else
     return true;

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2010-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2010-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,14 @@
 
 @class IOSEAGLView;
 
-@interface XBMCController : UIViewController <UIGestureRecognizerDelegate>
+typedef enum
+{
+  IOS_PLAYBACK_STOPPED,
+  IOS_PLAYBACK_PAUSED,
+  IOS_PLAYBACK_PLAYING
+} IOSPlaybackState;
+
+@interface XBMCController : UIViewController <UIGestureRecognizerDelegate, UIKeyInput>
 {
   UIWindow *m_window;
   IOSEAGLView  *m_glView;
@@ -42,8 +49,12 @@
   int  m_screenIdx;
 
   UIInterfaceOrientation orientation;
-
-  XBMC_Event lastEvent;
+  
+  bool m_isPlayingBeforeInactive;
+  UIBackgroundTaskIdentifier m_bgTask;
+  NSTimer *m_networkAutoSuspendTimer;
+  IOSPlaybackState m_playbackState;
+  NSDictionary *nowPlayingInfo;
 }
 @property (readonly, nonatomic, getter=isAnimating) BOOL animating;
 @property CGPoint lastGesturePoint;
@@ -51,13 +62,18 @@
 @property bool touchBeginSignaled;
 @property int  m_screenIdx;
 @property CGSize screensize;
-@property XBMC_Event lastEvent;
+@property (nonatomic, retain) NSTimer *m_networkAutoSuspendTimer;
+@property (nonatomic, retain) NSDictionary *nowPlayingInfo;
 
 // message from which our instance is obtained
 - (void) pauseAnimation;
 - (void) resumeAnimation;
 - (void) startAnimation;
 - (void) stopAnimation;
+- (void) enterBackground;
+- (void) enterForeground;
+- (void) becomeInactive;
+- (void) setIOSNowPlayingInfo:(NSDictionary *)info;
 - (void) sendKey: (XBMCKey) key;
 - (void) observeDefaultCenterStuff: (NSNotification *) notification;
 - (void) initDisplayLink;
@@ -72,12 +88,14 @@
 - (void) activateKeyboard:(UIView *)view;
 - (void) deactivateKeyboard:(UIView *)view;
 
+- (void) disableNetworkAutoSuspend;
+- (void) enableNetworkAutoSuspend:(id)obj;
 - (void) disableSystemSleep;
 - (void) enableSystemSleep;
 - (void) disableScreenSaver;
 - (void) enableScreenSaver;
 - (bool) changeScreen: (unsigned int)screenIdx withMode:(UIScreenMode *)mode;
-- (void) activateScreen: (UIScreen *)screen;
+- (void) activateScreen: (UIScreen *)screen withOrientation:(UIInterfaceOrientation)newOrientation;
 - (id)   initWithFrame:(CGRect)frame withScreen:(UIScreen *)screen;
 @end
 

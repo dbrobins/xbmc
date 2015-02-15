@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -49,12 +49,7 @@ CGUIDialogPeripheralManager::~CGUIDialogPeripheralManager(void)
 bool CGUIDialogPeripheralManager::OnAction(const CAction &action)
 {
   int iActionId = action.GetID();
-  if (iActionId == ACTION_PREVIOUS_MENU || iActionId == ACTION_PARENT_DIR)
-  {
-    Close();
-    return true;
-  }
-  else if (GetFocusedControlID() == CONTROL_LIST &&
+  if (GetFocusedControlID() == CONTROL_LIST &&
       (iActionId == ACTION_MOVE_DOWN || iActionId == ACTION_MOVE_UP ||
        iActionId == ACTION_PAGE_DOWN || iActionId == ACTION_PAGE_UP))
   {
@@ -71,9 +66,9 @@ bool CGUIDialogPeripheralManager::OnAction(const CAction &action)
 
 void CGUIDialogPeripheralManager::OnInitWindow()
 {
-  CGUIWindow::OnInitWindow();
   m_iSelected = 0;
   Update();
+  CGUIDialog::OnInitWindow();
 }
 
 bool CGUIDialogPeripheralManager::OnClickList(CGUIMessage &message)
@@ -100,7 +95,7 @@ bool CGUIDialogPeripheralManager::OpenSettingsDialog(void)
   CGUIDialogPeripheralSettings *dialog = (CGUIDialogPeripheralSettings *)g_windowManager.GetWindow(WINDOW_DIALOG_PERIPHERAL_SETTINGS);
   if (dialog)
   {
-    dialog->SetFileItem(GetCurrentListItem());
+    dialog->SetFileItem(GetCurrentListItem().get());
     dialog->DoModal();
     return true;
   }

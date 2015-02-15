@@ -46,14 +46,15 @@ using namespace std;
 namespace dbiplus {
 
 //Constructors 
-field_value::field_value(){
-  str_value = "";
+field_value::field_value()
+{
   field_type = ft_String;
   is_null = false;
-  }
+}
 
-field_value::field_value(const char *s) {
-  str_value = s;
+field_value::field_value(const char *s):
+  str_value(s)
+{
   field_type = ft_String;
   is_null = false;
 }
@@ -216,7 +217,7 @@ string field_value::get_asString() const {
     }
     case ft_Int64: {
       char t[23];
-      sprintf(t,"%"PRId64,int64_value);
+      sprintf(t,"%" PRId64,int64_value);
       return tmp = t;
     }
     default:
@@ -276,11 +277,10 @@ char field_value::get_asChar() const {
       return str_value[0];
     }
     case ft_Boolean:{
-      char c;
       if (bool_value) 
-	return c='T';
+	return 'T';
       else
-	return c='F';
+	return 'F';
     }
     case ft_Char: {
       return  char_value;
@@ -317,7 +317,7 @@ char field_value::get_asChar() const {
     }
     case ft_Int64: {
       char t[24];
-      sprintf(t,"%"PRId64,int64_value);
+      sprintf(t,"%" PRId64,int64_value);
       return t[0];
     }
     default:

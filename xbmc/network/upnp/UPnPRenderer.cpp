@@ -1,19 +1,72 @@
+/*
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
+#include <Platinum/Source/Platinum/Platinum.h>
+
+#include "network/Network.h"
 #include "UPnPRenderer.h"
 #include "UPnP.h"
 #include "UPnPInternal.h"
-#include "Platinum.h"
 #include "Application.h"
 #include "ApplicationMessenger.h"
 #include "FileItem.h"
+#include "filesystem/SpecialProtocol.h"
 #include "GUIInfoManager.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/Key.h"
 #include "pictures/GUIWindowSlideShow.h"
 #include "pictures/PictureInfoTag.h"
+#include "interfaces/AnnouncementManager.h"
 #include "settings/Settings.h"
+#include "TextureDatabase.h"
+#include "ThumbLoader.h"
+#include "URL.h"
 #include "utils/URIUtils.h"
+#include "utils/Variant.h"
+#include "utils/StringUtils.h"
+#include "playlists/PlayList.h"
+#include "GUIUserMessages.h"
+
+NPT_SET_LOCAL_LOGGER("xbmc.upnp.renderer")
+
+using namespace ANNOUNCEMENT;
 
 namespace UPNP
 {
+
+/*----------------------------------------------------------------------
+|   CUPnPRenderer::CUPnPRenderer
++---------------------------------------------------------------------*/
+CUPnPRenderer::CUPnPRenderer(const char* friendly_name, bool show_ip /*= false*/,
+                             const char* uuid /*= NULL*/, unsigned int port /*= 0*/)
+    : PLT_MediaRenderer(friendly_name, show_ip, uuid, port)
+{
+    CAnnouncementManager::Get().AddAnnouncer(this);
+}
+
+/*----------------------------------------------------------------------
+|   CUPnPRenderer::~CUPnPRenderer
++---------------------------------------------------------------------*/
+CUPnPRenderer::~CUPnPRenderer()
+{
+    CAnnouncementManager::Get().RemoveAnnouncer(this);
+}
 
 /*----------------------------------------------------------------------
 |   CUPnPRenderer::SetupServices
@@ -64,6 +117,8 @@ CUPnPRenderer::SetupServices()
         ",http-get:*:audio/ac3:*"
         ",http-get:*:audio/vorbis:*"
         ",http-get:*:audio/speex:*"
+        ",http-get:*:audio/flac:*"
+        ",http-get:*:audio/x-flac:*"
         ",http-get:*:audio/x-aiff:*"
         ",http-get:*:audio/x-pn-realaudio:*"
         ",http-get:*:audio/x-realaudio:*"
@@ -80,6 +135,7 @@ CUPnPRenderer::SetupServices()
         ",http-get:*:image/png:*"
         ",http-get:*:image/tiff:*"
         ",http-get:*:video/avi:*"
+        ",http-get:*:video/divx:*"
         ",http-get:*:video/mpeg:*"
         ",http-get:*:video/fli:*"
         ",http-get:*:video/flv:*"
@@ -101,7 +157,10 @@ CUPnPRenderer::SetupServices()
         ",http-get:*:video/MP1S:*"
         ",http-get:*:video/MP2P:*"
         ",http-get:*:video/BMPEG:*"
+        ",http-get:*:video/xvid:*"
+        ",http-get:*:video/x-divx:*"
         ",http-get:*:video/x-matroska:*"
+        ",http-get:*:video/x-mkv:*"
         ",http-get:*:video/x-ms-wmv:*"
         ",http-get:*:video/x-ms-avi:*"
         ",http-get:*:video/x-flv:*"
@@ -111,7 +170,13 @@ CUPnPRenderer::SetupServices()
         ",http-get:*:video/x-ms-wmx:*"
         ",http-get:*:video/x-ms-wvx:*"
         ",http-get:*:video/x-msvideo:*"
+        ",http-get:*:video/x-xvid:*"
         );
+
+    NPT_CHECK_FATAL(FindServiceByType("urn:schemas-upnp-org:service:AVTransport:1", service));
+    service->SetStateVariable("NextAVTransportURI", "");
+    service->SetStateVariable("NextAVTransportURIMetadata", "");
+
     return NPT_SUCCESS;
 }
 
@@ -119,7 +184,7 @@ CUPnPRenderer::SetupServices()
 |   CUPnPRenderer::ProcessHttpRequest
 +---------------------------------------------------------------------*/
 NPT_Result
-CUPnPRenderer::ProcessHttpRequest(NPT_HttpRequest&              request,
+CUPnPRenderer::ProcessHttpGetRequest(NPT_HttpRequest&              request,
                                   const NPT_HttpRequestContext& context,
                                   NPT_HttpResponse&             response)
 {
@@ -129,7 +194,7 @@ CUPnPRenderer::ProcessHttpRequest(NPT_HttpRequest&              request,
     NPT_String  protocol   = request.GetProtocol();
     NPT_HttpUrl url        = request.GetUrl();
 
-    if (url.GetPath() == "/thumb.jpg") {
+    if (url.GetPath() == "/thumb") {
         NPT_HttpUrlQuery query(url.GetQuery());
         NPT_String filepath = query.GetField("path");
         if (!filepath.IsEmpty()) {
@@ -143,20 +208,14 @@ CUPnPRenderer::ProcessHttpRequest(NPT_HttpRequest&              request,
                 return NPT_SUCCESS;
             }
 
-            // ensure that the request's path is a valid thumb path
-            if (URIUtils::IsRemote(filepath.GetChars()) ||
-                !filepath.StartsWith(g_settings.GetUserDataFolder())) {
-                response.SetStatus(404, "Not Found");
-                return NPT_SUCCESS;
-            }
-
             // prevent hackers from accessing files outside of our root
             if ((filepath.Find("/..") >= 0) || (filepath.Find("\\..") >=0)) {
                 return NPT_FAILURE;
             }
 
             // open the file
-            NPT_File file(filepath);
+            std::string path (CURL::Decode((const char*) filepath));
+            NPT_File file(path.c_str());
             NPT_Result result = file.Open(NPT_FILE_OPEN_MODE_READ);
             if (NPT_FAILED(result)) {
                 response.SetStatus(404, "Not Found");
@@ -175,6 +234,62 @@ CUPnPRenderer::ProcessHttpRequest(NPT_HttpRequest&              request,
 }
 
 /*----------------------------------------------------------------------
+|   CUPnPRenderer::Announce
++---------------------------------------------------------------------*/
+void
+CUPnPRenderer::Announce(AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data)
+{
+    if (strcmp(sender, "xbmc") != 0)
+      return;
+
+    NPT_AutoLock lock(m_state);
+    PLT_Service *avt, *rct;
+
+    if (flag == Player) {
+        if (NPT_FAILED(FindServiceByType("urn:schemas-upnp-org:service:AVTransport:1", avt)))
+            return;
+        if (strcmp(message, "OnPlay") == 0) {
+            avt->SetStateVariable("AVTransportURI", g_application.CurrentFile().c_str());
+            avt->SetStateVariable("CurrentTrackURI", g_application.CurrentFile().c_str());
+
+            NPT_String meta;
+            if (NPT_SUCCEEDED(GetMetadata(meta))) {
+                avt->SetStateVariable("CurrentTrackMetadata", meta);
+                avt->SetStateVariable("AVTransportURIMetaData", meta);
+            }
+
+            avt->SetStateVariable("TransportPlaySpeed", NPT_String::FromInteger(data["speed"].asInteger()));
+            avt->SetStateVariable("TransportState", "PLAYING");
+
+            /* this could be a transition to next track, so clear next */
+            avt->SetStateVariable("NextAVTransportURI", "");
+            avt->SetStateVariable("NextAVTransportURIMetaData", "");
+        }
+        else if (strcmp(message, "OnPause") == 0) {
+            avt->SetStateVariable("TransportPlaySpeed", NPT_String::FromInteger(data["speed"].asInteger()));
+            avt->SetStateVariable("TransportState", "PAUSED_PLAYBACK");
+        }
+        else if (strcmp(message, "OnSpeedChanged") == 0) {
+            avt->SetStateVariable("TransportPlaySpeed", NPT_String::FromInteger(data["speed"].asInteger()));
+        }
+    }
+    else if (flag == Application && strcmp(message, "OnVolumeChanged") == 0) {
+        if (NPT_FAILED(FindServiceByType("urn:schemas-upnp-org:service:RenderingControl:1", rct)))
+            return;
+
+        std::string buffer;
+
+        buffer = StringUtils::Format("%" PRId64, data["volume"].asInteger());
+        rct->SetStateVariable("Volume", buffer.c_str());
+
+        buffer = StringUtils::Format("%" PRId64, 256 * (data["volume"].asInteger() * 60 - 60) / 100);
+        rct->SetStateVariable("VolumeDb", buffer.c_str());
+
+        rct->SetStateVariable("Mute", data["muted"].asBoolean() ? "1" : "0");
+    }
+}
+
+/*----------------------------------------------------------------------
 |   CUPnPRenderer::UpdateState
 +---------------------------------------------------------------------*/
 void
@@ -182,10 +297,9 @@ CUPnPRenderer::UpdateState()
 {
     NPT_AutoLock lock(m_state);
 
-    PLT_Service *avt, *rct;
+    PLT_Service *avt;
+
     if (NPT_FAILED(FindServiceByType("urn:schemas-upnp-org:service:AVTransport:1", avt)))
-        return;
-    if (NPT_FAILED(FindServiceByType("urn:schemas-upnp-org:service:RenderingControl:1", rct)))
         return;
 
     /* don't update state while transitioning */
@@ -194,34 +308,13 @@ CUPnPRenderer::UpdateState()
     if(state == "TRANSITIONING")
         return;
 
-    CStdString buffer;
-    int volume;
-    if (g_settings.m_bMute) {
-        rct->SetStateVariable("Mute", "1");
-    } else {
-        rct->SetStateVariable("Mute", "0");
-    }
-    volume = g_application.GetVolume();
+    avt->SetStateVariable("TransportStatus", "OK");
 
-    buffer.Format("%d", volume);
-    rct->SetStateVariable("Volume", buffer.c_str());
-
-    buffer.Format("%d", 256 * (volume * 60 - 60) / 100);
-    rct->SetStateVariable("VolumeDb", buffer.c_str());
-
-    if (g_application.IsPlaying() || g_application.IsPaused()) {
-        if (g_application.IsPaused()) {
-            avt->SetStateVariable("TransportState", "PAUSED_PLAYBACK");
-        } else {
-            avt->SetStateVariable("TransportState", "PLAYING");
-        }
-
-        avt->SetStateVariable("TransportStatus", "OK");
-        avt->SetStateVariable("TransportPlaySpeed", (const char*)NPT_String::FromInteger(g_application.GetPlaySpeed()));
+    if (g_application.m_pPlayer->IsPlaying() || g_application.m_pPlayer->IsPausedPlayback()) {
         avt->SetStateVariable("NumberOfTracks", "1");
         avt->SetStateVariable("CurrentTrack", "1");
 
-        buffer = g_infoManager.GetCurrentPlayTime(TIME_FORMAT_HH_MM_SS);
+        std::string buffer = g_infoManager.GetCurrentPlayTime(TIME_FORMAT_HH_MM_SS);
         avt->SetStateVariable("RelativeTimePosition", buffer.c_str());
         avt->SetStateVariable("AbsoluteTimePosition", buffer.c_str());
 
@@ -234,31 +327,20 @@ CUPnPRenderer::UpdateState()
           avt->SetStateVariable("CurrentMediaDuration", "00:00:00");
         }
 
-        avt->SetStateVariable("AVTransportURI", g_application.CurrentFile().c_str());
-        avt->SetStateVariable("CurrentTrackURI", g_application.CurrentFile().c_str());
-
-        NPT_String metadata;
-        avt->GetStateVariableValue("AVTransportURIMetaData", metadata);
-        // try to recreate the didl dynamically if not set
-        if (metadata.IsEmpty()) {
-            GetMetadata(metadata);
-        }
-        avt->SetStateVariable("CurrentTrackMetadata", metadata);
-        avt->SetStateVariable("AVTransportURIMetaData", metadata);
     } else if (g_windowManager.GetActiveWindow() == WINDOW_SLIDESHOW) {
         avt->SetStateVariable("TransportState", "PLAYING");
 
-        avt->SetStateVariable("AVTransportURI" , g_infoManager.GetPictureLabel(SLIDE_FILE_PATH));
-        avt->SetStateVariable("CurrentTrackURI", g_infoManager.GetPictureLabel(SLIDE_FILE_PATH));
+        avt->SetStateVariable("AVTransportURI" , g_infoManager.GetPictureLabel(SLIDE_FILE_PATH).c_str());
+        avt->SetStateVariable("CurrentTrackURI", g_infoManager.GetPictureLabel(SLIDE_FILE_PATH).c_str());
         avt->SetStateVariable("TransportPlaySpeed", "1");
 
         CGUIWindowSlideShow *slideshow = (CGUIWindowSlideShow *)g_windowManager.GetWindow(WINDOW_SLIDESHOW);
         if (slideshow)
         {
-          CStdString index;
-          index.Format("%d", slideshow->NumSlides());
+          std::string index;
+          index = StringUtils::Format("%d", slideshow->NumSlides());
           avt->SetStateVariable("NumberOfTracks", index.c_str());
-          index.Format("%d", slideshow->CurrentSlide());
+          index = StringUtils::Format("%d", slideshow->CurrentSlide());
           avt->SetStateVariable("CurrentTrack", index.c_str());
 
         }
@@ -275,7 +357,34 @@ CUPnPRenderer::UpdateState()
         avt->SetStateVariable("AbsoluteTimePosition", "00:00:00");
         avt->SetStateVariable("CurrentTrackDuration", "00:00:00");
         avt->SetStateVariable("CurrentMediaDuration", "00:00:00");
+        avt->SetStateVariable("NextAVTransportURI", "");
+        avt->SetStateVariable("NextAVTransportURIMetaData", "");
     }
+}
+
+/*----------------------------------------------------------------------
+|   CUPnPRenderer::SetupIcons
++---------------------------------------------------------------------*/
+NPT_Result
+CUPnPRenderer::SetupIcons()
+{
+    NPT_String file_root = CSpecialProtocol::TranslatePath("special://xbmc/media/").c_str();
+    AddIcon(
+        PLT_DeviceIcon("image/png", 256, 256, 8, "/icon256x256.png"),
+        file_root);
+    AddIcon(
+        PLT_DeviceIcon("image/png", 120, 120, 8, "/icon120x120.png"),
+        file_root);
+    AddIcon(
+        PLT_DeviceIcon("image/png", 48, 48, 8, "/icon48x48.png"),
+        file_root);
+    AddIcon(
+        PLT_DeviceIcon("image/png", 32, 32, 8, "/icon32x32.png"),
+        file_root);
+    AddIcon(
+        PLT_DeviceIcon("image/png", 16, 16, 8, "/icon16x16.png"),
+        file_root);
+    return NPT_SUCCESS;
 }
 
 /*----------------------------------------------------------------------
@@ -285,12 +394,22 @@ NPT_Result
 CUPnPRenderer::GetMetadata(NPT_String& meta)
 {
     NPT_Result res = NPT_FAILURE;
-    const CFileItem &item = g_application.CurrentFileItem();
-    NPT_String file_path;
-    PLT_MediaObject* object = BuildObject(item, file_path, false);
+    CFileItem item(g_application.CurrentFileItem());
+    NPT_String file_path, tmp;
+
+    // we pass an empty CThumbLoader reference, as it can't be used
+    // without CUPnPServer enabled
+    NPT_Reference<CThumbLoader> thumb_loader;
+    PLT_MediaObject* object = BuildObject(item, file_path, false, thumb_loader);
     if (object) {
-        // fetch the path to the thumbnail
-        CStdString thumb = g_infoManager.GetImage(MUSICPLAYER_COVER, -1); //TODO: Only audio for now
+        // fetch the item's artwork
+        std::string thumb;
+        if (object->m_ObjectClass.type == "object.item.audioItem.musicTrack")
+            thumb = g_infoManager.GetImage(MUSICPLAYER_COVER, -1);
+        else
+            thumb = g_infoManager.GetImage(VIDEOPLAYER_COVER, -1);
+
+        thumb = CTextureUtils::GetWrappedImageURL(thumb);
 
         NPT_String ip;
         if (g_application.getNetwork().GetFirstConnectedInterface()) {
@@ -303,12 +422,18 @@ CUPnPRenderer::GetMetadata(NPT_String& meta)
 	art.uri = NPT_HttpUrl(
             ip,
             m_URLDescription.GetPort(),
-            "/thumb.jpg",
+            "/thumb",
             query.ToString()).ToString();
-        art.dlna_profile = "JPEG_TN";
+        // Set DLNA profileID by extension, defaulting to JPEG.
+        if (URIUtils::HasExtension(item.GetArt("thumb"), ".png")) {
+            art.dlna_profile = "PNG_TN";
+        } else {
+            art.dlna_profile = "JPEG_TN";
+        }
 	object->m_ExtraInfo.album_arts.Add(art);
 
-        res = PLT_Didl::ToDidl(*object, "*", meta);
+        res = PLT_Didl::ToDidl(*object, "*", tmp);
+        meta = didl_header + tmp + didl_footer;
         delete object;
     }
     return res;
@@ -338,7 +463,7 @@ CUPnPRenderer::OnPause(PLT_ActionReference& action)
     if (g_windowManager.GetActiveWindow() == WINDOW_SLIDESHOW) {
         CAction action(ACTION_PAUSE);
         CApplicationMessenger::Get().SendAction(action, WINDOW_SLIDESHOW);
-    } else if (!g_application.IsPaused())
+    } else if (!g_application.m_pPlayer->IsPausedPlayback())
       CApplicationMessenger::Get().MediaPause();
     return NPT_SUCCESS;
 }
@@ -351,9 +476,9 @@ CUPnPRenderer::OnPlay(PLT_ActionReference& action)
 {
     if (g_windowManager.GetActiveWindow() == WINDOW_SLIDESHOW) {
         return NPT_SUCCESS;
-    } else if (g_application.IsPaused()) {
+    } else if (g_application.m_pPlayer->IsPausedPlayback()) {
       CApplicationMessenger::Get().MediaPause();
-    } else if (!g_application.IsPlaying()) {
+    } else if (!g_application.m_pPlayer->IsPlaying()) {
         NPT_String uri, meta;
         PLT_Service* service;
         // look for value set previously by SetAVTransportURI
@@ -412,12 +537,14 @@ CUPnPRenderer::OnSetAVTransportURI(PLT_ActionReference& action)
 
     // if not playing already, just keep around uri & metadata
     // and wait for play command
-    if (!g_application.IsPlaying() && g_windowManager.GetActiveWindow() != WINDOW_SLIDESHOW) {
+    if (!g_application.m_pPlayer->IsPlaying() && g_windowManager.GetActiveWindow() != WINDOW_SLIDESHOW) {
         service->SetStateVariable("TransportState", "STOPPED");
         service->SetStateVariable("TransportStatus", "OK");
         service->SetStateVariable("TransportPlaySpeed", "1");
         service->SetStateVariable("AVTransportURI", uri);
         service->SetStateVariable("AVTransportURIMetaData", meta);
+        service->SetStateVariable("NextAVTransportURI", "");
+        service->SetStateVariable("NextAVTransportURIMetaData", "");
 
         NPT_CHECK_SEVERE(action->SetArgumentsOutFromStateVariable());
         return NPT_SUCCESS;
@@ -427,12 +554,61 @@ CUPnPRenderer::OnSetAVTransportURI(PLT_ActionReference& action)
 }
 
 /*----------------------------------------------------------------------
+ |   CUPnPRenderer::OnSetAVTransportURI
+ +---------------------------------------------------------------------*/
+NPT_Result
+CUPnPRenderer::OnSetNextAVTransportURI(PLT_ActionReference& action)
+{
+    NPT_String uri, meta;
+    PLT_Service* service;
+    NPT_CHECK_SEVERE(FindServiceByType("urn:schemas-upnp-org:service:AVTransport:1", service));
+
+    NPT_CHECK_SEVERE(action->GetArgumentValue("NextURI", uri));
+    NPT_CHECK_SEVERE(action->GetArgumentValue("NextURIMetaData", meta));
+
+    CFileItemPtr item = GetFileItem(uri, meta);
+    if (!item) {
+        return NPT_FAILURE;
+    }
+
+    if (g_application.m_pPlayer->IsPlaying()) {
+
+        int playlist = PLAYLIST_MUSIC;
+        if(item->IsVideo())
+          playlist = PLAYLIST_VIDEO;
+
+        {   CSingleLock lock(g_graphicsContext);
+            g_playlistPlayer.ClearPlaylist(playlist);
+            g_playlistPlayer.Add(playlist, item);
+
+            g_playlistPlayer.SetCurrentSong(-1);
+            g_playlistPlayer.SetCurrentPlaylist(playlist);
+        }
+
+        CGUIMessage msg(GUI_MSG_PLAYLIST_CHANGED, 0, 0);
+        g_windowManager.SendThreadMessage(msg);
+
+
+        service->SetStateVariable("NextAVTransportURI", uri);
+        service->SetStateVariable("NextAVTransportURIMetaData", meta);
+
+        NPT_CHECK_SEVERE(action->SetArgumentsOutFromStateVariable());
+
+        return NPT_SUCCESS;
+
+  } else if (g_windowManager.GetActiveWindow() == WINDOW_SLIDESHOW) {
+        return NPT_FAILURE;
+  } else {
+        return NPT_FAILURE;
+  }
+}
+
+/*----------------------------------------------------------------------
 |   CUPnPRenderer::PlayMedia
 +---------------------------------------------------------------------*/
 NPT_Result
-CUPnPRenderer::PlayMedia(const char* uri, const char* meta, PLT_Action* action)
+CUPnPRenderer::PlayMedia(const NPT_String& uri, const NPT_String& meta, PLT_Action* action)
 {
-    bool bImageFile = false;
     PLT_Service* service;
     NPT_CHECK_SEVERE(FindServiceByType("urn:schemas-upnp-org:service:AVTransport:1", service));
 
@@ -441,62 +617,18 @@ CUPnPRenderer::PlayMedia(const char* uri, const char* meta, PLT_Action* action)
       service->SetStateVariable("TransportStatus", "OK");
     }
 
-    PLT_MediaObjectListReference list;
-    PLT_MediaObject*             object = NULL;
-
-    if (meta && NPT_SUCCEEDED(PLT_Didl::FromDidl(meta, list))) {
-        list->Get(0, object);
+    CFileItemPtr item = GetFileItem(uri, meta);
+    if (!item) {
+        return NPT_FAILURE;
     }
 
-    if (object) {
-        CFileItem item(uri, false);
-
-        PLT_MediaItemResource* res = object->m_Resources.GetFirstItem();
-        for(NPT_Cardinal i = 0; i < object->m_Resources.GetItemCount(); i++) {
-            if(object->m_Resources[i].m_Uri == uri) {
-                res = &object->m_Resources[i];
-                break;
-            }
-        }
-        for(NPT_Cardinal i = 0; i < object->m_Resources.GetItemCount(); i++) {
-            if(object->m_Resources[i].m_ProtocolInfo.ToString().StartsWith("xbmc-get:")) {
-                res = &object->m_Resources[i];
-                item.SetPath(CStdString(res->m_Uri));
-                break;
-            }
-        }
-
-        if (res && res->m_ProtocolInfo.IsValid()) {
-            item.SetMimeType((const char*)res->m_ProtocolInfo.GetContentType());
-        }
-
-        item.m_dateTime.SetFromDateString((const char*)object->m_Date);
-        item.m_strTitle = (const char*)object->m_Title;
-        item.SetLabel((const char*)object->m_Title);
-        item.SetLabelPreformated(true);
-        if (object->m_ExtraInfo.album_arts.GetItem(0)) {
-            //FIXME only considers 1st image
-            item.SetThumbnailImage((const char*)object->m_ExtraInfo.album_arts.GetItem(0)->uri);
-        }
-        if (object->m_ObjectClass.type.StartsWith("object.item.audioItem")) {
-            if(NPT_SUCCEEDED(PopulateTagFromObject(*item.GetMusicInfoTag(), *object, res)))
-                item.SetLabelPreformated(false);
-        } else if (object->m_ObjectClass.type.StartsWith("object.item.videoItem")) {
-            if(NPT_SUCCEEDED(PopulateTagFromObject(*item.GetVideoInfoTag(), *object, res)))
-                item.SetLabelPreformated(false);
-        } else if (object->m_ObjectClass.type.StartsWith("object.item.imageItem")) {
-            bImageFile = true;
-        }
-        bImageFile?CApplicationMessenger::Get().PictureShow(item.GetPath())
-                  :CApplicationMessenger::Get().MediaPlay(item);
+    if (item->IsPicture()) {
+        CApplicationMessenger::Get().PictureShow(item->GetPath());
     } else {
-        bImageFile = NPT_String(PLT_MediaObject::GetUPnPClass(uri)).StartsWith("object.item.imageItem", true);
-
-        bImageFile?CApplicationMessenger::Get().PictureShow((const char*)uri)
-                  :CApplicationMessenger::Get().MediaPlay((const char*)uri);
+        CApplicationMessenger::Get().MediaPlay(*item, false);
     }
 
-    if (g_application.IsPlaying() || g_windowManager.GetActiveWindow() == WINDOW_SLIDESHOW) {
+    if (g_application.m_pPlayer->IsPlaying() || g_windowManager.GetActiveWindow() == WINDOW_SLIDESHOW) {
         NPT_AutoLock lock(m_state);
         service->SetStateVariable("TransportState", "PLAYING");
         service->SetStateVariable("TransportStatus", "OK");
@@ -507,6 +639,9 @@ CUPnPRenderer::PlayMedia(const char* uri, const char* meta, PLT_Action* action)
         service->SetStateVariable("TransportState", "STOPPED");
         service->SetStateVariable("TransportStatus", "ERROR_OCCURRED");
     }
+
+    service->SetStateVariable("NextAVTransportURI", "");
+    service->SetStateVariable("NextAVTransportURIMetaData", "");
 
     if (action) {
         NPT_CHECK_SEVERE(action->SetArgumentsOutFromStateVariable());
@@ -534,7 +669,7 @@ CUPnPRenderer::OnSetMute(PLT_ActionReference& action)
 {
     NPT_String mute;
     NPT_CHECK_SEVERE(action->GetArgumentValue("DesiredMute",mute));
-    if((mute == "1") ^ g_settings.m_bMute)
+    if((mute == "1") ^ g_application.IsMuted())
         g_application.ToggleMute();
     return NPT_SUCCESS;
 }
@@ -545,7 +680,7 @@ CUPnPRenderer::OnSetMute(PLT_ActionReference& action)
 NPT_Result
 CUPnPRenderer::OnSeek(PLT_ActionReference& action)
 {
-    if (!g_application.IsPlaying()) return NPT_ERROR_INVALID_STATE;
+    if (!g_application.m_pPlayer->IsPlaying()) return NPT_ERROR_INVALID_STATE;
 
     NPT_String unit, target;
     NPT_CHECK_SEVERE(action->GetArgumentValue("Unit", unit));

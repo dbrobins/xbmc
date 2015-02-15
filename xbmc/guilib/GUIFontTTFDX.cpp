@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@
 
 using namespace std;
 
-CGUIFontTTFDX::CGUIFontTTFDX(const CStdString& strFileName)
+CGUIFontTTFDX::CGUIFontTTFDX(const std::string& strFileName)
 : CGUIFontTTFBase(strFileName)
 {
   m_speedupTexture = NULL;
@@ -51,62 +51,73 @@ CGUIFontTTFDX::~CGUIFontTTFDX(void)
   free(m_index);
 }
 
-void CGUIFontTTFDX::Begin()
+bool CGUIFontTTFDX::FirstBegin()
 {
   LPDIRECT3DDEVICE9 pD3DDevice = g_Windowing.Get3DDevice();
 
-  if (m_nestedBeginCount == 0)
+  if (pD3DDevice == NULL)
   {
-    // just have to blit from our texture.
-    m_texture->BindToUnit(0);
-    pD3DDevice->SetTextureStageState( 0, D3DTSS_COLOROP, D3DTOP_SELECTARG1 ); // only use diffuse
-    pD3DDevice->SetTextureStageState( 0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
-    pD3DDevice->SetTextureStageState( 0, D3DTSS_ALPHAOP, D3DTOP_MODULATE );
-    pD3DDevice->SetTextureStageState( 0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-    pD3DDevice->SetTextureStageState( 0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
-
-    // no other texture stages needed
-    pD3DDevice->SetTextureStageState( 1, D3DTSS_COLOROP, D3DTOP_DISABLE);
-    pD3DDevice->SetTextureStageState( 1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
-
-    pD3DDevice->SetRenderState( D3DRS_ZENABLE, FALSE );
-    pD3DDevice->SetRenderState( D3DRS_FOGENABLE, FALSE );
-    pD3DDevice->SetRenderState( D3DRS_FILLMODE, D3DFILL_SOLID );
-    pD3DDevice->SetRenderState( D3DRS_CULLMODE, D3DCULL_NONE );
-    pD3DDevice->SetRenderState( D3DRS_ALPHABLENDENABLE, TRUE );
-    pD3DDevice->SetRenderState( D3DRS_SRCBLEND, D3DBLEND_SRCALPHA );
-    pD3DDevice->SetRenderState( D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA );
-    pD3DDevice->SetRenderState( D3DRS_LIGHTING, FALSE);
-
-    pD3DDevice->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
-    m_vertex_count = 0;
+    CLog::Log(LOGERROR, __FUNCTION__" - failed to get Direct3D device");
+    return false;
   }
 
-  // Keep track of the nested begin/end calls.
-  m_nestedBeginCount++;
+  int unit = 0;
+  // just have to blit from our texture.
+  m_texture->BindToUnit(unit);
+  pD3DDevice->SetTextureStageState( unit, D3DTSS_COLOROP, D3DTOP_SELECTARG1 ); // only use diffuse
+  pD3DDevice->SetTextureStageState( unit, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
+  pD3DDevice->SetTextureStageState( unit, D3DTSS_ALPHAOP, D3DTOP_MODULATE );
+  pD3DDevice->SetTextureStageState( unit, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+  pD3DDevice->SetTextureStageState( unit, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+  unit++;
+
+  if(g_Windowing.UseLimitedColor())
+  {
+    pD3DDevice->SetTextureStageState( unit, D3DTSS_COLOROP  , D3DTOP_ADD );
+    pD3DDevice->SetTextureStageState( unit, D3DTSS_COLORARG1, D3DTA_CURRENT) ;
+    pD3DDevice->SetRenderState( D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(16,16,16,0) );
+    pD3DDevice->SetTextureStageState( unit, D3DTSS_COLORARG2, D3DTA_TFACTOR );
+    unit++;
+  }
+
+  // no other texture stages needed
+  pD3DDevice->SetTextureStageState( unit, D3DTSS_COLOROP, D3DTOP_DISABLE);
+  pD3DDevice->SetTextureStageState( unit, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+
+  pD3DDevice->SetRenderState( D3DRS_ZENABLE, FALSE );
+  pD3DDevice->SetRenderState( D3DRS_FOGENABLE, FALSE );
+  pD3DDevice->SetRenderState( D3DRS_FILLMODE, D3DFILL_SOLID );
+  pD3DDevice->SetRenderState( D3DRS_CULLMODE, D3DCULL_NONE );
+  pD3DDevice->SetRenderState( D3DRS_ALPHABLENDENABLE, TRUE );
+  pD3DDevice->SetRenderState( D3DRS_SRCBLEND, D3DBLEND_SRCALPHA );
+  pD3DDevice->SetRenderState( D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA );
+  pD3DDevice->SetRenderState( D3DRS_LIGHTING, FALSE);
+
+  pD3DDevice->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+  return true;
 }
 
-void CGUIFontTTFDX::End()
+void CGUIFontTTFDX::LastEnd()
 {
   LPDIRECT3DDEVICE9 pD3DDevice = g_Windowing.Get3DDevice();
 
-  if (m_nestedBeginCount == 0)
+  if (m_vertex.size() == 0)
     return;
 
-  if (--m_nestedBeginCount > 0)
-    return;
-
-  if (m_vertex_count == 0)
-    return;
-
-  unsigned index_size = m_vertex_size * 6 / 4;
+  /* If the number of elements in m_vertex reduces, we can simply re-use the
+   * first elements in m_index without any need to reallocate or reinitialise
+   * it. To ensure we don't reallocate m_index any more frequently than
+   * m_vertex, keep their respective high watermarks (m_index_size and
+   * m_vertex.capacity()) in line.
+   */
+  unsigned index_size = m_vertex.capacity() * 6 / 4;
   if(m_index_size < index_size)
   {
     uint16_t* id  = (uint16_t*)calloc(index_size, sizeof(uint16_t));
     if(id == NULL)
       return;
 
-    for(int i = 0, b = 0; i < m_vertex_size; i += 4, b += 6)
+    for(int i = 0, b = 0; i < m_vertex.capacity(); i += 4, b += 6)
     {
       id[b+0] = i + 0;
       id[b+1] = i + 1;
@@ -135,11 +146,11 @@ void CGUIFontTTFDX::End()
 
   pD3DDevice->DrawIndexedPrimitiveUP(D3DPT_TRIANGLELIST
                                     , 0
-                                    , m_vertex_count
-                                    , m_vertex_count / 2
+                                    , m_vertex.size()
+                                    , m_vertex.size() / 2
                                     , m_index
                                     , D3DFMT_INDEX16
-                                    , m_vertex
+                                    , &m_vertex[0]
                                     , sizeof(SVertex));
   pD3DDevice->SetTransform(D3DTS_WORLD, &orig);
 
@@ -149,6 +160,18 @@ void CGUIFontTTFDX::End()
 
 CBaseTexture* CGUIFontTTFDX::ReallocTexture(unsigned int& newHeight)
 {
+  assert(newHeight != 0);
+  assert(m_textureWidth != 0);
+  if(m_textureHeight == 0)
+  {
+    delete m_texture;
+    m_texture = NULL;
+    delete m_speedupTexture;
+    m_speedupTexture = NULL;
+  }
+  m_staticCache.Flush();
+  m_dynamicCache.Flush();
+
   CDXTexture* pNewTexture = new CDXTexture(m_textureWidth, newHeight, XB_FMT_A8);
   pNewTexture->CreateTextureObject();
   LPDIRECT3DTEXTURE9 newTexture = pNewTexture->GetTextureObject();
@@ -176,7 +199,6 @@ CBaseTexture* CGUIFontTTFDX::ReallocTexture(unsigned int& newHeight)
   }
 
   LPDIRECT3DSURFACE9 pSource, pTarget;
-  HRESULT hr;
   // There might be data to copy from the previous texture
   if ((newSpeedupTexture && m_speedupTexture) || (newTexture && m_texture))
   {
@@ -238,7 +260,7 @@ CBaseTexture* CGUIFontTTFDX::ReallocTexture(unsigned int& newHeight)
     const RECT rect = { 0, 0, m_textureWidth, m_textureHeight };
     const POINT point = { 0, 0 };
 
-    hr = g_Windowing.Get3DDevice()->UpdateSurface(pSource, &rect, pTarget, &point);
+    HRESULT hr = g_Windowing.Get3DDevice()->UpdateSurface(pSource, &rect, pTarget, &point);
     SAFE_RELEASE(pSource);
     SAFE_RELEASE(pTarget);
 
@@ -254,12 +276,13 @@ CBaseTexture* CGUIFontTTFDX::ReallocTexture(unsigned int& newHeight)
   SAFE_DELETE(m_texture);
   SAFE_DELETE(m_speedupTexture);
   m_textureHeight = newHeight;
+  m_textureScaleY = 1.0f / m_textureHeight;
   m_speedupTexture = newSpeedupTexture;
 
   return pNewTexture;
 }
 
-bool CGUIFontTTFDX::CopyCharToTexture(FT_BitmapGlyph bitGlyph, Character* ch)
+bool CGUIFontTTFDX::CopyCharToTexture(FT_BitmapGlyph bitGlyph, unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2)
 {
   FT_Bitmap bitmap = bitGlyph->bitmap;
 
@@ -271,12 +294,8 @@ bool CGUIFontTTFDX::CopyCharToTexture(FT_BitmapGlyph bitGlyph, Character* ch)
     texture->GetSurfaceLevel(0, &target);
 
   RECT sourcerect = { 0, 0, bitmap.width, bitmap.rows };
-  RECT targetrect;
-  targetrect.top = m_posY + ch->offsetY;
-  targetrect.left = m_posX + bitGlyph->left;
-  targetrect.bottom = targetrect.top + bitmap.rows;
-  targetrect.right = targetrect.left + bitmap.width;
-  
+  RECT targetrect = { x1, y1, x2, y2 };
+
   HRESULT hr = D3DXLoadSurfaceFromMemory( target, NULL, &targetrect,
                                           bitmap.buffer, D3DFMT_LIN_A8, bitmap.pitch, NULL, &sourcerect,
                                           D3DX_FILTER_NONE, 0x00000000);

@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -27,14 +27,13 @@ namespace PERIPHERALS
   class CPeripheralHID : public CPeripheral
   {
   public:
-    CPeripheralHID(const PeripheralType type, const PeripheralBusType busType, const CStdString &strLocation, const CStdString &strDeviceName, int iVendorId, int iProductId);
+    CPeripheralHID(const PeripheralScanResult& scanResult);
     virtual ~CPeripheralHID(void);
     virtual bool InitialiseFeature(const PeripheralFeature feature);
     virtual bool LookupSymAndUnicode(XBMC_keysym &keysym, uint8_t *key, char *unicode) { return false; }
-    virtual void OnSettingChanged(const CStdString &strChangedSetting);
+    virtual void OnSettingChanged(const std::string &strChangedSetting);
 
   protected:
-    bool       m_bInitialised;
-    CStdString m_strKeymap;
+    std::string m_strKeymap;
   };
 }

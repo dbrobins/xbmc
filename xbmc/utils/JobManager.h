@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -135,6 +135,13 @@ public:
    */
   virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job);
 
+protected:
+  /*!
+   \brief Returns if we still have jobs waiting to be processed
+   NOTE: This function does not take into account the jobs that are currently processing 
+   */
+  bool QueueEmpty() const;
+  
 private:
   void QueueNextJob();
 
@@ -165,11 +172,12 @@ class CJobManager
   class CWorkItem
   {
   public:
-    CWorkItem(CJob *job, unsigned int id, IJobCallback *callback)
+    CWorkItem(CJob *job, unsigned int id, CJob::PRIORITY priority, IJobCallback *callback)
     {
       m_job = job;
       m_id = id;
       m_callback = callback;
+      m_priority = priority;
     }
     bool operator==(unsigned int jobID) const
     {
@@ -191,6 +199,7 @@ class CJobManager
     CJob         *m_job;
     unsigned int  m_id;
     IJobCallback *m_callback;
+    CJob::PRIORITY m_priority;
   };
 
 public:
@@ -225,37 +234,40 @@ public:
   void CancelJobs();
 
   /*!
-   \brief Suspends queueing of the specified type until unpaused
-   Useful to (for ex) stop queuing thumb jobs during video playback. Only affects PRIORITY_LOW or lower.
-   Does not affect currently processing jobs, use IsProcessing to see if any need to be waited on
-   Types accumulate, so more than one can be set at a time.
-   Refcounted, so UnPause() must be called once for each Pause().
-   \param pausedType only jobs of this type will be affected
-   \sa UnPause(), IsPaused(), IsProcessing()
+   \brief Re-start accepting jobs again
+   Called after calling CancelJobs() to allow this manager to accept more jobs
+   \throws std::logic_error if the manager was not previously cancelled
+   \sa CancelJobs()
    */
-  void Pause(const std::string &pausedType);
-
-  /*!
-   \brief Resumes queueing of the specified type
-   \param pausedType only jobs of this type will be affected
-   \sa Pause(), IsPaused(), IsProcessing()
-   */
-  void UnPause(const std::string &pausedType);
-
-  /*!
-   \brief Checks if jobs of specified type are paused.
-   \param pausedType only jobs of this type will be affected
-   \sa Pause(), UnPause(), IsProcessing()
-   */
-  bool IsPaused(const std::string &pausedType);
+  void Restart();
 
   /*!
    \brief Checks to see if any jobs of a specific type are currently processing.
-   \param pausedType Job type to search for
+   \param type Job type to search for
    \return Number of matching jobs
-   \sa Pause(), UnPause(), IsPaused()
    */
-  int IsProcessing(const std::string &pausedType);
+  int IsProcessing(const std::string &type) const;
+
+  /*!
+   \brief Suspends queueing of jobs with priority PRIORITY_LOW_PAUSABLE until unpaused
+   Useful to (for ex) stop queuing thumb jobs during video start/playback.
+   Does not affect currently processing jobs, use IsProcessing to see if any need to be waited on
+   \sa UnPauseJobs()
+   */
+  void PauseJobs();
+
+  /*!
+   \brief Resumes queueing of (previously paused) jobs with priority PRIORITY_LOW_PAUSABLE
+   \sa PauseJobs()
+   */
+  void UnPauseJobs();
+
+  /*!
+   \brief Checks to see if any jobs with specific priority are currently processing.
+   \param priority to search for
+   \return true if processing jobs, else returns false
+   */
+  bool IsProcessing(const CJob::PRIORITY &priority) const;
 
 protected:
   friend class CJobWorker;
@@ -302,7 +314,7 @@ private:
 
   void StartWorkers(CJob::PRIORITY priority);
   void RemoveWorker(const CJobWorker *worker);
-  unsigned int GetMaxWorkers(CJob::PRIORITY priority) const;
+  static unsigned int GetMaxWorkers(CJob::PRIORITY priority);
 
   unsigned int m_jobCounter;
 
@@ -311,11 +323,11 @@ private:
   typedef std::vector<CJobWorker*> Workers;
 
   JobQueue   m_jobQueue[CJob::PRIORITY_HIGH+1];
+  bool       m_pauseJobs;
   Processing m_processing;
   Workers    m_workers;
 
   CCriticalSection m_section;
   CEvent           m_jobEvent;
   bool             m_running;
-  std::vector<std::string>  m_pausedTypes;
 };

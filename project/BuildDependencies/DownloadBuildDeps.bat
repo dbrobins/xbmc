@@ -3,7 +3,7 @@
 SETLOCAL
 
 SET CUR_PATH=%CD%
-SET XBMC_PATH=%CD%\..\..
+SET APP_PATH=%CD%\..\..
 SET TMP_PATH=%CD%\scripts\tmp
 
 rem can't run rmdir and md back to back. access denied error otherwise.
@@ -28,11 +28,15 @@ md %TMP_PATH%
 
 cd scripts
 
-FOR /F "tokens=*" %%S IN ('dir /B "*_d.bat"') DO (
-  echo running %%S ...
-  CALL %%S
+SET FORMED_OK_FLAG=%TMP_PATH%\got-all-formed-packages
+REM Trick to preserve console title
+start /b /wait cmd.exe /c get_formed.cmd
+IF NOT EXIST %FORMED_OK_FLAG% (
+  ECHO ERROR: Not all formed packages are ready!
+  EXIT /B 101
 )
 
 cd %CUR_PATH%
 
 rmdir %TMP_PATH% /S /Q
+EXIT /B 0

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ void CGUIControlGroupList::Process(unsigned int currentTime, CDirtyRegionList &d
   ValidateOffset();
   if (m_pageControl)
   {
-    CGUIMessage message(GUI_MSG_LABEL_RESET, GetParentID(), m_pageControl, (int)m_height, (int)m_totalSize);
+    CGUIMessage message(GUI_MSG_LABEL_RESET, GetParentID(), m_pageControl, (int)Size(), (int)m_totalSize);
     SendWindowMessage(message);
     CGUIMessage message2(GUI_MSG_ITEM_SELECT, GetParentID(), m_pageControl, (int)m_scroller.GetValue());
     SendWindowMessage(message2);
@@ -225,8 +225,8 @@ void CGUIControlGroupList::AddControl(CGUIControl *control, int position /*= -1*
 
   if (control)
   { // set the navigation of items so that they form a list
-    CGUIAction beforeAction = (m_orientation == VERTICAL) ? m_actionUp : m_actionLeft;
-    CGUIAction afterAction = (m_orientation == VERTICAL) ? m_actionDown : m_actionRight;
+    CGUIAction beforeAction = GetNavigateAction((m_orientation == VERTICAL) ? ACTION_MOVE_UP : ACTION_MOVE_LEFT);
+    CGUIAction afterAction = GetNavigateAction((m_orientation == VERTICAL) ? ACTION_MOVE_DOWN : ACTION_MOVE_RIGHT);
     if (m_children.size())
     {
       // we're inserting at the given position, so grab the items above and below and alter
@@ -281,17 +281,17 @@ void CGUIControlGroupList::AddControl(CGUIControl *control, int position /*= -1*
     {
       control->SetNavigationAction(ACTION_MOVE_UP, beforeAction);
       control->SetNavigationAction(ACTION_MOVE_DOWN, afterAction);
-      control->SetNavigationAction(ACTION_MOVE_LEFT, m_actionLeft, false);
-      control->SetNavigationAction(ACTION_MOVE_RIGHT, m_actionRight, false);
+      control->SetNavigationAction(ACTION_MOVE_LEFT, GetNavigateAction(ACTION_MOVE_LEFT), false);
+      control->SetNavigationAction(ACTION_MOVE_RIGHT, GetNavigateAction(ACTION_MOVE_RIGHT), false);
     }
     else
     {
       control->SetNavigationAction(ACTION_MOVE_LEFT, beforeAction);
       control->SetNavigationAction(ACTION_MOVE_RIGHT, afterAction);
-      control->SetNavigationAction(ACTION_MOVE_UP, m_actionUp, false);
-      control->SetNavigationAction(ACTION_MOVE_DOWN, m_actionDown, false);
+      control->SetNavigationAction(ACTION_MOVE_UP, GetNavigateAction(ACTION_MOVE_UP), false);
+      control->SetNavigationAction(ACTION_MOVE_DOWN, GetNavigateAction(ACTION_MOVE_DOWN), false);
     }
-    control->SetNavigationAction(ACTION_NAV_BACK, m_actionBack, false);
+    control->SetNavigationAction(ACTION_NAV_BACK, GetNavigateAction(ACTION_NAV_BACK), false);
 
     if (!m_useControlPositions)
       control->SetPosition(0,0);
@@ -481,6 +481,25 @@ EVENT_RESULT CGUIControlGroupList::OnMouseEvent(const CPoint &point, const CMous
       offset = nextOffset;
     }
   }
+  else if (event.m_id == ACTION_GESTURE_BEGIN)
+  { // grab exclusive access
+    CGUIMessage msg(GUI_MSG_EXCLUSIVE_MOUSE, GetID(), GetParentID());
+    SendWindowMessage(msg);
+    return EVENT_RESULT_HANDLED;
+  }
+  else if (event.m_id == ACTION_GESTURE_END)
+  { // release exclusive access
+    CGUIMessage msg(GUI_MSG_EXCLUSIVE_MOUSE, 0, GetParentID());
+    SendWindowMessage(msg);
+    return EVENT_RESULT_HANDLED;
+  }
+  else if (event.m_id == ACTION_GESTURE_PAN)
+  { // do the drag and validate our offset (corrects for end of scroll)
+    m_scroller.SetValue(CLAMP(m_scroller.GetValue() - ((m_orientation == HORIZONTAL) ? event.m_offsetX : event.m_offsetY), 0, m_totalSize - Size()));
+    SetInvalid();
+    return EVENT_RESULT_HANDLED;
+  }
+
   return EVENT_RESULT_UNHANDLED;
 }
 

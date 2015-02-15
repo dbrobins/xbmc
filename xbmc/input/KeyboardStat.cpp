@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2007-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2007-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -83,8 +83,10 @@ const CKey CKeyboardStat::ProcessKeyDown(XBMC_keysym& keysym)
     modifiers |= CKey::MODIFIER_ALT;
   if (keysym.mod & XBMCKMOD_SUPER)
     modifiers |= CKey::MODIFIER_SUPER;
+  if (keysym.mod & XBMCKMOD_META)
+    modifiers |= CKey::MODIFIER_META;
 
-  CLog::Log(LOGDEBUG, "Keyboard: scancode: %02x, sym: %04x, unicode: %04x, modifier: %x", keysym.scancode, keysym.sym, keysym.unicode, keysym.mod);
+  CLog::Log(LOGDEBUG, "Keyboard: scancode: 0x%02x, sym: 0x%04x, unicode: 0x%04x, modifier: 0x%x", keysym.scancode, keysym.sym, keysym.unicode, keysym.mod);
 
   // The keysym.unicode is usually valid, even if it is zero. A zero
   // unicode just means this is a non-printing keypress. The ascii and
@@ -186,9 +188,9 @@ void CKeyboardStat::ProcessKeyUp(void)
 // Used to make the debug log more intelligable
 // The KeyID includes the flags for ctrl, alt etc
 
-CStdString CKeyboardStat::GetKeyName(int KeyID)
+std::string CKeyboardStat::GetKeyName(int KeyID)
 { int keyid;
-  CStdString keyname;
+  std::string keyname;
   XBMCKEYTABLE keytable;
 
   keyname.clear();
@@ -203,6 +205,8 @@ CStdString CKeyboardStat::GetKeyName(int KeyID)
     keyname.append("alt-");
   if (KeyID & CKey::MODIFIER_SUPER)
     keyname.append("win-");
+  if (KeyID & CKey::MODIFIER_META)
+    keyname.append("meta-");
 
 // Now get the key name
 
@@ -210,8 +214,8 @@ CStdString CKeyboardStat::GetKeyName(int KeyID)
   if (KeyTableLookupVKeyName(keyid, &keytable))
     keyname.append(keytable.keyname);
   else
-    keyname.AppendFormat("%i", keyid);
-  keyname.AppendFormat(" (%02x)", KeyID);
+    keyname += StringUtils::Format("%i", keyid);
+  keyname += StringUtils::Format(" (0x%02x)", KeyID);
 
   return keyname;
 }

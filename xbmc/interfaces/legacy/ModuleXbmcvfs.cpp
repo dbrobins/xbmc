@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -35,7 +34,7 @@ namespace XBMCAddon
     bool copy(const String& strSource, const String& strDestnation)
     {
       DelayedCallGuard dg;
-      return XFILE::CFile::Cache(strSource, strDestnation);
+      return XFILE::CFile::Copy(strSource, strDestnation);
     }
 
     // delete a file
@@ -56,6 +55,8 @@ namespace XBMCAddon
     bool exists(const String& path)
     {
       DelayedCallGuard dg;
+      if (URIUtils::HasSlashAtEnd(path, true))
+        return XFILE::CDirectory::Exists(path);
       return XFILE::CFile::Exists(path, false);
     }      
 
@@ -82,9 +83,9 @@ namespace XBMCAddon
     Tuple<std::vector<String>, std::vector<String> > listdir(const String& path)
     {
       CFileItemList items;
-      CStdString strSource;
+      std::string strSource;
       strSource = path;
-      XFILE::CDirectory::GetDirectory(strSource, items);
+      XFILE::CDirectory::GetDirectory(strSource, items, "", XFILE::DIR_FLAG_NO_FILE_DIRS);
 
       Tuple<std::vector<String>, std::vector<String> > ret;
       // initialize the Tuple to two values
@@ -92,17 +93,17 @@ namespace XBMCAddon
 
       for (int i=0; i < items.Size(); i++)
       {
-        CStdString itemPath = items[i]->GetPath();
+        std::string itemPath = items[i]->GetPath();
         
         if (URIUtils::HasSlashAtEnd(itemPath)) // folder
         {
           URIUtils::RemoveSlashAtEnd(itemPath);
-          CStdString strFileName = URIUtils::GetFileName(itemPath);
+          std::string strFileName = URIUtils::GetFileName(itemPath);
           ret.first().push_back(strFileName);
         }
         else // file
         {
-          CStdString strFileName = URIUtils::GetFileName(itemPath);
+          std::string strFileName = URIUtils::GetFileName(itemPath);
           ret.second().push_back(strFileName);
         }
       }

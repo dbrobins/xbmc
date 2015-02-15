@@ -1,8 +1,7 @@
 #pragma once
-
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +20,6 @@
  */
 
 #include "GUIWindowMusicBase.h"
-#include "ThumbLoader.h"
 
 class CGUIWindowMusicSongs : public CGUIWindowMusicBase, public IBackgroundLoaderObserver
 {
@@ -32,18 +30,18 @@ public:
   virtual bool OnMessage(CGUIMessage& message);
   virtual bool OnAction(const CAction& action);
 
-  void DoScan(const CStdString &strPath);
+  void DoScan(const std::string &strPath);
 protected:
   virtual void OnItemLoaded(CFileItem* pItem) {};
-  virtual bool GetDirectory(const CStdString &strDirectory, CFileItemList &items);
+  virtual bool GetDirectory(const std::string &strDirectory, CFileItemList &items);
   virtual void UpdateButtons();
-  virtual bool Update(const CStdString &strDirectory);
+  virtual bool Update(const std::string &strDirectory, bool updateFilterPath = true);
   virtual void OnPrepareFileItems(CFileItemList &items);
   virtual void GetContextButtons(int itemNumber, CContextButtons &buttons);
   virtual bool OnContextButton(int itemNumber, CONTEXT_BUTTON button);
   virtual void OnScan(int iItem);
   virtual void OnRemoveSource(int iItem);
-  virtual CStdString GetStartFolder(const CStdString &dir);
+  virtual std::string GetStartFolder(const std::string &dir);
 
   // new method
   virtual void PlayItem(int iItem);

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-#   Copyright (C) 2008-2009 Team XBMC http://www.xbmc.org
+#   Copyright (C) 2008-2013 Team XBMC
 #
 #   This program is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -18,12 +18,12 @@
 # PS3 Remote and Controller Keymaps
 
 keymap_remote = {
-    "16": 'power'  ,#EJECT
-    "64": None     ,#AUDIO
-    "65": None     ,#ANGLE
-    "63": None     ,#SUBTITLE
-    "0f": None     ,#CLEAR
-    "28": None     ,#TIME
+    "16": 'power'    ,#EJECT
+    "64": None       ,#AUDIO
+    "65": None       ,#ANGLE
+    "63": 'subtitle' ,#SUBTITLE
+    "0f": None       ,#CLEAR
+    "28": None       ,#TIME
 
     "00": 'one'   ,#1
     "01": 'two'   ,#2

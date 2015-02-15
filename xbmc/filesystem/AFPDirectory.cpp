@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2011-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2011-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@
 struct CachedDirEntry
 {
   unsigned int type;
-  CStdString name;
+  std::string name;
 };
 
 using namespace XFILE;
@@ -54,14 +54,14 @@ CAFPDirectory::~CAFPDirectory(void)
   gAfpConnection.AddIdleConnection();
 }
 
-bool CAFPDirectory::ResolveSymlink( const CStdString &dirName, const CStdString &fileName, 
+bool CAFPDirectory::ResolveSymlink( const std::string &dirName, const std::string &fileName,
                                     struct stat *stat, CURL &resolvedUrl)
 {
   CSingleLock lock(gAfpConnection); 
   int ret = 0;  
   bool retVal = true;
   char resolvedLink[MAX_PATH];
-  CStdString fullpath = dirName;
+  std::string fullpath = dirName;
   URIUtils::AddSlashAtEnd(fullpath);
   fullpath += fileName;
   
@@ -84,7 +84,7 @@ bool CAFPDirectory::ResolveSymlink( const CStdString &dirName, const CStdString 
       //and just can't change the global nfs context here
       //without destroying something...    
       fullpath = resolvedLink;
-      fullpath = fullpath.Right(fullpath.length()-1);
+      fullpath.erase(0, 1);
       resolvedUrl.SetFileName(fullpath);     
       ret = gAfpConnection.stat(resolvedUrl, stat);
       if(ret < 0)
@@ -115,7 +115,7 @@ bool CAFPDirectory::ResolveSymlink( const CStdString &dirName, const CStdString 
 }
 
 
-bool CAFPDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
+bool CAFPDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
   // We accept afp://[[user[:password@]]server[/share[/path[/file]]]]
   // silence gdb breaking on signal SIGUSR2 with "handle SIGUSR2 nostop noprint"
@@ -123,29 +123,27 @@ bool CAFPDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
   FILETIME fileTime, localTime;
 
   CSingleLock lock(gAfpConnection);
-  // we need an url to do proper escaping
-  CURL url(strPath);
   CAfpConnection::afpConnnectError afpError = gAfpConnection.Connect(url);
 
-  if (afpError != CAfpConnection::AfpOk || (!url.GetShareName().IsEmpty() && !gAfpConnection.GetVolume()))
+  if (afpError != CAfpConnection::AfpOk || (!url.GetShareName().empty() && !gAfpConnection.GetVolume()))
   {
     if (afpError == CAfpConnection::AfpAuth)
     {
        if (m_flags & DIR_FLAG_ALLOW_PROMPT)
        {
-         RequireAuthentication(url.Get());
+         RequireAuthentication(url);
        }
     }
     return false;
   }
-  CStdString strDirName = gAfpConnection.GetPath(url);
+  std::string strDirName = gAfpConnection.GetPath(url);
 
   vector<CachedDirEntry> vecEntries;
   struct afp_file_info *dirEnt = NULL;
   struct afp_file_info *curDirPtr = NULL;
 
   // if no share name in url - try to fetch the volumes on the server and treat them like folders
-  if (url.GetShareName().IsEmpty())
+  if (url.GetShareName().empty())
   {
     bListVolumes = true;
     struct afp_server *serv = gAfpConnection.GetServer();
@@ -179,16 +177,16 @@ bool CAFPDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
     gAfpConnection.GetImpl()->afp_ml_filebase_free(&dirEnt);
   }
 
+  std::string myStrPath(url.Get());
+  URIUtils::AddSlashAtEnd(myStrPath); //be sure the dir ends with a slash
   for (size_t i = 0; i < vecEntries.size(); i++)
   {
     CachedDirEntry aDir = vecEntries[i];
     // We use UTF-8 internally, as does AFP
-    CStdString strFile = aDir.name;
-    CStdString myStrPath(strPath);
-    URIUtils::AddSlashAtEnd(myStrPath); //be sure the dir ends with a slash    
-    CStdString path(myStrPath + strFile);
+    std::string strFile = aDir.name;
+    std::string path(myStrPath + strFile);
 
-    if (!strFile.Equals(".") && !strFile.Equals("..") && !strFile.Equals("lost+found"))
+    if (strFile != "." && strFile != ".." && strFile != "lost+found")
     {
       int64_t iSize = 0;
       bool bIsDir = aDir.type;
@@ -202,7 +200,7 @@ bool CAFPDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
         if ((m_flags & DIR_FLAG_NO_FILE_INFO)==0 && g_advancedSettings.m_sambastatfiles)
         {
           // make sure we use the authenticated path wich contains any default username
-          CStdString strFullName = strDirName + strFile;
+          std::string strFullName = strDirName + strFile;
 
           lock.Enter();
 
@@ -218,7 +216,7 @@ bool CAFPDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
                 continue;
               }
               path = linkUrl.Get();
-              bIsDir = info.st_mode & S_IFDIR;            
+              bIsDir = S_ISDIR(info.st_mode);            
             }
             lTimeDate = info.st_mtime;
             if (lTimeDate == 0) // if modification date is missing, use create date
@@ -271,16 +269,14 @@ bool CAFPDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
   return true;
 }
 
-bool CAFPDirectory::Create(const char* strPath)
+bool CAFPDirectory::Create(const CURL& url)
 {
   CSingleLock lock(gAfpConnection);
-
-  CURL url(strPath);
 
   if (gAfpConnection.Connect(url) != CAfpConnection::AfpOk || !gAfpConnection.GetVolume())
     return false;
 
-  CStdString strFilename = gAfpConnection.GetPath(url);
+  std::string strFilename = gAfpConnection.GetPath(url);
 
   int result = gAfpConnection.GetImpl()->afp_wrap_mkdir(gAfpConnection.GetVolume(), strFilename.c_str(), 0);
 
@@ -290,15 +286,14 @@ bool CAFPDirectory::Create(const char* strPath)
   return (result == 0 || EEXIST == result);
 }
 
-bool CAFPDirectory::Remove(const char *strPath)
+bool CAFPDirectory::Remove(const CURL& url)
 {
   CSingleLock lock(gAfpConnection);
 
-  CURL url(strPath);
   if (gAfpConnection.Connect(url) != CAfpConnection::AfpOk || !gAfpConnection.GetVolume())
     return false;
 
-  CStdString strFileName = gAfpConnection.GetPath(url);
+  std::string strFileName = gAfpConnection.GetPath(url);
 
   int result = gAfpConnection.GetImpl()->afp_wrap_rmdir(gAfpConnection.GetVolume(), strFileName.c_str());
 
@@ -311,20 +306,19 @@ bool CAFPDirectory::Remove(const char *strPath)
   return true;
 }
 
-bool CAFPDirectory::Exists(const char *strPath)
+bool CAFPDirectory::Exists(const CURL& url)
 {
   CSingleLock lock(gAfpConnection);
 
-  CURL url(strPath);
   if (gAfpConnection.Connect(url) != CAfpConnection::AfpOk || !gAfpConnection.GetVolume())
     return false;
 
-  CStdString strFileName(gAfpConnection.GetPath(url));
+  std::string strFileName(gAfpConnection.GetPath(url));
 
   struct stat info;
   if (gAfpConnection.GetImpl()->afp_wrap_getattr(gAfpConnection.GetVolume(), strFileName.c_str(), &info) != 0)
     return false;
 
-  return (info.st_mode & S_IFDIR) ? true : false;
+  return S_ISDIR(info.st_mode);
 }
 #endif

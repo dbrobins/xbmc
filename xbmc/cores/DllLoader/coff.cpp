@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -69,6 +69,7 @@ CoffLoader::CoffLoader()
   NumOfDirectories = 0;
   NumOfSections = 0;
   FileHeaderOffset = 0;
+  EntryAddress = 0;
   hModule = NULL;
 }
 
@@ -76,7 +77,7 @@ CoffLoader::~CoffLoader()
 {
   if ( hModule )
   {
-#ifdef _LINUX
+#ifdef TARGET_POSIX
     free(hModule);
 #else
     VirtualFree(hModule, 0, MEM_RELEASE);
@@ -208,12 +209,12 @@ int CoffLoader::LoadCoffHModule(FILE *fp)
     return 0;
 
   // alloc aligned memory
-#ifdef _LINUX
+#ifdef TARGET_POSIX
   hModule = malloc(tempWindowsHeader.SizeOfImage);
 #else
-  hModule = VirtualAllocEx(0, (PVOID)tempWindowsHeader.ImageBase, tempWindowsHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+  hModule = VirtualAllocEx(GetCurrentProcess(), (PVOID)tempWindowsHeader.ImageBase, tempWindowsHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
   if (hModule == NULL)
-    hModule = VirtualAlloc(0, tempWindowsHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    hModule = VirtualAlloc(GetCurrentProcess(), tempWindowsHeader.SizeOfImage, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 #endif
   if (hModule == NULL)
     return 0;   //memory allocation fails
@@ -486,7 +487,6 @@ char *CoffLoader::GetStringTblOff(int Offset)
 
 char *CoffLoader::GetSymbolName(SymbolTable_t *sym)
 {
-  static char shortname[9];
   __int64 index = sym->Name.Offset;
   int low = (int)(index & 0xFFFFFFFF);
   int high = (int)((index >> 32) & 0xFFFFFFFF);
@@ -497,6 +497,7 @@ char *CoffLoader::GetSymbolName(SymbolTable_t *sym)
   }
   else
   {
+    static char shortname[9];
     memset(shortname, 0, 9);
     strncpy(shortname, (char *)sym->Name.ShortName, 8);
     return shortname;
@@ -813,7 +814,6 @@ void CoffLoader::PrintSection(SectionHeader_t *ScnHdr, char* data)
   if (ScnHdr->SizeOfRawData > 0)
   {
     unsigned int i;
-    char ch;
     // Print the Raw Data
 
     printf("\nRAW DATA");
@@ -821,7 +821,7 @@ void CoffLoader::PrintSection(SectionHeader_t *ScnHdr, char* data)
     {
       if ((i % 16) == 0)
         printf("\n  %08X: ", i);
-      ch = data[i];
+      char ch = data[i];
       printf("%02X ", (unsigned int)ch);
     }
     printf("\n\n");

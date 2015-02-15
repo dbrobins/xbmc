@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <!-- This file contains the mapping of keys (gamepad, remote, and keyboard) to actions within XBMC -->
 <!-- The <global> section is a fall through - they will only be used if the button is not          -->
 <!-- used in the current window's section.  Note that there is only handling                       -->
@@ -18,7 +19,7 @@
 <!--    </universalremote>            -->
 
 <!-- Note that the action can be a built-in function.                 -->
-<!--  eg <B>XBMC.ActivateWindow(MyMusic)</B>                         -->
+<!--  eg <B>ActivateWindow(MyMusic)</B>                         -->
 <!-- would automatically go to My Music on the press of the B button. -->
 
 <!-- Joysticks / Gamepads:                                                                    -->
@@ -43,14 +44,14 @@
       <Y>Queue</Y>
       <white>ContextMenu</white>
       <black/>
-      <start>XBMC.ActivateWindow(PlayerControls)</start>
+      <start>ActivateWindow(PlayerControls)</start>
       <back>PreviousMenu</back>
       <dpadleft>Left</dpadleft>
       <dpadright>Right</dpadright>
       <dpadup>Up</dpadup>
       <dpaddown>Down</dpaddown>
       <leftthumbbutton>Screenshot</leftthumbbutton>
-      <rightthumbbutton>XBMC.ActivateWindow(ShutdownMenu)</rightthumbbutton>
+      <rightthumbbutton>ActivateWindow(ShutdownMenu)</rightthumbbutton>
       <leftanalogtrigger>ScrollUp</leftanalogtrigger>
       <rightanalogtrigger>ScrollDown</rightanalogtrigger>
       <rightthumbstickleft>AnalogSeekBack</rightthumbstickleft>
@@ -61,7 +62,7 @@
   </global>
   <Home>
     <gamepad>
-      <black>XBMC.Skin.ToggleSetting(HomeViewToggle)</black>
+      <black>Skin.ToggleSetting(HomeViewToggle)</black>
     </gamepad>
   </Home>
   <MyFiles>
@@ -105,10 +106,26 @@
       <rightanalogtrigger>AnalogFastForward</rightanalogtrigger>
       <dpadleft>StepBack</dpadleft>
       <dpadright>StepForward</dpadright>
-      <dpadup>BigStepForward</dpadup>
-      <dpaddown>BigStepBack</dpaddown>
+      <dpadup>ChapterOrBigStepForward</dpadup>
+      <dpaddown>ChapterOrBigStepBack</dpaddown>
     </gamepad>
   </FullscreenVideo>
+  <FullscreenLiveTV>
+    <gamepad>
+      <dpadleft>StepBack</dpadleft>
+      <dpadright>StepForward</dpadright>
+      <dpadup>ChannelUp</dpadup>
+      <dpaddown>ChannelDown</dpaddown>
+    </gamepad>
+  </FullscreenLiveTV>
+  <FullscreenRadio>
+    <gamepad>
+      <dpadleft>StepBack</dpadleft>
+      <dpadright>StepForward</dpadright>
+      <dpadup>ChannelUp</dpadup>
+      <dpaddown>ChannelDown</dpaddown>
+    </gamepad>
+  </FullscreenRadio>
   <FullscreenInfo>
     <gamepad>
       <start>OSD</start>
@@ -127,17 +144,17 @@
     <gamepad>
       <A>Pause</A>
       <B>Stop</B>
-      <Y>XBMC.ActivateWindow(VisualisationPresetList)</Y>
+      <Y>ActivateWindow(VisualisationPresetList)</Y>
       <black>CodecInfo</black>
       <white>Info</white>
-      <start>XBMC.ActivateWindow(MusicOSD)</start>
+      <start>OSD</start>
       <back>LockPreset</back>
       <leftanalogtrigger>AnalogRewind</leftanalogtrigger>
       <rightanalogtrigger>AnalogFastForward</rightanalogtrigger>
-      <dpadleft>SkipPrevious</dpadleft>
-      <dpadright>SkipNext</dpadright>
-      <dpadup>NextPreset</dpadup>
-      <dpaddown>PreviousPreset</dpaddown>
+      <dpadleft>StepBack</dpadleft>
+      <dpadright>StepForward</dpadright>
+      <dpadup>SkipNext</dpadup>
+      <dpaddown>SkipPrevious</dpaddown>
     </gamepad>
   </Visualisation>
   <MusicOSD>

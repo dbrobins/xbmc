@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,8 +25,9 @@
 #include "filesystem/SpecialProtocol.h"
 #include "powermanagement/PowerManager.h"
 #include "settings/AdvancedSettings.h"
-#include "settings/GUISettings.h"
+#include "settings/Settings.h"
 #include "Util.h"
+#include "Application.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -35,13 +36,16 @@
 void TestBasicEnvironment::SetUp()
 {
   char *tmp;
-  CStdString xbmcTempPath;
+  std::string xbmcTempPath;
   XFILE::CFile *f;
 
   /* NOTE: The below is done to fix memleak warning about unitialized variable
    * in xbmcutil::GlobalsSingleton<CAdvancedSettings>::getInstance().
    */
   g_advancedSettings.Initialize();
+
+  // Need to configure the network as some tests access the network member
+  g_application.SetupNetwork();
 
   if (!CXBMCTestUtils::Instance().SetReferenceFileBasePath())
     SetUpError();
@@ -52,19 +56,19 @@ void TestBasicEnvironment::SetUp()
 //for darwin set framework path - else we get assert
 //in guisettings init below
 #ifdef TARGET_DARWIN
-  CStdString frameworksPath = CUtil::GetFrameworksPath();
+  std::string frameworksPath = CUtil::GetFrameworksPath();
   CSpecialProtocol::SetXBMCFrameworksPath(frameworksPath);    
 #endif
   /* TODO: Something should be done about all the asserts in GUISettings so
    * that the initialization of these components won't be needed.
    */
   g_powerManager.Initialize();
-  g_guiSettings.Initialize();
+  CSettings::Get().Initialize();
 
   /* Create a temporary directory and set it to be used throughout the
    * test suite run.
    */
-#ifndef _LINUX
+#ifdef TARGET_WINDOWS
   TCHAR lpTempPathBuffer[MAX_PATH];
   if (!GetTempPath(MAX_PATH, lpTempPathBuffer))
     SetUpError();
@@ -101,7 +105,7 @@ void TestBasicEnvironment::SetUp()
 
 void TestBasicEnvironment::TearDown()
 {
-  CStdString xbmcTempPath = CSpecialProtocol::TranslatePath("special://temp/");
+  std::string xbmcTempPath = CSpecialProtocol::TranslatePath("special://temp/");
   XFILE::CDirectory::Remove(xbmcTempPath);
 }
 

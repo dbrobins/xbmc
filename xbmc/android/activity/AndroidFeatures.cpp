@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,10 +19,10 @@
  */
 
 #include "AndroidFeatures.h"
-#include "XBMCApp.h"
 #include "utils/log.h"
 
 #include <cpu-features.h>
+#include "android/jni/JNIThreading.h"
 
 bool CAndroidFeatures::HasNeon()
 {
@@ -39,8 +39,7 @@ int CAndroidFeatures::GetVersion()
   {
     version = 0;
 
-    JNIEnv *jenv = NULL;
-    CXBMCApp::AttachCurrentThread(&jenv, NULL);
+    JNIEnv *jenv = xbmc_jnienv();
 
     jclass jcOsBuild = jenv->FindClass("android/os/Build$VERSION");
     if (jcOsBuild == NULL) 
@@ -56,31 +55,11 @@ int CAndroidFeatures::GetVersion()
     // <= 13 Honeycomb
     // <= 15 IceCreamSandwich
     //       JellyBean
+    // <= 19 KitKat
     version = iSdkVersion;
 
     jenv->DeleteLocalRef(jcOsBuild);
-    CXBMCApp::DetachCurrentThread();
   }
   return version;
-}
-
-std::string CAndroidFeatures::GetLibiomxName()
-{
-  std::string strOMXLibName;
-  int version = GetVersion();
-
-  // Gingerbread
-  if (version <= 10)
-    strOMXLibName = "libiomx-10.so";
-  // Honeycomb
-  else if (version <= 13)
-    strOMXLibName = "libiomx-13.so";
-  // IceCreamSandwich
-  else if (version <= 15)
-    strOMXLibName = "libiomx-14.so";
-  else
-    strOMXLibName = "unknown";
-
-  return strOMXLibName;
 }
 

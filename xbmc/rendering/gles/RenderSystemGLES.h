@@ -1,22 +1,22 @@
 /*
-*      Copyright (C) 2005-2012 Team XBMC
-*      http://www.xbmc.org
-*
-*  This Program is free software; you can redistribute it and/or modify
-*  it under the terms of the GNU General Public License as published by
-*  the Free Software Foundation; either version 2, or (at your option)
-*  any later version.
-*
-*  This Program is distributed in the hope that it will be useful,
-*  but WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-*  GNU General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with XBMC; see the file COPYING.  If not, see
-*  <http://www.gnu.org/licenses/>.
-*
-*/
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 
 #ifndef RENDER_SYSTEM_GLES_H
 #define RENDER_SYSTEM_GLES_H
@@ -37,7 +37,10 @@ enum ESHADERMETHOD
   SM_TEXTURE_NOBLEND,
   SM_MULTI_BLENDCOLOR,
   SM_TEXTURE_RGBA,
+  SM_TEXTURE_RGBA_OES,
   SM_TEXTURE_RGBA_BLENDCOLOR,
+  SM_TEXTURE_RGBA_BOB,
+  SM_TEXTURE_RGBA_BOB_OES,
   SM_ESHADERCOUNT
 };
 
@@ -62,6 +65,8 @@ public:
   virtual void SetViewPort(CRect& viewPort);
   virtual void GetViewPort(CRect& viewPort);
 
+  virtual bool ScissorsCanEffectClipping();
+  virtual CRect ClipRectToScissorRect(const CRect &rect);
   virtual void SetScissors(const CRect& rect);
   virtual void ResetScissors();
 
@@ -72,11 +77,12 @@ public:
 
   virtual void ApplyHardwareTransform(const TransformMatrix &matrix);
   virtual void RestoreHardwareTransform();
+  virtual bool SupportsStereo(RENDER_STEREO_MODE mode);
 
   virtual bool TestRender();
 
   virtual void Project(float &x, float &y, float &z);
-  
+
   void InitialiseGUIShader();
   void EnableGUIShader(ESHADERMETHOD method);
   void DisableGUIShader();
@@ -85,12 +91,19 @@ public:
   GLint GUIShaderGetCol();
   GLint GUIShaderGetCoord0();
   GLint GUIShaderGetCoord1();
+  GLint GUIShaderGetUniCol();
+  GLint GUIShaderGetCoord0Matrix();
+  GLint GUIShaderGetField();
+  GLint GUIShaderGetStep();
+  GLint GUIShaderGetContrast();
+  GLint GUIShaderGetBrightness();
+  GLint GUIShaderGetModel();
 
 protected:
   virtual void SetVSyncImpl(bool enable) = 0;
   virtual bool PresentRenderImpl(const CDirtyRegionList &dirty) = 0;
   void CalculateMaxTexturesize();
-  
+
   int        m_iVSyncMode;
   int        m_iVSyncErrors;
   int64_t    m_iSwapStamp;
@@ -100,13 +113,11 @@ protected:
   int        m_width;
   int        m_height;
 
-  CStdString m_RenderExtensions;
+  std::string m_RenderExtensions;
 
   CGUIShader  **m_pGUIshader;  // One GUI shader for each method
   ESHADERMETHOD m_method;      // Current GUI Shader method
 
-  GLfloat    m_view[16];
-  GLfloat    m_projection[16];
   GLint      m_viewPort[4];
 };
 

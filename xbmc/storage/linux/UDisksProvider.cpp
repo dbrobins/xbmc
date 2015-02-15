@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,15 +22,13 @@
 #include "settings/AdvancedSettings.h"
 #include "guilib/LocalizeStrings.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "PosixMountProvider.h"
 
-CUDiskDevice::CUDiskDevice(const char *DeviceKitUDI)
+CUDiskDevice::CUDiskDevice(const char *DeviceKitUDI):
+  m_DeviceKitUDI(DeviceKitUDI)
 {
-  m_DeviceKitUDI = DeviceKitUDI;
-  m_UDI = "";
-  m_MountPath = "";
-  m_FileSystem = "";
   m_isMounted = false;
   m_isMountedByUs = false;
   m_isRemovable = false;
@@ -38,7 +36,7 @@ CUDiskDevice::CUDiskDevice(const char *DeviceKitUDI)
   m_isFileSystem = false;
   m_isSystemInternal = false;
   m_isOptical = false;
-  m_PartitionSizeGiB = 0.0f;
+  m_PartitionSize = 0;
   Update();
 }
 
@@ -46,7 +44,7 @@ void CUDiskDevice::Update()
 {
   CVariant properties = CDBusUtil::GetAll("org.freedesktop.UDisks", m_DeviceKitUDI.c_str(), "org.freedesktop.UDisks.Device");
 
-  m_isFileSystem = CStdString(properties["IdUsage"].asString()) == "filesystem";
+  m_isFileSystem = properties["IdUsage"].asString() == "filesystem";
   if (m_isFileSystem)
   {
     m_UDI         = properties["IdUuid"].asString();
@@ -66,7 +64,7 @@ void CUDiskDevice::Update()
   else
     m_MountPath.clear();
 
-  m_PartitionSizeGiB = properties["PartitionSize"].asUnsignedInteger() / 1024.0 / 1024.0 / 1024.0;
+  m_PartitionSize = properties["PartitionSize"].asUnsignedInteger();
   m_isPartition = properties["DeviceIsPartition"].asBoolean();
   m_isSystemInternal = properties["DeviceIsSystemInternal"].asBoolean();
   m_isOptical = properties["DeviceIsOpticalDisc"].asBoolean();
@@ -100,7 +98,7 @@ bool CUDiskDevice::Mount()
       if (dbus_message_get_args (reply, NULL, DBUS_TYPE_STRING, &mountPoint, DBUS_TYPE_INVALID))
       {
         m_MountPath = mountPoint;
-        CLog::Log(LOGDEBUG, "UDisks: Sucessfully mounted %s on %s", m_DeviceKitUDI.c_str(), mountPoint);
+        CLog::Log(LOGDEBUG, "UDisks: Successfully mounted %s on %s", m_DeviceKitUDI.c_str(), mountPoint);
         m_isMountedByUs = m_isMounted = true;
       }
     }
@@ -139,7 +137,10 @@ CMediaSource CUDiskDevice::ToMediaShare()
   CMediaSource source;
   source.strPath = m_MountPath;
   if (m_Label.empty())
-    source.strName.Format("%.1f GB %s", m_PartitionSizeGiB, g_localizeStrings.Get(155).c_str());
+  {
+    std::string strSize = StringUtils::SizeToString(m_PartitionSize);
+    source.strName = StringUtils::Format("%s %s", strSize.c_str(), g_localizeStrings.Get(155).c_str());
+  }
   else
     source.strName = m_Label;
   if (m_isOptical)
@@ -154,22 +155,20 @@ CMediaSource CUDiskDevice::ToMediaShare()
 
 bool CUDiskDevice::IsApproved()
 {
-  return (m_isFileSystem && m_isMounted && m_UDI.length() > 0 && (m_FileSystem.length() > 0 && !m_FileSystem.Equals("swap")) && !m_MountPath.Equals("/")) || m_isOptical;
+  return (m_isFileSystem && m_isMounted && m_UDI.length() > 0 && (m_FileSystem.length() > 0 && m_FileSystem != "swap") 
+      && m_MountPath != "/" && m_MountPath != "/boot") || m_isOptical;
 }
 
 #define BOOL2SZ(b) ((b) ? "true" : "false")
 
-CStdString CUDiskDevice::toString()
+std::string CUDiskDevice::toString()
 {
-  CStdString str;
-  str.Format("DeviceUDI %s: IsFileSystem %s HasFileSystem %s "
+  return StringUtils::Format("DeviceUDI %s: IsFileSystem %s HasFileSystem %s "
       "IsSystemInternal %s IsMounted %s IsRemovable %s IsPartition %s "
       "IsOptical %s",
-      m_DeviceKitUDI.c_str(), BOOL2SZ(m_isFileSystem), m_FileSystem,
+      m_DeviceKitUDI.c_str(), BOOL2SZ(m_isFileSystem), m_FileSystem.c_str(),
       BOOL2SZ(m_isSystemInternal), BOOL2SZ(m_isMounted),
       BOOL2SZ(m_isRemovable), BOOL2SZ(m_isPartition), BOOL2SZ(m_isOptical));
-
-  return str;
 }
 
 CUDisksProvider::CUDisksProvider()
@@ -222,28 +221,28 @@ void CUDisksProvider::Initialize()
   CLog::Log(LOGDEBUG, "UDisks: DaemonVersion %i", m_DaemonVersion);
 
   CLog::Log(LOGDEBUG, "UDisks: Querying available devices");
-  std::vector<CStdString> devices = EnumerateDisks();
+  std::vector<std::string> devices = EnumerateDisks();
   for (unsigned int i = 0; i < devices.size(); i++)
     DeviceAdded(devices[i].c_str(), NULL);
 }
 
-bool CUDisksProvider::Eject(CStdString mountpath)
+bool CUDisksProvider::Eject(const std::string& mountpath)
 {
   DeviceMap::iterator itr;
-  CStdString path(mountpath);
+  std::string path(mountpath);
   URIUtils::RemoveSlashAtEnd(path);
 
   for (itr = m_AvailableDevices.begin(); itr != m_AvailableDevices.end(); ++itr)
   {
     CUDiskDevice *device = itr->second;
-    if (device->m_MountPath.Equals(path))
+    if (device->m_MountPath == path)
       return device->UnMount();
   }
 
   return false;
 }
 
-std::vector<CStdString> CUDisksProvider::GetDiskUsage()
+std::vector<std::string> CUDisksProvider::GetDiskUsage()
 {
   CPosixMountProvider legacy;
   return legacy.GetDiskUsage();
@@ -302,7 +301,7 @@ bool CUDisksProvider::HasUDisks()
 
 void CUDisksProvider::DeviceAdded(const char *object, IStorageEventsCallback *callback)
 {
-  if (g_advancedSettings.m_logLevel >= LOG_LEVEL_DEBUG_SAMBA)
+  if (g_advancedSettings.CanLogComponent(LOGDBUS))
     CLog::Log(LOGDEBUG, "UDisks: DeviceAdded (%s)", object);
 
   if (m_AvailableDevices[object])
@@ -318,7 +317,7 @@ void CUDisksProvider::DeviceAdded(const char *object, IStorageEventsCallback *ca
   if (g_advancedSettings.m_handleMounting)
     device->Mount();
 
-  if (g_advancedSettings.m_logLevel >= LOG_LEVEL_DEBUG_SAMBA)
+  if (g_advancedSettings.CanLogComponent(LOGDBUS))
     CLog::Log(LOGDEBUG, "UDisks: DeviceAdded - %s", device->toString().c_str());
 
   if (device->m_isMounted && device->IsApproved())
@@ -331,7 +330,7 @@ void CUDisksProvider::DeviceAdded(const char *object, IStorageEventsCallback *ca
 
 void CUDisksProvider::DeviceRemoved(const char *object, IStorageEventsCallback *callback)
 {
-  if (g_advancedSettings.m_logLevel >= LOG_LEVEL_DEBUG_SAMBA)
+  if (g_advancedSettings.CanLogComponent(LOGDBUS))
     CLog::Log(LOGDEBUG, "UDisks: DeviceRemoved (%s)", object);
 
   CUDiskDevice *device = m_AvailableDevices[object];
@@ -347,7 +346,7 @@ void CUDisksProvider::DeviceRemoved(const char *object, IStorageEventsCallback *
 
 void CUDisksProvider::DeviceChanged(const char *object, IStorageEventsCallback *callback)
 {
-  if (g_advancedSettings.m_logLevel >= LOG_LEVEL_DEBUG_SAMBA)
+  if (g_advancedSettings.CanLogComponent(LOGDBUS))
     CLog::Log(LOGDEBUG, "UDisks: DeviceChanged (%s)", object);
 
   CUDiskDevice *device = m_AvailableDevices[object];
@@ -359,8 +358,9 @@ void CUDisksProvider::DeviceChanged(const char *object, IStorageEventsCallback *
   else
   {
     bool mounted = device->m_isMounted;
-
-    if (!mounted && g_advancedSettings.m_handleMounting)
+    /* make sure to not silently remount ejected usb thumb drives
+       that user wants to eject, but make sure to mount blurays */
+    if (!mounted && g_advancedSettings.m_handleMounting && device->m_isOptical)
       device->Mount();
 
     device->Update();
@@ -369,14 +369,14 @@ void CUDisksProvider::DeviceChanged(const char *object, IStorageEventsCallback *
     else if (mounted && !device->m_isMounted && callback)
       callback->OnStorageSafelyRemoved(device->m_Label);
 
-    if (g_advancedSettings.m_logLevel >= LOG_LEVEL_DEBUG_SAMBA)
+    if (g_advancedSettings.CanLogComponent(LOGDBUS))
       CLog::Log(LOGDEBUG, "UDisks: DeviceChanged - %s", device->toString().c_str());
   }
 }
 
-std::vector<CStdString> CUDisksProvider::EnumerateDisks()
+std::vector<std::string> CUDisksProvider::EnumerateDisks()
 {
-  std::vector<CStdString> devices;
+  std::vector<std::string> devices;
   CDBusMessage message("org.freedesktop.UDisks", "/org/freedesktop/UDisks", "org.freedesktop.UDisks", "EnumerateDevices");
   DBusMessage *reply = message.SendSystem();
   if (reply)

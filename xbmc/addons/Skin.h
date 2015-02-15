@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,12 +20,14 @@
  *
  */
 
+#include <vector>
+
 #include "Addon.h"
 #include "guilib/GraphicContext.h" // needed for the RESOLUTION members
 #include "guilib/GUIIncludes.h"    // needed for the GUIInclude member
 #define CREDIT_LINE_LENGTH 50
 
-class TiXmlNode;
+class CSetting;
 
 namespace ADDON
 {
@@ -36,24 +38,25 @@ public:
   class CStartupWindow
   {
   public:
-    CStartupWindow(int id, const CStdString &name)
+    CStartupWindow(int id, const std::string &name):
+        m_id(id), m_name(name)
     {
-      m_id = id; m_name = name;
     };
     int m_id;
-    CStdString m_name;
+    std::string m_name;
   };
 
   //FIXME remove this, kept for current repo handling
-  CSkinInfo(const ADDON::AddonProps &props, const RESOLUTION_INFO &res = RESOLUTION_INFO());
+  CSkinInfo(const AddonProps &props, const RESOLUTION_INFO &res = RESOLUTION_INFO());
   CSkinInfo(const cp_extension_t *ext);
   virtual ~CSkinInfo();
+  virtual AddonPtr Clone() const;
 
   /*! \brief Load resultion information from directories in Path().
    */
   void Start();
 
-  bool HasSkinFile(const CStdString &strFile) const;
+  bool HasSkinFile(const std::string &strFile) const;
 
   /*! \brief Get the full path to the specified file in the skin
    We search for XML files in the skin folder that best matches the current resolution.
@@ -62,9 +65,9 @@ public:
    \param baseDir [in] If non-empty, the given directory is searched instead of the skin's directory.  Defaults to empty.
    \return path to the XML file
    */
-  CStdString GetSkinPath(const CStdString& file, RESOLUTION_INFO *res = NULL, const CStdString& baseDir = "") const;
+  std::string GetSkinPath(const std::string& file, RESOLUTION_INFO *res = NULL, const std::string& baseDir = "") const;
 
-  double GetVersion() const { return m_Version; };
+  AddonVersion APIVersion() const { return m_version; };
 
   /*! \brief Return whether skin debugging is enabled
    \return true if skin debugging (set via <debugging>true</debugging> in skin.xml) is enabled.
@@ -89,9 +92,9 @@ public:
    \param res [out] the resolution structure if name is valid
    \return true if the resolution is valid, false otherwise
    */
-  static bool TranslateResolution(const CStdString &name, RESOLUTION_INFO &res);
+  static bool TranslateResolution(const std::string &name, RESOLUTION_INFO &res);
 
-  void ResolveIncludes(TiXmlElement *node, std::map<int, bool>* xmlIncludeConditions = NULL);
+  void ResolveIncludes(TiXmlElement *node, std::map<INFO::InfoPtr, bool>* xmlIncludeConditions = NULL);
 
   float GetEffectsSlowdown() const { return m_effectsSlowDown; };
 
@@ -100,22 +103,29 @@ public:
   /*! \brief Retrieve the skin paths to search for skin XML files
    \param paths [out] vector of paths to search, in order.
    */
-  void GetSkinPaths(std::vector<CStdString> &paths) const;
+  void GetSkinPaths(std::vector<std::string> &paths) const;
 
   bool IsInUse() const;
 
-  const CStdString& GetCurrentAspect() const { return m_currentAspect; }
+  const std::string& GetCurrentAspect() const { return m_currentAspect; }
 
-//  static bool Check(const CStdString& strSkinDir); // checks if everything is present and accounted for without loading the skin
-  static double GetMinVersion();
   void LoadIncludes();
-  const INFO::CSkinVariableString* CreateSkinVariable(const CStdString& name, int context);
+  const INFO::CSkinVariableString* CreateSkinVariable(const std::string& name, int context);
+
+  static void SettingOptionsSkinColorsFiller(const CSetting *setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
+  static void SettingOptionsSkinFontsFiller(const CSetting *setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
+  static void SettingOptionsSkinSoundFiller(const CSetting *setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
+  static void SettingOptionsSkinThemesFiller(const CSetting *setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
+  static void SettingOptionsStartupWindowsFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
+
+  virtual bool OnPreInstall();
+  virtual void OnPostInstall(bool restart, bool update);
 protected:
   /*! \brief Given a resolution, retrieve the corresponding directory name
    \param res RESOLUTION to translate
    \return directory name for res
    */
-  CStdString GetDirFromRes(RESOLUTION res) const;
+  std::string GetDirFromRes(RESOLUTION res) const;
 
   /*! \brief grab a resolution tag from a skin's configuration data
    \param props passed addoninfo structure to check for resolution
@@ -130,17 +140,16 @@ protected:
   RESOLUTION_INFO m_defaultRes;
   std::vector<RESOLUTION_INFO> m_resolutions;
 
-  double m_Version;
+  AddonVersion m_version;
 
   float m_effectsSlowDown;
   CGUIIncludes m_includes;
-  CStdString m_currentAspect;
+  std::string m_currentAspect;
 
   std::vector<CStartupWindow> m_startupWindows;
-  bool m_onlyAnimateToHome;
   bool m_debugging;
 };
 
 } /*namespace ADDON*/
 
-extern boost::shared_ptr<ADDON::CSkinInfo> g_SkinInfo;
+extern std::shared_ptr<ADDON::CSkinInfo> g_SkinInfo;

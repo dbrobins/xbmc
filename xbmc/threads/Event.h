@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -73,6 +73,9 @@ public:
 
   inline void Reset() { CSingleLock lock(mutex); signaled = false; }
   void Set();
+
+  /** Returns true if Event has been triggered and not reset, false otherwise. */
+  inline bool Signaled() { CSingleLock lock(mutex); return signaled; }
 
   /**
    * This will wait up to 'milliSeconds' milliseconds for the Event

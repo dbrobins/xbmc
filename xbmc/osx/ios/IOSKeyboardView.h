@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,22 +21,30 @@
 #import <UIKit/UIKit.h>
 #include "IOSKeyboard.h"
 
-@interface KeyboardView : UIView <UIKeyInput>
+@interface KeyboardView : UIView <UITextFieldDelegate>
 {
-    NSMutableString                    *_heading;
-    NSMutableString                    *_text;
-    bool                                _result;
-    bool                                _hiddenInput;
-    CIOSKeyboard                        *_iosKeyboard;
+  NSMutableString *text;
+  BOOL _confirmed;
+  CIOSKeyboard *_iosKeyboard;
+  bool *_canceled;
+  BOOL _deactivated;
+  UITextField *_textField;
+  UITextField *_heading;
+  int _keyboardIsShowing; // 0: not, 1: will show, 2: showing
+  CGRect _kbRect;
 }
 
-@property (nonatomic, retain, getter = GetText) NSMutableString *_text;
-@property (copy, setter = SetHeading:) NSMutableString *_heading;
-@property (getter = GetResult) bool _result;
-@property (setter = SetHiddenInput:) bool _hiddenInput;
-@property (assign, setter = RegisterKeyboard:) CIOSKeyboard *_iosKeyboard;
+@property (nonatomic, retain) NSMutableString *text;
+@property (getter = isConfirmed) BOOL _confirmed;
+@property (assign, setter = registerKeyboard:) CIOSKeyboard *_iosKeyboard;
 
-- (void) setText:(NSMutableString *)text;
+- (void) setDefault:(NSString *)defaultText;
+- (void) setHeading:(NSString *)heading;
+- (void) setHidden:(BOOL)hidden;
 - (void) activate;
 - (void) deactivate;
+- (void) setKeyboardText:(NSString*)aText closeKeyboard:(BOOL)closeKeyboard;
+- (void) textChanged:(NSNotification*)aNotification;
+- (void) setCancelFlag:(bool *)cancelFlag;
+- (void) doDeactivate:(NSDictionary *)dict;
 @end

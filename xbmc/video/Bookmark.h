@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,9 +19,8 @@
  *
  */
 
+#include <string>
 #include <vector>
-
-#include "utils/StdString.h"
 
 class CBookmark
 {
@@ -42,9 +41,9 @@ public:
   double timeInSeconds;
   double totalTimeInSeconds;
   long partNumber;
-  CStdString thumbNailImage;
-  CStdString playerState;
-  CStdString player;
+  std::string thumbNailImage;
+  std::string playerState;
+  std::string player;
   long seasonNumber;
   long episodeNumber;
 

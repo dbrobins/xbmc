@@ -543,21 +543,19 @@ dcr_getbits(p, n) where 0 <= n <= 25 returns an n-bit integer
 */
 unsigned DCR_CLASS dcr_getbits (DCRAW* p, int nbits)
 {
-	static unsigned bitbuf=0;
-	static int vbits=0, reset=0;
 	unsigned c;
 
 	if (nbits == -1)
-		return bitbuf = vbits = reset = 0;
-	if (nbits == 0 || reset) return 0;
-	while (vbits < nbits) {
+		return p->getbits_bitbuf = p->getbits_vbits = p->getbits_reset = 0;
+	if (nbits == 0 || p->getbits_reset) return 0;
+	while (p->getbits_vbits < nbits) {
 		if ((c = dcr_fgetc(p->obj_)) == EOF) dcr_derror(p);
-		if ((reset = p->zero_after_ff && c == 0xff && dcr_fgetc(p->obj_))) return 0;
-		bitbuf = (bitbuf << 8) + (uchar) c;
-		vbits += 8;
+		if ((p->getbits_reset = p->zero_after_ff && c == 0xff && dcr_fgetc(p->obj_))) return 0;
+		p->getbits_bitbuf = (p->getbits_bitbuf << 8) + (uchar) c;
+		p->getbits_vbits += 8;
 	}
-	vbits -= nbits;
-	return bitbuf << (32-nbits-vbits) >> (32-nbits);
+	p->getbits_vbits -= nbits;
+	return p->getbits_bitbuf << (32-nbits-p->getbits_vbits) >> (32-nbits);
 }
 
 void DCR_CLASS dcr_init_decoder(DCRAW* p)
@@ -595,27 +593,26 @@ void DCR_CLASS dcr_init_decoder(DCRAW* p)
 uchar * DCR_CLASS dcr_make_decoder (DCRAW* p, const uchar *source, int level)
 {
 	struct dcr_decode *cur;
-	static int leaf;
 	int i, next;
 
-	if (level==0) leaf=0;
+	if (level==0) p->make_decoder_leaf=0;
 	cur = p->free_decode++;
 	if (p->free_decode > p->first_decode+2048) {
 		fprintf (stderr,_("%s: decoder table overflow\n"), p->ifname);
 		longjmp (p->failure, 2);
 	}
-	for (i=next=0; i <= leaf && next < 16; )
+	for (i=next=0; i <= p->make_decoder_leaf && next < 16; )
 		i += source[next++];
-	if (i > leaf) {
+	if (i > p->make_decoder_leaf) {
 		if (level < next) {
 			cur->branch[0] = p->free_decode;
 			dcr_make_decoder (p, source, level+1);
 			cur->branch[1] = p->free_decode;
 			dcr_make_decoder (p, source, level+1);
 		} else
-			cur->leaf = source[16 + leaf++];
+			cur->leaf = source[16 + p->make_decoder_leaf++];
 	}
-	return (uchar *) source + 16 + leaf;
+	return (uchar *) source + 16 + p->make_decoder_leaf;
 }
 
 void DCR_CLASS dcr_crw_init_tables (DCRAW* p, unsigned table)
@@ -840,6 +837,9 @@ int DCR_CLASS dcr_ljpeg_diff (DCRAW* p, struct dcr_decode *dindex)
 {
 	int len, diff;
 
+	if (!dindex)
+		longjmp (p->failure, 2);
+
 	while (dindex->branch[0])
 		dindex = dindex->branch[dcr_getbits(p, 1)];
 	len = dindex->leaf;
@@ -897,6 +897,10 @@ void DCR_CLASS dcr_lossless_jpeg_load_raw(DCRAW* p)
 	ushort *rp;
 
 	if (!dcr_ljpeg_start (p,&jh, 0)) return;
+
+	if (jh.wide<1 || jh.high<1 || jh.clrs<1 || jh.bits<1)
+		longjmp (p->failure, 2);
+
 	jwide = jh.wide * jh.clrs;
 
 	for (jrow=0; jrow < jh.high; jrow++) {
@@ -916,6 +920,8 @@ void DCR_CLASS dcr_lossless_jpeg_load_raw(DCRAW* p)
 			}
 			if (p->raw_width == 3984 && (col -= 2) < 0)
 				col += (row--,p->raw_width);
+			if (row > p->raw_height)
+				longjmp (p->failure, 3);
 			if ((unsigned) (row-p->top_margin) < p->height) {
 				if ((unsigned) (col-p->left_margin) < p->width) {
 					BAYER(row-p->top_margin,col-p->left_margin) = val;
@@ -1571,17 +1577,14 @@ void DCR_CLASS dcr_phase_one_load_raw(DCRAW* p)
 
 unsigned DCR_CLASS dcr_ph1_bits (DCRAW* p,int nbits)
 {
-	static UINT64 bitbuf=0;
-	static int vbits=0;
-
 	if (nbits == -1)
-		return (unsigned int)(bitbuf = vbits = 0);
+		return (unsigned int)(p->ph1_bits_bitbuf = p->ph1_bits_vbits = 0);
 	if (nbits == 0) return 0;
-	if ((vbits -= nbits) < 0) {
-		bitbuf = bitbuf << 32 | dcr_get4(p);
-		vbits += 32;
+	if ((p->ph1_bits_vbits -= nbits) < 0) {
+		p->ph1_bits_bitbuf = p->ph1_bits_bitbuf << 32 | dcr_get4(p);
+		p->ph1_bits_vbits += 32;
 	}
-	return (unsigned int)(bitbuf << (64-nbits-vbits) >> (64-nbits));
+	return (unsigned int)(p->ph1_bits_bitbuf << (64-nbits-p->ph1_bits_vbits) >> (64-nbits));
 }
 
 void DCR_CLASS dcr_phase_one_load_raw_c(DCRAW* p)
@@ -1821,18 +1824,16 @@ void DCR_CLASS nokia_load_raw(DCRAW* p)
 
 unsigned DCR_CLASS dcr_pana_bits (DCRAW* p,int nbits)
 {
-  static uchar buf[0x4000];
-  static int vbits;
   int byte;
 
-  if (!nbits) return vbits=0;
-  if (!vbits) {
-    dcr_fread(p->obj_, buf+p->load_flags, 1, 0x4000-p->load_flags);
-    dcr_fread(p->obj_, buf, 1, p->load_flags);
+  if (!nbits) return p->pana_bits_vbits=0;
+  if (!p->pana_bits_vbits) {
+    dcr_fread(p->obj_, p->pana_bits_buf+p->load_flags, 1, 0x4000-p->load_flags);
+    dcr_fread(p->obj_, p->pana_bits_buf, 1, p->load_flags);
   }
-  vbits = (vbits - nbits) & 0x1ffff;
-  byte = vbits >> 3 ^ 0x3ff0;
-  return (buf[byte] | buf[byte+1] << 8) >> (vbits & 7) & ~(-1 << nbits);
+  p->pana_bits_vbits = (p->pana_bits_vbits - nbits) & 0x1ffff;
+  byte = p->pana_bits_vbits >> 3 ^ 0x3ff0;
+  return (p->pana_bits_buf[byte] | p->pana_bits_buf[byte+1] << 8) >> (p->pana_bits_vbits & 7) & ~(-1 << nbits);
 }
 
 void DCR_CLASS dcr_panasonic_load_raw(DCRAW* p)
@@ -2061,7 +2062,6 @@ const int * DCR_CLASS dcr_make_decoder_int (DCRAW* p, const int *source, int lev
 int DCR_CLASS dcr_radc_token (DCRAW* p, int tree)
 {
 	int t;
-	static struct dcr_decode *dstart[18], *dindex;
 	static const int *s, source[] = {
 		1,1, 2,3, 3,4, 4,2, 5,7, 6,5, 7,6, 7,8,
 		1,0, 2,1, 3,3, 4,4, 5,2, 6,7, 7,6, 8,5, 8,8,
@@ -2085,7 +2085,7 @@ int DCR_CLASS dcr_radc_token (DCRAW* p, int tree)
 
 	if (p->free_decode == p->first_decode)
 		for (s=source, t=0; t < 18; t++) {
-			dstart[t] = p->free_decode;
+			p->radc_token_dstart[t] = p->free_decode;
 			s = dcr_make_decoder_int (p, s, 0);
 		}
 	if (tree == 18) {
@@ -2094,9 +2094,9 @@ int DCR_CLASS dcr_radc_token (DCRAW* p, int tree)
 		else
 			return (dcr_getbits(p, 5) << 3) + 4;	/* DC40, Fotoman Pixtura */
 	}
-	for (dindex = dstart[tree]; dindex->branch[0]; )
-		dindex = dindex->branch[dcr_getbits(p, 1)];
-	return dindex->leaf;
+	for (p->radc_token_dindex = p->radc_token_dstart[tree]; p->radc_token_dindex->branch[0]; )
+		p->radc_token_dindex = p->radc_token_dindex->branch[dcr_getbits(p, 1)];
+	return p->radc_token_dindex->leaf;
 }
 
 #define FORYX for (y=1; y < 3; y++) for (x=col+1; x >= col; x--)
@@ -2179,7 +2179,7 @@ void DCR_CLASS dcr_kodak_jpeg_load_raw(DCRAW* p) {}
 METHODDEF(boolean)
 fill_input_buffer (j_decompress_ptr cinfo)
 {
-	static uchar jpeg_buffer[4096];
+	static uchar jpeg_buffer[4096]; // NOTE: This static not used as NO_JPEG is defined
 	size_t nbytes;
 
 	//nbytes = dcr_fread(p->obj_, jpeg_buffer, 1, 4096);
@@ -2460,21 +2460,19 @@ void DCR_CLASS dcr_kodak_thumb_load_raw(DCRAW* p)
 		p->maximum = (1 << (p->thumb_misc & 31)) - 1;
 }
 
-void DCR_CLASS dcr_sony_decrypt (unsigned *data, int len, int start, int key)
+void DCR_CLASS dcr_sony_decrypt (DCRAW *p, unsigned *data, int len, int start, int key)
 {
-	static unsigned pad[128], p;
-
 	if (start) {
-		for (p=0; p < 4; p++)
-			pad[p] = key = key * 48828125 + 1;
-		pad[3] = pad[3] << 1 | (pad[0]^pad[2]) >> 31;
-		for (p=4; p < 127; p++)
-			pad[p] = (pad[p-4]^pad[p-2]) << 1 | (pad[p-3]^pad[p-1]) >> 31;
-		for (p=0; p < 127; p++)
-			pad[p] = htonl(pad[p]);
+		for (p->sony_decrypt_p=0; p->sony_decrypt_p < 4; p->sony_decrypt_p++)
+			p->sony_decrypt_pad[p->sony_decrypt_p] = key = key * 48828125 + 1;
+		p->sony_decrypt_pad[3] = p->sony_decrypt_pad[3] << 1 | (p->sony_decrypt_pad[0]^p->sony_decrypt_pad[2]) >> 31;
+		for (p->sony_decrypt_p=4; p->sony_decrypt_p < 127; p->sony_decrypt_p++)
+			p->sony_decrypt_pad[p->sony_decrypt_p] = (p->sony_decrypt_pad[p->sony_decrypt_p-4]^p->sony_decrypt_pad[p->sony_decrypt_p-2]) << 1 | (p->sony_decrypt_pad[p->sony_decrypt_p-3]^p->sony_decrypt_pad[p->sony_decrypt_p-1]) >> 31;
+		for (p->sony_decrypt_p=0; p->sony_decrypt_p < 127; p->sony_decrypt_p++)
+			p->sony_decrypt_pad[p->sony_decrypt_p] = htonl(p->sony_decrypt_pad[p->sony_decrypt_p]);
 	}
 	while (len--)
-		*data++ ^= pad[p++ & 127] = pad[(p+1) & 127] ^ pad[(p+65) & 127];
+		*data++ ^= p->sony_decrypt_pad[p->sony_decrypt_p++ & 127] = p->sony_decrypt_pad[(p->sony_decrypt_p+1) & 127] ^ p->sony_decrypt_pad[(p->sony_decrypt_p+65) & 127];
 }
 
 void DCR_CLASS dcr_sony_load_raw(DCRAW* p)
@@ -2489,7 +2487,7 @@ void DCR_CLASS dcr_sony_load_raw(DCRAW* p)
 	key = dcr_get4(p);
 	dcr_fseek(p->obj_, 164600, SEEK_SET);
 	dcr_fread(p->obj_, head, 1, 40);
-	dcr_sony_decrypt ((unsigned int *) head, 10, 1, key);
+	dcr_sony_decrypt (p, (unsigned int *) head, 10, 1, key);
 	for (i=26; i-- > 22; )
 		key = key << 8 | head[i];
 	dcr_fseek(p->obj_, p->data_offset, SEEK_SET);
@@ -2497,7 +2495,7 @@ void DCR_CLASS dcr_sony_load_raw(DCRAW* p)
 	dcr_merror (p, pixel, "sony_load_raw()");
 	for (row=0; row < p->height; row++) {
 		if (dcr_fread(p->obj_, pixel, 2, p->raw_width) < p->raw_width) dcr_derror(p);
-		dcr_sony_decrypt ((unsigned int *) pixel, p->raw_width/2, !row, key);
+		dcr_sony_decrypt (p, (unsigned int *) pixel, p->raw_width/2, !row, key);
 		for (col=9; col < p->left_margin; col++)
 			p->black += ntohs(pixel[col]);
 		for (col=0; col < p->width; col++)
@@ -2714,13 +2712,12 @@ void DCR_CLASS dcr_smal_v9_load_raw(DCRAW* p)
 
 void DCR_CLASS dcr_foveon_decoder (DCRAW* p, unsigned size, unsigned code)
 {
-	static unsigned huff[1024];
 	struct dcr_decode *cur;
 	int i, len;
 
 	if (!code) {
 		for (i=0; i < (int)size; i++)
-			huff[i] = dcr_get4(p);
+			p->foveon_decoder_huff[i] = dcr_get4(p);
 		dcr_init_decoder(p);
 	}
 	cur = p->free_decode++;
@@ -2730,7 +2727,7 @@ void DCR_CLASS dcr_foveon_decoder (DCRAW* p, unsigned size, unsigned code)
 	}
 	if (code)
 		for (i=0; i < (int)size; i++)
-			if (huff[i] == code) {
+			if (p->foveon_decoder_huff[i] == code) {
 				cur->leaf = i;
 				return;
 			}
@@ -4747,7 +4744,7 @@ void DCR_CLASS dcr_romm_coeff (DCRAW* p, float romm_cam[3][3])
 void DCR_CLASS dcr_parse_mos (DCRAW* p, int offset)
 {
 	char data[40];
-	int skip, from, i=0, c, neut[4], planes=0, frot=0;
+	int skip, from, i=0, j, c, neut[4], planes=0, frot=0;
 	static const char *mod[] =
 	{ "","DCB2","Volare","Cantare","CMost","Valeo 6","Valeo 11","Valeo 22",
     "Valeo 11p","Valeo 17","","Aptus 17","Aptus 22","Aptus 75","Aptus 65",
@@ -4775,13 +4772,15 @@ void DCR_CLASS dcr_parse_mos (DCRAW* p, int offset)
 				strcpy (p->model, mod[i]);
 		}
 		if (!strcmp(data,"icc_camera_to_tone_matrix")) {
-			for (i=0; i < 9; i++)
-				romm_cam[0][i] = dcr_int_to_float(dcr_get4(p));
+			for (i=0; i < 3; i++)
+				for (j=0; j < 3; j++)
+					romm_cam[i][j] = dcr_int_to_float(dcr_get4(p));
 			dcr_romm_coeff (p,romm_cam);
 		}
 		if (!strcmp(data,"CaptProf_color_matrix")) {
-			for (i=0; i < 9; i++)
-				dcr_fscanf(p->obj_, "%f", &romm_cam[0][i]);
+			for (i=0; i < 3; i++)
+				for (j=0; j < 3; j++)
+					dcr_fscanf(p->obj_, "%f", &romm_cam[i][j]);
 			dcr_romm_coeff (p,romm_cam);
 		}
 		if (!strcmp(data,"CaptProf_number_of_planes"))
@@ -4983,6 +4982,7 @@ int DCR_CLASS dcr_parse_tiff_ifd (DCRAW* p, int base)
 				p->data_offset = dcr_get4(p)+base;
 				ifd++;  break;
 			}
+			if(len > 1000) len=1000; /* 1000 SubIFDs is enough */
 			while (len--) {
 				i = dcr_ftell(p->obj_);
 				dcr_fseek(p->obj_, dcr_get4(p)+base, SEEK_SET);
@@ -5171,7 +5171,7 @@ guess_cfa_pc:
 		case 50714:			/* BlackLevel */
 		case 50715:			/* BlackLevelDeltaH */
 		case 50716:			/* BlackLevelDeltaV */
-			for (dblack=i=0; i < (int)len; i++)
+			for (dblack=i=0; i < (int)len && i < 65536; i++)
 				dblack += dcr_getreal(p, type);
 			p->black += (unsigned int)(dblack/len + 0.5);
 			break;
@@ -5233,7 +5233,7 @@ guess_cfa_pc:
 	  dcr_stream_obj *sobj_;
 	  dcr_fseek(p->obj_, sony_offset, SEEK_SET);
 	  dcr_fread(p->obj_, buf, sony_length, 1);
-	  dcr_sony_decrypt (buf, sony_length/4, 1, sony_key);
+	  dcr_sony_decrypt (p, buf, sony_length/4, 1, sony_key);
 
 	  sops_ = p->ops_;
 	  sobj_ = p->obj_;
@@ -5285,9 +5285,11 @@ void DCR_CLASS dcr_parse_tiff (DCRAW* p, int base)
 	if (p->thumb_offset) {
 		dcr_fseek(p->obj_, p->thumb_offset, SEEK_SET);
 		if (dcr_ljpeg_start (p,&jh, 1)) {
-			p->thumb_misc   = jh.bits;
-			p->thumb_width  = jh.wide;
-			p->thumb_height = jh.high;
+			if ((unsigned)jh.bits<17 && (unsigned)jh.wide < 0x10000 && (unsigned)jh.high < 0x10000) {
+				p->thumb_misc   = jh.bits;
+				p->thumb_width  = jh.wide;
+				p->thumb_height = jh.high;
+			}
 		}
 	}
 	for (i=0; i < (int)p->tiff_nifds; i++) {
@@ -5295,6 +5297,8 @@ void DCR_CLASS dcr_parse_tiff (DCRAW* p, int base)
 			max_samp = p->tiff_ifd[i].samples;
 		if (max_samp > 3) max_samp = 3;
 		if ((p->tiff_ifd[i].comp != 6 || p->tiff_ifd[i].samples != 3) &&
+		        (unsigned)(p->tiff_ifd[i].width | p->tiff_ifd[i].height) < 0x10000 &&
+			(unsigned)p->tiff_ifd[i].bps < 33 && (unsigned)p->tiff_ifd[i].samples < 13 &&
 			p->tiff_ifd[i].width*p->tiff_ifd[i].height > p->raw_width*p->raw_height) {
 			p->raw_width     = p->tiff_ifd[i].width;
 			p->raw_height    = p->tiff_ifd[i].height;
@@ -5358,6 +5362,8 @@ void DCR_CLASS dcr_parse_tiff (DCRAW* p, int base)
 	if (p->tiff_bps == 8 && p->tiff_samples == 4) p->is_raw = 0;
 	for (i=0; i < (int)p->tiff_nifds; i++)
 		if (i != raw && p->tiff_ifd[i].samples == max_samp &&
+			p->tiff_ifd[i].bps>0 && p->tiff_ifd[i].bps < 33 &&
+			(unsigned)(p->tiff_ifd[i].width | p->tiff_ifd[i].height) < 0x10000 &&
 			p->tiff_ifd[i].width * p->tiff_ifd[i].height / SQR(p->tiff_ifd[i].bps+1) >
 			(int)(p->thumb_width *       p->thumb_height / SQR(p->thumb_misc+1))) {
 			p->thumb_width  = p->tiff_ifd[i].width;

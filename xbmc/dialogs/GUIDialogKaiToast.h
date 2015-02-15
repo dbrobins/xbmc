@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,21 +33,24 @@ public:
   CGUIDialogKaiToast(void);
   virtual ~CGUIDialogKaiToast(void);
 
+  enum eMessageType { Default = 0, Info, Warning, Error };
+
   struct Notification
   {
-    CStdString caption;
-    CStdString description;
-    CStdString imagefile;
+    std::string caption;
+    std::string description;
+    std::string imagefile;
+    eMessageType eType;
     unsigned int displayTime;
     unsigned int messageTime;
     bool withSound;
   };
 
-  enum eMessageType { Info = 0, Warning, Error };
+  typedef std::queue<Notification> TOASTQUEUE;
 
-  static void QueueNotification(eMessageType eType, const CStdString& aCaption, const CStdString& aDescription, unsigned int displayTime = TOAST_DISPLAY_TIME, bool withSound = true, unsigned int messageTime = TOAST_MESSAGE_TIME);
-  static void QueueNotification(const CStdString& aCaption, const CStdString& aDescription);
-  static void QueueNotification(const CStdString& aImageFile, const CStdString& aCaption, const CStdString& aDescription, unsigned int displayTime = TOAST_DISPLAY_TIME, bool withSound = true, unsigned int messageTime = TOAST_MESSAGE_TIME);
+  static void QueueNotification(eMessageType eType, const std::string& aCaption, const std::string& aDescription, unsigned int displayTime = TOAST_DISPLAY_TIME, bool withSound = true, unsigned int messageTime = TOAST_MESSAGE_TIME);
+  static void QueueNotification(const std::string& aCaption, const std::string& aDescription);
+  static void QueueNotification(const std::string& aImageFile, const std::string& aCaption, const std::string& aDescription, unsigned int displayTime = TOAST_DISPLAY_TIME, bool withSound = true, unsigned int messageTime = TOAST_MESSAGE_TIME);
   bool DoWork();
 
   virtual bool OnMessage(CGUIMessage& message);
@@ -56,17 +59,15 @@ public:
   void ResetTimer();
 
 protected:
-  void AddToQueue(eMessageType eType, const CStdString& aCaption, const CStdString& aDescription, unsigned int displayTime, bool withSound, unsigned int messageTime);
-  void AddToQueue(const CStdString& aImageFile, const CStdString& aCaption, const CStdString& aDescription, unsigned int displayTime, bool withSound, unsigned int messageTime);
+  static void AddToQueue(const std::string& aImageFile, const eMessageType eType, const std::string& aCaption, const std::string& aDescription, unsigned int displayTime, bool withSound, unsigned int messageTime);
 
   unsigned int m_timer;
 
   unsigned int m_toastDisplayTime;
   unsigned int m_toastMessageTime;
 
-  CStdString m_defaultIcon;
-
-  typedef std::queue<Notification> TOASTQUEUE;
-  TOASTQUEUE m_notifications;
-  CCriticalSection m_critical;
+  std::string m_defaultIcon;
+  
+  static TOASTQUEUE m_notifications;
+  static CCriticalSection m_critical;
 };

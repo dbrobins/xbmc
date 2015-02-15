@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -55,10 +55,12 @@ namespace EPG
     virtual bool MatchSearchTerm(const CEpgInfoTag &tag) const;
     virtual bool MatchChannelNumber(const CEpgInfoTag &tag) const;
     virtual bool MatchChannelGroup(const CEpgInfoTag &tag) const;
+    virtual bool MatchBroadcastId(const CEpgInfoTag &tag) const;
+    virtual bool MatchChannelType(const CEpgInfoTag &tag) const;
 
     static int RemoveDuplicates(CFileItemList &results);
 
-    CStdString    m_strSearchTerm;            /*!< The term to search for */
+    std::string   m_strSearchTerm;            /*!< The term to search for */
     bool          m_bIsCaseSensitive;         /*!< Do a case sensitive search */
     bool          m_bSearchInDescription;     /*!< Search for strSearchTerm in the description too */
     int           m_iGenreType;               /*!< The genre type for an entry */
@@ -69,6 +71,7 @@ namespace EPG
     CDateTime     m_endDateTime;              /*!< The maximum end time for an entry */
     bool          m_bIncludeUnknownGenres;    /*!< Include unknown genres or not */
     bool          m_bPreventRepeats;          /*!< True to remove repeating events, false if not */
+    bool          m_bIsRadio;                 /*!< True to filter radio channels only, false to tv only */
 
     /* PVR specific filters */
     int           m_iChannelNumber;           /*!< The channel number in the selected channel group */
@@ -76,5 +79,6 @@ namespace EPG
     int           m_iChannelGroup;            /*!< The group this channel belongs to */
     bool          m_bIgnorePresentTimers;     /*!< True to ignore currently present timers (future recordings), false if not */
     bool          m_bIgnorePresentRecordings; /*!< True to ignore currently active recordings, false if not */
+    int           m_iUniqueBroadcastId;       /*!< The broadcastid to search for */
   };
 }

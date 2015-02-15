@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,23 +23,24 @@
 #include "guilib/LocalizeStrings.h"
 #include "video/VideoDatabase.h"
 #include "video/VideoDbUrl.h"
+#include "utils/StringUtils.h"
 
 using namespace XFILE::VIDEODATABASEDIRECTORY;
 using namespace std;
 
 Node MovieChildren[] = {
-                        { NODE_TYPE_GENRE,        1, 135 },
-                        { NODE_TYPE_TITLE_MOVIES, 2, 369 },
-                        { NODE_TYPE_YEAR,         3, 562 },
-                        { NODE_TYPE_ACTOR,        4, 344 },
-                        { NODE_TYPE_DIRECTOR,     5, 20348 },
-                        { NODE_TYPE_STUDIO,       6, 20388 },
-                        { NODE_TYPE_SETS,         7, 20434 },
-                        { NODE_TYPE_COUNTRY,      8, 20451 },
-                        { NODE_TYPE_TAGS,         9, 20459 }
+                        { NODE_TYPE_GENRE,        "genres",     135 },
+                        { NODE_TYPE_TITLE_MOVIES, "titles",     369 },
+                        { NODE_TYPE_YEAR,         "years",      562 },
+                        { NODE_TYPE_ACTOR,        "actors",     344 },
+                        { NODE_TYPE_DIRECTOR,     "directors",  20348 },
+                        { NODE_TYPE_STUDIO,       "studios",    20388 },
+                        { NODE_TYPE_SETS,         "sets",       20434 },
+                        { NODE_TYPE_COUNTRY,      "countries",  20451 },
+                        { NODE_TYPE_TAGS,         "tags",       20459 }
                        };
 
-CDirectoryNodeMoviesOverview::CDirectoryNodeMoviesOverview(const CStdString& strName, CDirectoryNode* pParent)
+CDirectoryNodeMoviesOverview::CDirectoryNodeMoviesOverview(const std::string& strName, CDirectoryNode* pParent)
   : CDirectoryNode(NODE_TYPE_MOVIES_OVERVIEW, strName, pParent)
 {
 
@@ -48,16 +49,16 @@ CDirectoryNodeMoviesOverview::CDirectoryNodeMoviesOverview(const CStdString& str
 NODE_TYPE CDirectoryNodeMoviesOverview::GetChildType() const
 {
   for (unsigned int i = 0; i < sizeof(MovieChildren) / sizeof(Node); ++i)
-    if (GetID() == MovieChildren[i].id)
+    if (GetName() == MovieChildren[i].id)
       return MovieChildren[i].node;
   
   return NODE_TYPE_NONE;
 }
 
-CStdString CDirectoryNodeMoviesOverview::GetLocalizedName() const
+std::string CDirectoryNodeMoviesOverview::GetLocalizedName() const
 {
   for (unsigned int i = 0; i < sizeof(MovieChildren) / sizeof(Node); ++i)
-    if (GetID() == MovieChildren[i].id)
+    if (GetName() == MovieChildren[i].id)
       return g_localizeStrings.Get(MovieChildren[i].label);
   return "";
 }
@@ -78,7 +79,7 @@ bool CDirectoryNodeMoviesOverview::GetContent(CFileItemList& items) const
     }
 
     CVideoDbUrl itemUrl = videoUrl;
-    CStdString strDir; strDir.Format("%ld/", MovieChildren[i].id);
+    std::string strDir = StringUtils::Format("%s/", MovieChildren[i].id.c_str());
     itemUrl.AppendPath(strDir);
 
     CFileItemPtr pItem(new CFileItem(itemUrl.ToString(), true));

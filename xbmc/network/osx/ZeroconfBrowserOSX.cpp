@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,33 +26,13 @@
 #include "guilib/GUIMessage.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
+#include "osx/DarwinUtils.h"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
 namespace
 {
-  CStdString CFStringToCStdString(const CFStringRef cfstr)
-  {
-    //first try the short path
-    const char *p_tmp = CFStringGetCStringPtr(cfstr, kCFStringEncodingUTF8);
-    if (p_tmp)
-      return CStdString(p_tmp);
-    
-    // i'm not sure if CFStringGetMaximumSizeForEncoding
-    // includes space for the termination character or not?
-    // so i add 1 here to make sure..
-    CFIndex buf_len = 1 + CFStringGetMaximumSizeForEncoding(
-      CFStringGetLength(cfstr), kCFStringEncodingUTF8);
-
-    char *buffer = new char[buf_len];
-    CFStringGetCString(cfstr, buffer, buf_len, kCFStringEncodingUTF8);
-    CStdString myString(buffer);
-    delete[] buffer;
-
-    return myString;
-  }
-  
   //helper for getting a the txt-records list
   //returns true on success, false if nothing found or error
   CZeroconfBrowser::ZeroconfService::tTxtRecordMap GetTxtRecords(CFNetServiceRef serviceRef)  
@@ -78,12 +58,16 @@ namespace
 
           for(idx = 0; idx < numValues; idx++)
           {
-            recordMap.insert(
-              std::make_pair(
-                CFStringToCStdString(keys[idx]),
-                CStdString((const char *)CFDataGetBytePtr(values[idx]))
-              )
-            );
+            std::string key;
+            if (CDarwinUtils::CFStringRefToUTF8String(keys[idx], key))
+            {
+              recordMap.insert(
+                std::make_pair(
+                  key,
+                  std::string((const char *)CFDataGetBytePtr(values[idx]))
+                )
+              );
+            }
           }
         }
         CFRelease(dict);
@@ -94,7 +78,7 @@ namespace
 
   //helper to get (first) IP and port from a resolved service
   //returns true on success, false on if none was found
-  bool CopyFirstIPv4Address(CFNetServiceRef serviceRef, CStdString &fr_address, int &fr_port)
+  bool CopyFirstIPv4Address(CFNetServiceRef serviceRef, std::string &fr_address, int &fr_port)
   {
     CFIndex idx;
     struct sockaddr_in address;
@@ -161,11 +145,19 @@ void CZeroconfBrowserOSX::BrowserCallback(CFNetServiceBrowserRef browser, CFOpti
     assert(service);
     //get our instance
     CZeroconfBrowserOSX* p_this = reinterpret_cast<CZeroconfBrowserOSX*>(info);
+
     //store the service
-    ZeroconfService s(
-      CFStringToCStdString(CFNetServiceGetName(service)),
-      CFStringToCStdString(CFNetServiceGetType(service)),
-      CFStringToCStdString(CFNetServiceGetDomain(service)));
+    std::string name, type, domain;
+    if (!CDarwinUtils::CFStringRefToUTF8String(CFNetServiceGetName(service), name) ||
+        !CDarwinUtils::CFStringRefToUTF8String(CFNetServiceGetType(service), type) ||
+        !CDarwinUtils::CFStringRefToUTF8String(CFNetServiceGetDomain(service), domain))
+    {
+      CLog::Log(LOGWARNING, "CZeroconfBrowserOSX::BrowserCallback failed to convert service strings.");
+      return;
+    }
+
+    ZeroconfService s(name, type, domain);
+
     if (flags & kCFNetServiceFlagRemove)
     {
       CLog::Log(LOGDEBUG, "CZeroconfBrowserOSX::BrowserCallback service named: %s, type: %s, domain: %s disappeared", 
@@ -188,7 +180,7 @@ void CZeroconfBrowserOSX::BrowserCallback(CFNetServiceBrowserRef browser, CFOpti
   } else
   {
     CLog::Log(LOGERROR, "CZeroconfBrowserOSX::BrowserCallback returned"
-      "(domain = %d, error = %"PRId64")", (int)error->domain, (int64_t)error->error);
+      "(domain = %d, error = %" PRId64")", (int)error->domain, (int64_t)error->error);
   }
 }
 
@@ -246,7 +238,7 @@ removeDiscoveredService(CFNetServiceBrowserRef browser, CFOptionFlags flags, CZe
 }
 
 
-bool CZeroconfBrowserOSX::doAddServiceType(const CStdString& fcr_service_type)
+bool CZeroconfBrowserOSX::doAddServiceType(const std::string& fcr_service_type)
 {
   CFNetServiceClientContext clientContext = { 0, this, NULL, NULL, NULL };
   CFStringRef domain = CFSTR("");
@@ -269,7 +261,7 @@ bool CZeroconfBrowserOSX::doAddServiceType(const CStdString& fcr_service_type)
     CFRelease(p_browser);
     p_browser = NULL;
     CLog::Log(LOGERROR, "CFNetServiceBrowserSearchForServices returned"
-      "(domain = %d, error = %"PRId64")", (int)error.domain, (int64_t)error.error);
+      "(domain = %d, error = %" PRId64")", (int)error.domain, (int64_t)error.error);
   }
   else
   {
@@ -281,7 +273,7 @@ bool CZeroconfBrowserOSX::doAddServiceType(const CStdString& fcr_service_type)
   return result;
 }
 
-bool CZeroconfBrowserOSX::doRemoveServiceType(const CStdString &fcr_service_type)
+bool CZeroconfBrowserOSX::doRemoveServiceType(const std::string &fcr_service_type)
 {
   //search for this browser and remove it from the map
   CFNetServiceBrowserRef browser = 0;
@@ -342,7 +334,7 @@ bool CZeroconfBrowserOSX::doResolveService(CZeroconfBrowser::ZeroconfService &fr
   CFNetServiceRef service = CFNetServiceCreate (NULL, domain, type, name, 0);
   if (CFNetServiceResolveWithTimeout(service, f_timeout, NULL) )
   {
-    CStdString ip; 
+    std::string ip;
     int port = 0;
     ret = CopyFirstIPv4Address(service, ip, port);
     fr_service.SetIP(ip);

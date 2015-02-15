@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
  *
  */
 
+#include <string>
 #include "threads/CriticalSection.h"
 #include "threads/Thread.h"
 
@@ -65,7 +66,7 @@ public:
   void             SetFileItemMetaData(CFileItem &item, cmyth_proginfo_t program);
 
   CDateTime        GetValue(cmyth_timestamp_t t);
-  CStdString       GetValue(char* str);
+  std::string      GetValue(char* str);
 
 private:
   CMythSession(const CURL& url);
@@ -82,9 +83,9 @@ private:
   cmyth_conn_t     m_control;
   cmyth_conn_t     m_event;
   cmyth_database_t m_database;
-  CStdString       m_hostname;
-  CStdString       m_username;
-  CStdString       m_password;
+  std::string      m_hostname;
+  std::string      m_username;
+  std::string      m_password;
   int              m_port;
   DllLibCMyth*     m_dll;
   CCriticalSection m_section;

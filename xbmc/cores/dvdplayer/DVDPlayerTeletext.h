@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,10 +23,11 @@
 #include "threads/Thread.h"
 #include "DVDMessageQueue.h"
 #include "video/TeletextDefines.h"
+#include "IDVDPlayer.h"
 
 class CDVDStreamInfo;
 
-class CDVDTeletextData : public CThread
+class CDVDTeletextData : public CThread, public IDVDStreamPlayer
 {
 public:
   CDVDTeletextData();
@@ -40,7 +41,9 @@ public:
   // waits until all available data has been rendered
   void WaitForBuffers() { m_messageQueue.WaitUntilEmpty(); }
   bool AcceptsData() const { return !m_messageQueue.IsFull(); }
-  void SendMessage(CDVDMsg* pMsg) { if(m_messageQueue.IsInited()) m_messageQueue.Put(pMsg); }
+  void SendMessage(CDVDMsg* pMsg, int priority = 0) { if(m_messageQueue.IsInited()) m_messageQueue.Put(pMsg, priority); }
+  bool IsInited() const { return true; }
+  bool IsStalled() const { return true; }
 
   TextCacheStruct_t* GetTeletextCache() { return &m_TXTCache; }
   void LoadPage(int p, int sp, unsigned char* buffer);

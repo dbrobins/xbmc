@@ -1,6 +1,5 @@
-#pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -18,9 +17,13 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-#include "PltMediaConnect.h"
+#pragma once
+#include <Platinum/Source/Devices/MediaConnect/PltMediaConnect.h>
+
+#include "interfaces/IAnnouncer.h"
 #include "FileItem.h"
 
+class CThumbLoader;
 class PLT_MediaObject;
 class PLT_HttpRequestContext;
 
@@ -28,13 +31,13 @@ namespace UPNP
 {
 
 class CUPnPServer : public PLT_MediaConnect,
-                    public PLT_FileMediaConnectDelegate
+                    public PLT_FileMediaConnectDelegate,
+                    public ANNOUNCEMENT::IAnnouncer
 {
 public:
-    CUPnPServer(const char* friendly_name, const char* uuid = NULL, int port = 0) :
-        PLT_MediaConnect(friendly_name, false, uuid, port),
-        PLT_FileMediaConnectDelegate("/", "/") {
-    }
+    CUPnPServer(const char* friendly_name, const char* uuid = NULL, int port = 0);
+    ~CUPnPServer();
+    virtual void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data);
 
     // PLT_MediaServer methods
     virtual NPT_Result OnBrowseMetadata(PLT_ActionReference&          action,
@@ -60,6 +63,12 @@ public:
                                          const char*                   sort_criteria,
                                          const PLT_HttpRequestContext& context);
 
+    virtual NPT_Result OnUpdateObject(PLT_ActionReference&             action,
+                                      const char*                      object_id,
+                                      NPT_Map<NPT_String,NPT_String>&  current_vals,
+                                      NPT_Map<NPT_String,NPT_String>&  new_vals,
+                                      const PLT_HttpRequestContext&    context);
+
     // PLT_FileMediaServer methods
     virtual NPT_Result ServeFile(const NPT_HttpRequest&              request,
                                  const NPT_HttpRequestContext& context,
@@ -73,6 +82,7 @@ public:
                                       NPT_HttpResponse&             response);
 
     virtual NPT_Result SetupServices();
+    virtual NPT_Result SetupIcons();
     NPT_String BuildSafeResourceUri(const NPT_HttpUrl &rooturi,
                                     const char*        host,
                                     const char*        file_path);
@@ -87,11 +97,20 @@ public:
         }
     }
 
+    /* Samsungs devices get subtitles from header in response (for movie file), not from didl.
+       It's a way to store subtitle uri generated when building didl, to use later in http response*/
+    NPT_Result AddSubtitleUriForSecResponse(NPT_String movie_md5, NPT_String subtitle_uri);
+
 
 private:
+    void OnScanCompleted(int type);
+    void UpdateContainer(const std::string& id);
+    void PropagateUpdates();
+
     PLT_MediaObject* Build(CFileItemPtr                  item,
                            bool                          with_count,
                            const PLT_HttpRequestContext& context,
+                           NPT_Reference<CThumbLoader>&  thumbLoader,
                            const char*                   parent_id = NULL);
     NPT_Result       BuildResponse(PLT_ActionReference&          action,
                                    CFileItemList&                items,
@@ -112,9 +131,13 @@ private:
         return file_path.Left(index);
     }
 
+    NPT_Mutex                       m_CacheMutex;
+
     NPT_Mutex                       m_FileMutex;
     NPT_Map<NPT_String, NPT_String> m_FileMap;
 
+    std::map<std::string, std::pair<bool, unsigned long> > m_UpdateIDs;
+    bool m_scanning;
 public:
     // class members
     static NPT_UInt32 m_MaxReturnedItems;

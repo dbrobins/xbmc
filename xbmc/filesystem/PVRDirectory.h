@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,12 +32,14 @@ public:
   CPVRDirectory();
   virtual ~CPVRDirectory();
 
-  virtual bool GetDirectory(const CStdString& strPath, CFileItemList &items);
-  virtual bool IsAllowed(const CStdString &strFile) const { return true; };
+  virtual bool GetDirectory(const CURL& url, CFileItemList &items);
+  virtual bool AllowAll() const { return true; }
 
-  static bool SupportsFileOperations(const CStdString& strPath);
-  static bool IsLiveTV(const CStdString& strPath);
+  static bool SupportsWriteFileOperations(const std::string& strPath);
+  static bool IsLiveTV(const std::string& strPath);
   static bool HasRecordings();
+
+  virtual bool Exists(const CURL& url);
 
 private:
 };

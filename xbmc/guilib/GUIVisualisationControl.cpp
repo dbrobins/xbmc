@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@
 #include "addons/AddonManager.h"
 #include "addons/Visualisation.h"
 #include "utils/log.h"
+#include "guilib/IRenderingCallback.h"
+#include "Key.h"
 
 using namespace std;
 using namespace ADDON;
@@ -40,7 +42,7 @@ CGUIVisualisationControl::CGUIVisualisationControl(int parentID, int controlID, 
 }
 
 CGUIVisualisationControl::CGUIVisualisationControl(const CGUIVisualisationControl &from)
-: CGUIRenderingControl(from), m_bAttemptedLoad(false)
+  : CGUIRenderingControl(from), m_bAttemptedLoad(false), m_addon()
 {
   ControlType = GUICONTROL_VISUALISATION;
 }
@@ -51,7 +53,7 @@ bool CGUIVisualisationControl::OnMessage(CGUIMessage &message)
   {
   case GUI_MSG_GET_VISUALISATION:
     message.SetPointer(m_addon.get());
-    return m_addon;
+    return m_addon != NULL;
   case GUI_MSG_VISUALISATION_RELOAD:
     FreeResources(true);
     return true;
@@ -92,16 +94,21 @@ bool CGUIVisualisationControl::OnAction(const CAction &action)
 
 void CGUIVisualisationControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
 {
-  if (g_application.IsPlayingAudio())
+  if (g_application.m_pPlayer->IsPlayingAudio())
   {
     if (m_bInvalidated)
       FreeResources(true);
 
     if (!m_addon && !m_bAttemptedLoad)
     {
-      AddonPtr viz;
-      if (ADDON::CAddonMgr::Get().GetDefault(ADDON_VIZ, viz))
-        LoadAddon(viz);
+      AddonPtr addon;
+      if (ADDON::CAddonMgr::Get().GetDefault(ADDON_VIZ, addon))
+      {
+        m_addon = std::dynamic_pointer_cast<CVisualisation>(addon);
+        if (m_addon)
+          if (!InitCallback(m_addon.get()))
+            m_addon.reset();
+      }
 
       m_bAttemptedLoad = true;
     }
@@ -120,6 +127,7 @@ void CGUIVisualisationControl::FreeResources(bool immediately)
   g_windowManager.SendMessage(msg);
   CLog::Log(LOGDEBUG, "FreeVisualisation() started");
   CGUIRenderingControl::FreeResources(immediately);
+  m_addon.reset();
   CLog::Log(LOGDEBUG, "FreeVisualisation() done");
 }
 

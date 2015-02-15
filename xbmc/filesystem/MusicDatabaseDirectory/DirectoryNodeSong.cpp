@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 using namespace XFILE::MUSICDATABASEDIRECTORY;
 
-CDirectoryNodeSong::CDirectoryNodeSong(const CStdString& strName, CDirectoryNode* pParent)
+CDirectoryNodeSong::CDirectoryNodeSong(const std::string& strName, CDirectoryNode* pParent)
   : CDirectoryNode(NODE_TYPE_SONG, strName, pParent)
 {
 
@@ -39,7 +39,7 @@ bool CDirectoryNodeSong::GetContent(CFileItemList& items) const
   CQueryParams params;
   CollectQueryParams(params);
 
-  CStdString strBaseDir=BuildPath();
+  std::string strBaseDir=BuildPath();
   bool bSuccess=musicdatabase.GetSongsNav(strBaseDir, items, params.GetGenreId(), params.GetArtistId(), params.GetAlbumId());
 
   musicdatabase.Close();

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 
 // C++ Implementation: karaokelyricsfactory
 
+#include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "filesystem/File.h"
 
@@ -31,11 +32,11 @@
 
 
 // A helper function to have all the checks in a single place
-bool CheckAndCreateLyrics( const CStdString & songName, CKaraokeLyrics ** lyricptr )
+bool CheckAndCreateLyrics( const std::string & songName, CKaraokeLyrics ** lyricptr )
 {
-  CStdString ext, filename = songName;
+  std::string filename = songName;
   URIUtils::RemoveExtension( filename );
-  URIUtils::GetExtension( songName, ext );
+  std::string ext = URIUtils::GetExtension(songName);
 
   // LRC lyrics have .lrc extension
   if ( XFILE::CFile::Exists( filename + ".lrc" ) )
@@ -47,7 +48,8 @@ bool CheckAndCreateLyrics( const CStdString & songName, CKaraokeLyrics ** lyricp
   }
 
   // MIDI/KAR files keep lyrics inside
-  if ( ext.Left(4) == ".mid" || ext == ".kar" )
+  if (StringUtils::StartsWith(ext, ".mid") ||
+      StringUtils::StartsWith(ext, ".kar"))
   {
     if ( lyricptr )
       *lyricptr = new CKaraokeLyricsTextKAR( songName );
@@ -80,7 +82,7 @@ bool CheckAndCreateLyrics( const CStdString & songName, CKaraokeLyrics ** lyricp
 }
 
 
-CKaraokeLyrics * CKaraokeLyricsFactory::CreateLyrics( const CStdString & songName )
+CKaraokeLyrics * CKaraokeLyricsFactory::CreateLyrics( const std::string & songName )
 {
   CKaraokeLyrics * lyricptr = 0;
 
@@ -89,7 +91,7 @@ CKaraokeLyrics * CKaraokeLyricsFactory::CreateLyrics( const CStdString & songNam
 }
 
 
-bool CKaraokeLyricsFactory::HasLyrics(const CStdString & songName)
+bool CKaraokeLyricsFactory::HasLyrics(const std::string & songName)
 {
   return CheckAndCreateLyrics( songName, 0 );
 }

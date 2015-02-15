@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2011-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2011-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 #include <list>
 #include "SectionLoader.h"
 #include <map>
+#include "DllLibNfs.h" // for define NFSSTAT
 
 #ifdef TARGET_WINDOWS
 #define S_IRGRP 0
@@ -50,7 +51,12 @@ class DllLibNfs;
 class CNfsConnection : public CCriticalSection
 {     
 public:
-  typedef std::map<struct nfsfh  *, unsigned int> tFileKeepAliveMap;  
+  struct keepAliveStruct
+  {
+    std::string exportPath;
+    uint64_t refreshCounter;
+  };
+  typedef std::map<struct nfsfh  *, struct keepAliveStruct> tFileKeepAliveMap;  
 
   struct contextTimeout
   {
@@ -62,19 +68,20 @@ public:
   
   CNfsConnection();
   ~CNfsConnection();
-  bool Connect(const CURL &url, CStdString &relativePath);
+  bool Connect(const CURL &url, std::string &relativePath);
   struct nfs_context *GetNfsContext(){return m_pNfsContext;}
   uint64_t          GetMaxReadChunkSize(){return m_readChunkSize;}
   uint64_t          GetMaxWriteChunkSize(){return m_writeChunkSize;} 
   DllLibNfs        *GetImpl(){return m_pLibNfs;}
-  std::list<CStdString> GetExportList(const CURL &url);
+  std::list<std::string> GetExportList(const CURL &url);
   //this functions splits the url into the exportpath (feed to mount) and the rest of the path
   //relative to the mounted export
-  bool splitUrlIntoExportAndPath(const CURL& url, CStdString &exportPath, CStdString &relativePath);
+  bool splitUrlIntoExportAndPath(const CURL& url, std::string &exportPath, std::string &relativePath, std::list<std::string> &exportList);
+  bool splitUrlIntoExportAndPath(const CURL& url, std::string &exportPath, std::string &relativePath);
   
   //special stat which uses its own context
   //needed for getting intervolume symlinks to work
-  int stat(const CURL &url, struct stat *statbuff);
+  int stat(const CURL &url, NFSSTAT *statbuff);
 
   void AddActiveConnection();
   void AddIdleConnection();
@@ -83,18 +90,19 @@ public:
   bool HandleDyLoad();//loads the lib if needed
   //adds the filehandle to the keep alive list or resets
   //the timeout for this filehandle if already in list
-  void resetKeepAlive(struct nfsfh  *_pFileHandle);
+  void resetKeepAlive(std::string _exportPath, struct nfsfh  *_pFileHandle);
   //removes file handle from keep alive list
   void removeFromKeepAliveList(struct nfsfh  *_pFileHandle);  
   
-  const CStdString& GetConnectedIp() const {return m_resolvedHostName;}
-  const CStdString& GetConnectedExport() const {return m_exportPath;}
+  const std::string& GetConnectedIp() const {return m_resolvedHostName;}
+  const std::string& GetConnectedExport() const {return m_exportPath;}
+  const std::string  GetContextMapId() const {return m_hostName + m_exportPath;}
 
 private:
   struct nfs_context *m_pNfsContext;//current nfs context
-  CStdString m_exportPath;//current connected export path
-  CStdString m_hostName;//current connected host
-  CStdString m_resolvedHostName;//current connected host - as ip
+  std::string m_exportPath;//current connected export path
+  std::string m_hostName;//current connected host
+  std::string m_resolvedHostName;//current connected host - as ip
   uint64_t m_readChunkSize;//current read chunksize of connected server
   uint64_t m_writeChunkSize;//current write chunksize of connected server
   int m_OpenConnections;//number of open connections
@@ -103,15 +111,17 @@ private:
   tOpenContextMap m_openContextMap;//unique map for tracking all open contexts
   uint64_t m_lastAccessedTime;//last access time for m_pNfsContext
   DllLibNfs *m_pLibNfs;//the lib
-  std::list<CStdString> m_exportList;//list of exported pathes of current connected servers
+  std::list<std::string> m_exportList;//list of exported pathes of current connected servers
   CCriticalSection keepAliveLock;
+  CCriticalSection openContextLock;
  
   void clearMembers();
-  struct nfs_context *getContextFromMap(const CStdString &exportname);
-  int  getContextForExport(const CStdString &exportname);//get context for given export and add to open contexts map - sets m_pNfsContext (my return a already mounted cached context)
+  struct nfs_context *getContextFromMap(const std::string &exportname, bool forceCacheHit = false);
+  int  getContextForExport(const std::string &exportname);//get context for given export and add to open contexts map - sets m_pNfsContext (my return a already mounted cached context)
   void destroyOpenContexts();
+  void destroyContext(const std::string &exportName);
   void resolveHost(const CURL &url);//resolve hostname by dnslookup
-  void keepAlive(struct nfsfh  *_pFileHandle);
+  void keepAlive(std::string _exportPath, struct nfsfh  *_pFileHandle);
 };
 
 extern CNfsConnection gNfsConnection;
@@ -125,14 +135,14 @@ namespace XFILE
     virtual ~CNFSFile();
     virtual void Close();
     virtual int64_t Seek(int64_t iFilePosition, int iWhence = SEEK_SET);
-    virtual unsigned int Read(void* lpBuf, int64_t uiBufSize);
+    virtual ssize_t Read(void* lpBuf, size_t uiBufSize);
     virtual bool Open(const CURL& url);
     virtual bool Exists(const CURL& url);
     virtual int Stat(const CURL& url, struct __stat64* buffer);
     virtual int Stat(struct __stat64* buffer);
     virtual int64_t GetLength();
     virtual int64_t GetPosition();
-    virtual int Write(const void* lpBuf, int64_t uiBufSize);
+    virtual ssize_t Write(const void* lpBuf, size_t uiBufSize);
     virtual int Truncate(int64_t iSize);
 
     //implement iocontrol for seek_possible for preventing the stat in File class for
@@ -145,10 +155,11 @@ namespace XFILE
     virtual bool Rename(const CURL& url, const CURL& urlnew);    
   protected:
     CURL m_url;
-    bool IsValidFile(const CStdString& strFileName);
+    bool IsValidFile(const std::string& strFileName);
     int64_t m_fileSize;
     struct nfsfh  *m_pFileHandle;
-    struct nfs_context *m_pNfsContext;//current nfs context    
+    struct nfs_context *m_pNfsContext;//current nfs context
+    std::string m_exportPath;
   };
 }
 #endif // FILENFS_H_

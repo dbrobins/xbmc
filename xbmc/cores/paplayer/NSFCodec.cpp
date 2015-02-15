@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+#include <cstdlib>
 
 #include "NSFCodec.h"
 #include "utils/log.h"
@@ -26,7 +27,7 @@
 NSFCodec::NSFCodec()
 {
   m_iTrack = 0;
-  m_CodecName = "NSF";
+  m_CodecName = "nsf";
   m_nsf = NULL;
   m_bIsPlaying = false;
   m_szBuffer = NULL;
@@ -40,29 +41,25 @@ NSFCodec::~NSFCodec()
   DeInit();
 }
 
-bool NSFCodec::Init(const CStdString &strFile, unsigned int filecache)
+bool NSFCodec::Init(const std::string &strFile, unsigned int filecache)
 {
   DeInit();
 
   if (!m_dll.Load())
     return false; // error logged previously
 
-  CStdString strFileToLoad = strFile;
+  std::string strFileToLoad = strFile;
   m_iTrack = 0;
-  CStdString strExtension;
-  URIUtils::GetExtension(strFile,strExtension);
-  strExtension.MakeLower();
-  if (strExtension==".nsfstream")
+  if (URIUtils::HasExtension(strFile, ".nsfstream"))
   {
     //  Extract the track to play
-    CStdString strFileName=URIUtils::GetFileName(strFile);
-    int iStart=strFileName.ReverseFind('-')+1;
+    std::string strFileName=URIUtils::GetFileName(strFile);
+    size_t iStart=strFileName.rfind('-') + 1;
     m_iTrack = atoi(strFileName.substr(iStart, strFileName.size()-iStart-10).c_str());
     //  The directory we are in, is the file
     //  that contains the bitstream to play,
     //  so extract it
-    CStdString strPath=strFile;
-    URIUtils::GetDirectory(strPath, strFileToLoad);
+    strFileToLoad = URIUtils::GetDirectory(strFile);
     URIUtils::RemoveSlashAtEnd(strFileToLoad); // we want the filename
   }
 

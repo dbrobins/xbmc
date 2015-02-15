@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,8 +21,10 @@
 #include "GUIDialogKaraokeSongSelector.h"
 #include "PlayListPlayer.h"
 #include "playlists/PlayList.h"
+#include "guilib/Key.h"
 #include "guilib/LocalizeStrings.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 
 #define CONTROL_LABEL_SONGNUMBER    401
 #define CONTROL_LABEL_SONGNAME      402
@@ -65,7 +67,7 @@ void CGUIDialogKaraokeSongSelector::OnButtonSelect()
   // We only handle "select" if a song is selected
   if ( m_songSelected )
   {
-    CStdString path = m_karaokeSong.strFileName;
+    std::string path = m_karaokeSong.strFileName;
     CFileItemPtr pItem( new CFileItem( path, false) );
     m_songSelected = false;
 
@@ -166,8 +168,7 @@ void CGUIDialogKaraokeSongSelector::UpdateData()
   if ( m_updateData )
   {
     // Update on-screen labels
-    CStdString message;
-    message.Format( "%06d", m_selectedNumber );
+    std::string message = StringUtils::Format("%06d", m_selectedNumber);
     message = g_localizeStrings.Get(179) + ": " + message; // Translated "Song"
 
     SET_CONTROL_LABEL(CONTROL_LABEL_SONGNUMBER, message);
@@ -249,7 +250,7 @@ void CGUIDialogKaraokeSongSelector::OnDeinitWindow(int nextWindowID)
 }
 
 
-void CGUIDialogKaraokeSongSelectorSmall::DoModal(unsigned int startcode, int iWindowID, const CStdString & param)
+void CGUIDialogKaraokeSongSelectorSmall::DoModal(unsigned int startcode, int iWindowID, const std::string & param)
 {
   m_songSelected = false;
   m_selectedNumber = 0;
@@ -259,7 +260,7 @@ void CGUIDialogKaraokeSongSelectorSmall::DoModal(unsigned int startcode, int iWi
 }
 
 
-void CGUIDialogKaraokeSongSelectorLarge::DoModal(int iWindowID, const CStdString & param)
+void CGUIDialogKaraokeSongSelectorLarge::DoModal(int iWindowID, const std::string & param)
 {
   m_songSelected = false;
   m_selectedNumber = 0;

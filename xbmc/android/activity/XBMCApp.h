@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,9 +30,12 @@
 #include "IInputHandler.h"
 
 #include "xbmc.h"
-
+#include "android/jni/Context.h"
+#include "android/jni/BroadcastReceiver.h"
+#include "threads/Event.h"
 
 // forward delares
+class CJNIWakeLock;
 class CAESinkAUDIOTRACK;
 typedef struct _JNIEnv JNIEnv;
 
@@ -50,16 +53,15 @@ struct androidPackage
 };
 
 
-class CXBMCApp : public IActivityHandler
+class CXBMCApp : public IActivityHandler, public CJNIContext, public CJNIBroadcastReceiver
 {
 public:
   CXBMCApp(ANativeActivity *nativeActivity);
   virtual ~CXBMCApp();
+  virtual void onReceive(CJNIIntent intent);
+  virtual void onNewIntent(CJNIIntent intent);
 
   bool isValid() { return m_activity != NULL; }
-
-  ActivityResult onActivate();
-  void onDeactivate();
 
   void onStart();
   void onResume();
@@ -78,15 +80,16 @@ public:
   void onLostFocus();
 
 
-  static ANativeWindow* GetNativeWindow() { return m_window; };
+  static const ANativeWindow** GetNativeWindow(int timeout);
   static int SetBuffersGeometry(int width, int height, int format);
   static int android_printf(const char *format, ...);
   
   static int GetBatteryLevel();
-  static bool StartActivity(const std::string &package);
-  static bool ListApplications(std::vector <androidPackage> *applications);
+  static bool StartActivity(const std::string &package, const std::string &intent = std::string(), const std::string &dataType = std::string(), const std::string &dataURI = std::string());
+  static std::vector <androidPackage> GetApplications();
   static bool GetIconSize(const std::string &packageName, int *width, int *height);
   static bool GetIcon(const std::string &packageName, void* buffer, unsigned int bufSize); 
+
   /*!
    * \brief If external storage is available, it returns the path for the external storage (for the specified type)
    * \param path will contain the path of the external storage (for the specified type)
@@ -95,61 +98,38 @@ public:
    */
   static bool GetExternalStorage(std::string &path, const std::string &type = "");
   static bool GetStorageUsage(const std::string &path, std::string &usage);
+  static int GetMaxSystemVolume();
+  static int GetSystemVolume();
+  static void SetSystemVolume(int val);
 
   static int GetDPI();
 protected:
-  // limit who can access AttachCurrentThread/DetachCurrentThread
+  // limit who can access Volume
   friend class CAESinkAUDIOTRACK;
-  friend class CAndroidFeatures;
-  friend class CFileAndroidApp;
 
-  static int AttachCurrentThread(JNIEnv** p_env, void* thr_args = NULL);
-  static int DetachCurrentThread();
+  static int GetMaxSystemVolume(JNIEnv *env);
+  static void SetSystemVolume(JNIEnv *env, float percent);
 
 private:
   static bool HasLaunchIntent(const std::string &package);
-  bool getWakeLock(JNIEnv *env);
-  void acquireWakeLock();
-  void releaseWakeLock();
+  bool getWakeLock();
+  std::string GetFilenameFromIntent(const CJNIIntent &intent);
   void run();
   void stop();
-
+  void SetupEnv();
   static ANativeActivity *m_activity;
-  jobject m_wakeLock;
-  
-  typedef enum {
-    // XBMC_Initialize hasn't been executed yet
-    Uninitialized,
-    // XBMC_Initialize has been successfully executed
-    Initialized,
-    // XBMC is currently rendering
-    Rendering,
-    // XBMC has stopped rendering because it has lost focus
-    // but it still has an EGLContext
-    Unfocused,
-    // XBMC has been paused/stopped and does not have an
-    // EGLContext
-    Paused,
-    // XBMC is being stopped
-    Stopping,
-    // XBMC has stopped
-    Stopped,
-    // An error has occured
-    Error
-  } AppState;
+  CJNIWakeLock *m_wakeLock;
+  static int m_batteryLevel;  
+  static int m_initialVolume;  
+  bool m_firstrun;
+  bool m_exiting;
+  pthread_t m_thread;
+  static CCriticalSection m_applicationsMutex;
+  static std::vector<androidPackage> m_applications;
 
-  typedef struct {
-    pthread_t thread;
-    pthread_mutex_t mutex;
-    AppState appState;
-  } State;
-
-  State m_state;
-  
-  void setAppState(AppState state);
-    
   static ANativeWindow* m_window;
-  
+  static CEvent m_windowCreated;
+
   void XBMC_Pause(bool pause);
   void XBMC_Stop();
   bool XBMC_DestroyDisplay();

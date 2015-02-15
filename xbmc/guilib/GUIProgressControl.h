@@ -9,8 +9,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -61,7 +61,7 @@ public:
   int GetInfo() const {return m_iInfoCode;};
 
   float GetPercentage() const;
-  CStdString GetDescription() const;
+  std::string GetDescription() const;
   virtual void UpdateInfo(const CGUIListItem *item = NULL);
   bool UpdateLayout(void);
 protected:

@@ -2,8 +2,8 @@
 #define __COFFLDR_H_
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -78,10 +78,10 @@ protected:
   int FileHeaderOffset;
 
   // Members for printing the structures
-  void PrintFileHeader(COFF_FileHeader_t *FileHeader);
-  void PrintWindowsHeader(WindowsHeader_t *WinHdr);
-  void PrintOptionHeader(OptionHeader_t *OptHdr);
-  void PrintSection(SectionHeader_t *ScnHdr, char *data);
+  static void PrintFileHeader(COFF_FileHeader_t *FileHeader);
+  static void PrintWindowsHeader(WindowsHeader_t *WinHdr);
+  static void PrintOptionHeader(OptionHeader_t *OptHdr);
+  static void PrintSection(SectionHeader_t *ScnHdr, char *data);
   void PrintStringTable(void);
   void PrintSymbolTable(void);
 

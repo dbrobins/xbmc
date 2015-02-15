@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@
 #include "guilib/LocalizeStrings.h"
 #include "StringUtils.h"
 #include "utils/XBMCTinyXML.h"
+#include "utils/XMLUtils.h"
 #include "log.h"
 
 using namespace XFILE;
@@ -48,7 +49,7 @@ using namespace std;
 CTuxBoxUtil g_tuxbox;
 CTuxBoxService g_tuxboxService;
 
-CTuxBoxService::CTuxBoxService() : CThread("CTuxBoxService")
+CTuxBoxService::CTuxBoxService() : CThread("TuxBoxService")
 {
 }
 CTuxBoxService::~CTuxBoxService()
@@ -57,6 +58,7 @@ CTuxBoxService::~CTuxBoxService()
 CTuxBoxUtil::CTuxBoxUtil(void)
 {
   sCurSrvData.requested_audio_channel = 0;
+  vVideoSubChannel.mode = false;
   sZapstream.initialized = false;
   sZapstream.available = false;
 }
@@ -94,10 +96,10 @@ bool CTuxBoxService::IsRunning()
 }
 void CTuxBoxService::Process()
 {
-  CStdString strCurrentServiceName = g_tuxbox.sCurSrvData.service_name;
-  CStdString strURL;
+  std::string strCurrentServiceName = g_tuxbox.sCurSrvData.service_name;
+  std::string strURL;
 
-  while(!CThread::m_bStop && g_application.IsPlaying())
+  while(!CThread::m_bStop && g_application.m_pPlayer->IsPlaying())
   {
     strURL = g_application.CurrentFileItem().GetPath();
     if(!URIUtils::IsTuxBox(strURL))
@@ -110,16 +112,16 @@ void CTuxBoxService::Process()
     if(g_tuxbox.GetHttpXML(url,"currentservicedata"))
     {
       CLog::Log(LOGDEBUG, "%s - receive current service data was successful", __FUNCTION__);
-      if(!strCurrentServiceName.IsEmpty()&&
-        !strCurrentServiceName.Equals("NULL") &&
-        !g_tuxbox.sCurSrvData.service_name.IsEmpty() &&
-        !g_tuxbox.sCurSrvData.service_name.Equals("-") &&
+      if(!strCurrentServiceName.empty()&&
+        strCurrentServiceName != "NULL" &&
+        !g_tuxbox.sCurSrvData.service_name.empty() &&
+        g_tuxbox.sCurSrvData.service_name != "-" &&
         !g_tuxbox.vVideoSubChannel.mode)
       {
         //Detect Channel Change
         //We need to detect the channel on the TuxBox Device!
         //On changing the channel on the device we will loose the stream and mplayer seems not able to detect it to stop
-        if (strCurrentServiceName != g_tuxbox.sCurSrvData.service_name && g_application.IsPlaying() && !g_tuxbox.sZapstream.available)
+        if (strCurrentServiceName != g_tuxbox.sCurSrvData.service_name && g_application.m_pPlayer->IsPlaying() && !g_tuxbox.sZapstream.available)
         {
           CLog::Log(LOGDEBUG," - ERROR: Non controlled channel change detected! Stopping current playing stream!");
           CApplicationMessenger::Get().MediaStop();
@@ -138,7 +140,7 @@ bool CTuxBoxUtil::CreateNewItem(const CFileItem& item, CFileItem& item_new)
   //Build new Item
   item_new.SetLabel(item.GetLabel());
   item_new.SetPath(item.GetPath());
-  item_new.SetThumbnailImage(item.GetThumbnailImage());
+  item_new.SetArt("thumb", item.GetArt("thumb"));
 
   if(g_tuxbox.GetZapUrl(item.GetPath(), item_new))
   {
@@ -148,39 +150,33 @@ bool CTuxBoxUtil::CreateNewItem(const CFileItem& item, CFileItem& item_new)
   }
   else
   {
-    if(!sBoxStatus.recording.Equals("1")) //Don't Show this Dialog, if the Box is in Recording mode! A previos YN Dialog was send to user!
+    if(sBoxStatus.recording != "1") //Don't Show this Dialog, if the Box is in Recording mode! A previos YN Dialog was send to user!
     {
       CLog::Log(LOGDEBUG, "%s ---------------------------------------------------------", __FUNCTION__);
       CLog::Log(LOGDEBUG, "%s - WARNING: Zaping Failed no Zap Point found!", __FUNCTION__);
       CLog::Log(LOGDEBUG, "%s ---------------------------------------------------------", __FUNCTION__);
-      CStdString strText;
-      strText.Format(g_localizeStrings.Get(21334).c_str(), item.GetLabel());
+      std::string strText = StringUtils::Format(g_localizeStrings.Get(21334).c_str(), item.GetLabel().c_str());
       CGUIDialogOK::ShowAndGetInput(21331, strText, 21333, 0);
     }
   }
   return false;
 }
-bool CTuxBoxUtil::ParseBouquets(TiXmlElement *root, CFileItemList &items, CURL &url, CStdString strFilter, CStdString strChild)
+bool CTuxBoxUtil::ParseBouquets(TiXmlElement *root, CFileItemList &items, CURL &url, std::string strFilter, std::string strChild)
 {
-  CStdString strOptions, strPort;
+  std::string strOptions;
   TiXmlElement *pRootElement =root;
   TiXmlNode *pNode = NULL;
   TiXmlNode *pIt = NULL;
   items.m_idepth =1;
   // Get Options
   strOptions = url.GetOptions();
-  // Detect Port
-  if (url.GetPort()!=0 && url.GetPort()!=80)
-    strPort.Format(":%i",url.GetPort());
-  else
-    strPort = "";
 
   if (!pRootElement)
   {
     CLog::Log(LOGWARNING, "%s - No %s found", __FUNCTION__, strChild.c_str());
     return false;
   }
-  if (strFilter.IsEmpty())
+  if (strFilter.empty())
   {
     pNode = pRootElement->FirstChild(strChild.c_str());
     if (!pNode)
@@ -193,18 +189,28 @@ bool CTuxBoxUtil::ParseBouquets(TiXmlElement *root, CFileItemList &items, CURL &
         pIt = pNode->FirstChild("name");
         if (pIt)
         {
-          CStdString strItemName = pIt->FirstChild()->Value();
+          std::string strItemName = pIt->FirstChild()->Value();
 
           pIt = pNode->FirstChild("reference");
           if (pIt)
           {
-            CStdString strItemPath = pIt->FirstChild()->Value();
+            std::string strItemPath = pIt->FirstChild()->Value();
             // add. bouquets to item list!
             CFileItemPtr pItem(new CFileItem);
             pItem->m_bIsFolder = true;
             pItem->SetLabel(strItemName);
-            url.SetOptions("/"+strOptions+"&reference="+strItemPath);
-            pItem->SetPath("tuxbox://"+url.GetUserName()+":"+url.GetPassWord()+"@"+url.GetHostName()+strPort+url.GetOptions());
+            {
+              CURL fileUrl;
+              fileUrl.SetProtocol("tuxbox");
+              fileUrl.SetUserName(url.GetUserName());
+              fileUrl.SetPassword(url.GetPassWord());
+              fileUrl.SetHostName(url.GetHostName());
+              if (url.GetPort() != 0 && url.GetPort() != 80)
+                fileUrl.SetPort(url.GetPort());
+              fileUrl.SetOptions(url.GetOptions());
+              fileUrl.SetOption("reference", strItemPath);
+              pItem->SetPath(fileUrl.Get());
+            }
             items.Add(pItem);
             //DEBUG Log
             CLog::Log(LOGDEBUG, "%s - Name:    %s", __FUNCTION__,strItemName.c_str());
@@ -216,26 +222,19 @@ bool CTuxBoxUtil::ParseBouquets(TiXmlElement *root, CFileItemList &items, CURL &
   }
   return true;
 }
-bool CTuxBoxUtil::ParseBouquetsEnigma2(TiXmlElement *root, CFileItemList &items, CURL &url, CStdString& strFilter, CStdString& strChild)
+bool CTuxBoxUtil::ParseBouquetsEnigma2(TiXmlElement *root, CFileItemList &items, CURL &url, std::string& strFilter, std::string& strChild)
 {
-  CStdString strPort;
   TiXmlElement *pRootElement = root;
   TiXmlNode *pNode = NULL;
   TiXmlNode *pIt = NULL;
   items.m_idepth = 1;
-
-  //Detect Port
-  if (url.GetPort()!=0 && url.GetPort()!=80)
-    strPort.Format(":%i",url.GetPort());
-  else
-    strPort = "";
 
   if (!pRootElement)
   {
     CLog::Log(LOGWARNING, "%s - No %s found", __FUNCTION__, strChild.c_str());
     return false;
   }
-  if (strFilter.IsEmpty())
+  if (strFilter.empty())
   {
     pNode = pRootElement->FirstChildElement("e2bouquet");
     if (!pNode)
@@ -247,39 +246,40 @@ bool CTuxBoxUtil::ParseBouquetsEnigma2(TiXmlElement *root, CFileItemList &items,
     {
       CFileItemPtr pItem(new CFileItem);
       pIt = pNode->FirstChildElement("e2servicereference");
-      CStdString strItemPath = pIt->FirstChild()->Value();
+      std::string strItemPath = pIt->FirstChild()->Value();
       pIt = pNode->FirstChildElement("e2servicename");
-      CStdString strItemName = pIt->FirstChild()->Value();
+      std::string strItemName = pIt->FirstChild()->Value();
       pItem->m_bIsFolder = true;
       pItem->SetLabel(strItemName);
-      pItem->SetPath("tuxbox://"+url.GetHostName()+strPort+"/"+strItemName+"/");
+      {
+        CURL fileUrl;
+        fileUrl.SetProtocol("tuxbox");
+        fileUrl.SetHostName(url.GetHostName());
+        if (url.GetPort() != 0 && url.GetPort() != 80)
+          fileUrl.SetPort(url.GetPort());
+        fileUrl.SetFileName(strItemName + "/");
+        pItem->SetPath(fileUrl.Get());
+      }
       items.Add(pItem);
       pNode = pNode->NextSiblingElement("e2bouquet");
     }
   }
   return true;
 }
-bool CTuxBoxUtil::ParseChannels(TiXmlElement *root, CFileItemList &items, CURL &url, CStdString strFilter, CStdString strChild)
+bool CTuxBoxUtil::ParseChannels(TiXmlElement *root, CFileItemList &items, CURL &url, std::string strFilter, std::string strChild)
 {
-  CStdString strPort;
   TiXmlElement *pRootElement =root;
   TiXmlNode *pNode = NULL;
   TiXmlNode *pIt = NULL;
   TiXmlNode *pIta = NULL;
   items.m_idepth =2;
 
-  //Detect Port
-  if (url.GetPort()!=0 && url.GetPort()!=80)
-    strPort.Format(":%i",url.GetPort());
-  else
-    strPort = "";
-
   if (!pRootElement)
   {
     CLog::Log(LOGWARNING, "%s - No %ss found", __FUNCTION__,strChild.c_str());
     return false;
   }
-  if(!strFilter.IsEmpty())
+  if(!strFilter.empty())
   {
     pNode = pRootElement->FirstChild(strChild.c_str());
     if (!pNode)
@@ -292,10 +292,10 @@ bool CTuxBoxUtil::ParseChannels(TiXmlElement *root, CFileItemList &items, CURL &
         pIt = pNode->FirstChild("name");
         if (pIt)
         {
-          CStdString strItemName = pIt->FirstChild()->Value();
+          std::string strItemName = pIt->FirstChild()->Value();
 
           pIt = pNode->FirstChild("reference");
-          if (strFilter.Equals(pIt->FirstChild()->Value()))
+          if (strFilter == pIt->FirstChild()->Value())
           {
             pIt = pNode->FirstChild("service");
             if (!pIt)
@@ -313,14 +313,25 @@ bool CTuxBoxUtil::ParseChannels(TiXmlElement *root, CFileItemList &items, CURL &
                   pIta = pIt->FirstChild("reference");
                   if (pIta)
                   {
-                    CStdString strItemPath = pIta->FirstChild()->Value();
+                    std::string strItemPath = pIta->FirstChild()->Value();
                     // channel listing add. to item list!
                     CFileItemPtr pbItem(new CFileItem);
                     pbItem->m_bIsFolder = false;
                     pbItem->SetLabel(strItemName);
                     pbItem->SetLabelPreformated(true);
-                    pbItem->SetPath("tuxbox://"+url.GetUserName()+":"+url.GetPassWord()+"@"+url.GetHostName()+strPort+"/cgi-bin/zapTo?path="+strItemPath+".ts");
-                    pbItem->SetThumbnailImage(GetPicon(strItemName)); //Set Picon Image
+                    {
+                      CURL fileUrl;
+                      fileUrl.SetProtocol("tuxbox");
+                      fileUrl.SetUserName(url.GetUserName());
+                      fileUrl.SetPassword(url.GetPassWord());
+                      fileUrl.SetHostName(url.GetHostName());
+                      if (url.GetPort() != 0 && url.GetPort() != 80)
+                        fileUrl.SetPort(url.GetPort());
+                      fileUrl.SetFileName("cgi-bin/zapTo");
+                      fileUrl.SetOption("path", strItemPath+".ts");
+                      pbItem->SetPath(fileUrl.Get());
+                    }
+                    pbItem->SetArt("thumb", GetPicon(strItemName)); //Set Picon Image
 
                     //DEBUG Log
                     CLog::Log(LOGDEBUG, "%s - Name:    %s", __FUNCTION__,strItemName.c_str());
@@ -340,7 +351,7 @@ bool CTuxBoxUtil::ParseChannels(TiXmlElement *root, CFileItemList &items, CURL &
   }
   return false;
 }
-bool CTuxBoxUtil::ParseChannelsEnigma2(TiXmlElement *root, CFileItemList &items, CURL &url, CStdString& strFilter, CStdString& strChild)
+bool CTuxBoxUtil::ParseChannelsEnigma2(TiXmlElement *root, CFileItemList &items, CURL &url, std::string& strFilter, std::string& strChild)
 {
   TiXmlElement *pRootElement = root;
   TiXmlNode *pNode = NULL;
@@ -354,7 +365,7 @@ bool CTuxBoxUtil::ParseChannelsEnigma2(TiXmlElement *root, CFileItemList &items,
     CLog::Log(LOGWARNING, "%s - No %ss found", __FUNCTION__,strChild.c_str());
     return false;
   }
-  if(!strFilter.IsEmpty())
+  if(!strFilter.empty())
   {
     pNode = pRootElement->FirstChild(strChild.c_str());
     if (!pNode)
@@ -364,23 +375,29 @@ bool CTuxBoxUtil::ParseChannelsEnigma2(TiXmlElement *root, CFileItemList &items,
     }
     while(pNode)
     {
-      pIt = pNode->FirstChildElement("e2servicereference");
       pIt = pNode->FirstChildElement("e2servicename");
-      CStdString bqtName = pIt->FirstChild()->Value();
+      std::string bqtName = pIt->FirstChild()->Value();
       pIt = pNode->FirstChildElement("e2servicelist");
       pIta = pIt->FirstChildElement("e2service");
       while(pIta)
       {
         pItb = pIta->FirstChildElement("e2servicereference");
-        CStdString strItemPath = pItb->FirstChild()->Value();
+        std::string strItemPath = pItb->FirstChild()->Value();
         pItb = pIta->FirstChildElement("e2servicename");
-        CStdString strItemName = pItb->FirstChild()->Value();
+        std::string strItemName = pItb->FirstChild()->Value();
         if(bqtName == url.GetShareName())
         {
           CFileItemPtr pbItem(new CFileItem);
           pbItem->m_bIsFolder = false;
           pbItem->SetLabel(strItemName);
-          pbItem->SetPath("http://"+url.GetHostName()+":8001/"+strItemPath);
+          {
+            CURL fileUrl;
+            fileUrl.SetProtocol("http");
+            fileUrl.SetHostName(url.GetHostName());
+            fileUrl.SetPort(8001);
+            fileUrl.SetFileName(strItemPath);
+            pbItem->SetPath(fileUrl.Get());
+          }
           pbItem->SetMimeType("video/mpeg2");
           items.Add(pbItem);
           CLog::Log(LOGDEBUG, "%s - Name:    %s", __FUNCTION__,strItemName.c_str());
@@ -393,31 +410,30 @@ bool CTuxBoxUtil::ParseChannelsEnigma2(TiXmlElement *root, CFileItemList &items,
   }
   return true;
 }
-bool CTuxBoxUtil::ZapToUrl(CURL url, CStdString strOptions, int ipoint)
+bool CTuxBoxUtil::ZapToUrl(CURL url, const std::string &pathOption)
 {
   // send Zap
-  CStdString strZapUrl, strPostUrl, strZapName, strFilter;
   //Extract the ZAP to Service String
-  strFilter = strOptions.Right((strOptions.size()-(ipoint+6)));
   //Remove the ".ts"
-  strFilter = strFilter.Left(strFilter.size()-3);
+  std::string strFilter = pathOption.substr(0, pathOption.size() - 3);
   //Get the Service Name
-  strZapName = url.GetFileNameWithoutPath();
 
-  // Detect Port and Create ZAP URL
-  if (url.GetPort()!=0 && url.GetPort()!=80)
-    strZapUrl.Format("http://%s:%s@%s:%i",url.GetUserName().c_str(),url.GetPassWord().c_str(),url.GetHostName().c_str(),url.GetPort());
-  else
-    strZapUrl.Format("http://%s:%s@%s",url.GetUserName().c_str(),url.GetPassWord().c_str(),url.GetHostName().c_str());
-  strPostUrl.Format("/cgi-bin/zapTo?path=%s",strFilter.c_str());
-
-  //Set Zap URL
-  CURL urlx(strZapUrl);
+  // Create ZAP URL
+  CURL urlx;
+  urlx.SetProtocol("http");
+  urlx.SetUserName(url.GetUserName());
+  urlx.SetPassword(url.GetPassWord());
+  urlx.SetHostName(url.GetHostName());
+  if (url.GetPort() != 0 && url.GetPort() != 80)
+    urlx.SetPort(url.GetPort());
+  CURL postUrl(urlx);
+  postUrl.SetFileName("cgi-bin/zapTo");
+  postUrl.SetOption("path", strFilter);
 
   //Check Recording State!
   if(GetHttpXML(urlx,"boxstatus"))
   {
-    if(sBoxStatus.recording.Equals("1"))
+    if(sBoxStatus.recording == "1")
     {
       CLog::Log(LOGDEBUG, "%s ---------------------------------------------------------", __FUNCTION__);
       CLog::Log(LOGDEBUG, "%s - WARNING: Device is Recording! Record Mode is: %s", __FUNCTION__,sBoxStatus.recording.c_str());
@@ -442,11 +458,10 @@ bool CTuxBoxUtil::ZapToUrl(CURL url, CStdString strOptions, int ipoint)
 
   //Send ZAP Command
   CCurlFile http;
-  if(http.Open(strZapUrl+strPostUrl))
+  if(http.Open(postUrl))
   {
     //DEBUG LOG
-    CLog::Log(LOGDEBUG, "%s - Zapped to: %s (%s)", __FUNCTION__,strZapName.c_str(),strZapUrl.c_str());
-    CLog::Log(LOGDEBUG, "%s - Zap String: %s", __FUNCTION__,strPostUrl.c_str());
+    CLog::Log(LOGDEBUG, "%s - Zapped to: %s", __FUNCTION__,postUrl.Get().c_str());
 
     //Request StreamInfo
     GetHttpXML(urlx,"streaminfo");
@@ -454,7 +469,7 @@ bool CTuxBoxUtil::ZapToUrl(CURL url, CStdString strOptions, int ipoint)
     //Extract StreamInformations
     int iRetry=0;
     //PMT must be a valid value to be sure that the ZAP is OK and we can stream!
-    while(sStrmInfo.pmt.Equals("ffffffffh") && iRetry!=10) //try 10 Times
+    while(sStrmInfo.pmt == "ffffffffh" && iRetry!=10) //try 10 Times
     {
       CLog::Log(LOGDEBUG, "%s - Requesting STREAMINFO! TryCount: %i!", __FUNCTION__,iRetry);
       GetHttpXML(urlx,"streaminfo");
@@ -463,16 +478,16 @@ bool CTuxBoxUtil::ZapToUrl(CURL url, CStdString strOptions, int ipoint)
     }
 
     // PMT Not Valid? Try Time 10 reached, checking for advancedSettings m_iTuxBoxZapWaitTime
-    if(sStrmInfo.pmt.Equals("ffffffffh") && g_advancedSettings.m_iTuxBoxZapWaitTime > 0 )
+    if(sStrmInfo.pmt == "ffffffffh" && g_advancedSettings.m_iTuxBoxZapWaitTime > 0 )
     {
       iRetry = 0;
       CLog::Log(LOGDEBUG, "%s - Starting TuxBox ZapWaitTimer!", __FUNCTION__);
-      while(sStrmInfo.pmt.Equals("ffffffffh") && iRetry!=10) //try 10 Times
+      while(sStrmInfo.pmt == "ffffffffh" && iRetry!=10) //try 10 Times
       {
         CLog::Log(LOGDEBUG, "%s - Requesting STREAMINFO! TryCount: %i!", __FUNCTION__,iRetry);
         GetHttpXML(urlx,"streaminfo");
         iRetry=iRetry+1;
-        if(sStrmInfo.pmt.Equals("ffffffffh"))
+        if(sStrmInfo.pmt == "ffffffffh")
         {
           CLog::Log(LOGERROR, "%s - STREAMINFO ERROR! Could not receive all data, TryCount: %i!", __FUNCTION__,iRetry);
           CLog::Log(LOGERROR, "%s - PMT is: %s (not a Valid Value)! Waiting %i sec.", __FUNCTION__,sStrmInfo.pmt.c_str(), g_advancedSettings.m_iTuxBoxZapWaitTime);
@@ -482,7 +497,7 @@ bool CTuxBoxUtil::ZapToUrl(CURL url, CStdString strOptions, int ipoint)
     }
 
     //PMT Failed! No StreamInformations availible.. closing stream
-    if (sStrmInfo.pmt.Equals("ffffffffh"))
+    if (sStrmInfo.pmt == "ffffffffh")
     {
       CLog::Log(LOGERROR, "%s-------------------------------------------------------------", __FUNCTION__);
       CLog::Log(LOGERROR, "%s - STREAMINFO ERROR! Could not receive all data, TryCount: %i!", __FUNCTION__,iRetry);
@@ -503,29 +518,27 @@ bool CTuxBoxUtil::ZapToUrl(CURL url, CStdString strOptions, int ipoint)
   }
   return false;
 }
-bool CTuxBoxUtil::GetZapUrl(const CStdString& strPath, CFileItem &items )
+bool CTuxBoxUtil::GetZapUrl(const std::string& strPath, CFileItem &items )
 {
   CURL url(strPath);
-  CStdString strOptions = url.GetOptions();
-  if (strOptions.IsEmpty())
+  std::string strOptions = url.GetOptions();
+  if (strOptions.empty())
     return false;
 
-  int ipoint = strOptions.Find("?path=");
-  if (ipoint >=0)
+  if (url.HasOption("path"))
   {
-    if(ZapToUrl(url, strOptions, ipoint))
+    if(ZapToUrl(url, url.GetOption("path")))
     {
       //Check VideoSubChannels
       if(GetHttpXML(url,"currentservicedata")) //Update Currentservicedata
       {
         //Detect VideoSubChannels
-        CStdString strVideoSubChannelName, strVideoSubChannelPID;
+        std::string strVideoSubChannelName, strVideoSubChannelPID;
         if(GetVideoSubChannels(strVideoSubChannelName,strVideoSubChannelPID ))
         {
           // new videosubchannel selected! settings options to new video zap id
-          strOptions = "?path="+strVideoSubChannelPID+".ts";
           // zap again now to new videosubchannel
-          if(ZapToUrl(url, strOptions, ipoint))
+          if(ZapToUrl(url, strVideoSubChannelPID + ".ts"))
           {
             vVideoSubChannel.mode = true;
             vVideoSubChannel.current_name = strVideoSubChannelName;
@@ -535,10 +548,10 @@ bool CTuxBoxUtil::GetZapUrl(const CStdString& strPath, CFileItem &items )
           vVideoSubChannel.mode= false;
       }
 
-      CStdString strStreamURL, strVideoStream;
-      CStdString strLabel, strLabel2;
-      CStdString strAudioChannelName, strAudioChannelPid;
-      CStdString strAPids;
+      std::string strVideoStream;
+      std::string strLabel, strLabel2;
+      std::string strAudioChannelPid;
+      std::string strAPids;
       sAudioChannel sRequestedAudioChannel;
 
       if (!GetGUIRequestedAudioChannel(sRequestedAudioChannel))
@@ -547,20 +560,36 @@ bool CTuxBoxUtil::GetZapUrl(const CStdString& strPath, CFileItem &items )
         {
           for (vector<sAudioChannel>::iterator sChannel = sCurSrvData.audio_channels.begin(); sChannel!=sCurSrvData.audio_channels.end(); ++sChannel)
           {
-            if (sChannel->pid != sRequestedAudioChannel.pid)
-              strAPids += "," + sChannel->pid.Right(4);
+            if (sChannel->pid != sRequestedAudioChannel.pid && sChannel->pid.size() >= 4)
+              strAPids += "," + sChannel->pid.substr(sChannel->pid.size() - 4);
           }
           CLog::Log(LOGDEBUG, "%s - Sending all audio pids: %s%s", __FUNCTION__, strAudioChannelPid.c_str(), strAPids.c_str());
 
-          strVideoStream.Format("0,%s,%s,%s%s",sStrmInfo.pmt.Left(4).c_str(), sStrmInfo.vpid.Left(4).c_str(), sStrmInfo.apid.Left(4).c_str(), strAPids.c_str());
+          strVideoStream = StringUtils::Format("0,%s,%s,%s%s",
+                                               sStrmInfo.pmt.substr(0, 4).c_str(),
+                                               sStrmInfo.vpid.substr(0, 4).c_str(),
+                                               sStrmInfo.apid.substr(0, 4).c_str(),
+                                               strAPids.c_str());
         }
         else
-          strVideoStream.Format("0,%s,%s,%s",sStrmInfo.pmt.Left(4).c_str(), sStrmInfo.vpid.Left(4).c_str(), sStrmInfo.apid.Left(4).c_str());
+          strVideoStream = StringUtils::Format("0,%s,%s,%s",
+                                               sStrmInfo.pmt.substr(0, 4).c_str(),
+                                               sStrmInfo.vpid.substr(0, 4).c_str(),
+                                               sStrmInfo.apid.substr(0, 4).c_str());
       }
       else
-        strVideoStream.Format("0,%s,%s,%s",sStrmInfo.pmt.Left(4).c_str(), sStrmInfo.vpid.Left(4).c_str(), strAudioChannelPid.Left(4).c_str());
+        strVideoStream = StringUtils::Format("0,%s,%s,%s",
+                                             sStrmInfo.pmt.substr(0, 4).c_str(),
+                                             sStrmInfo.vpid.substr(0, 4).c_str(),
+                                             strAudioChannelPid.substr(0, 4).c_str());
 
-      strStreamURL.Format("http://%s:%s@%s:%i/%s",url.GetUserName().c_str(),url.GetPassWord().c_str(), url.GetHostName().c_str(),g_advancedSettings.m_iTuxBoxStreamtsPort,strVideoStream.c_str());
+      CURL streamURL;
+      streamURL.SetProtocol("http");
+      streamURL.SetUserName(url.GetUserName());
+      streamURL.SetPassword(url.GetPassWord());
+      streamURL.SetHostName(url.GetHostName());
+      streamURL.SetPort(g_advancedSettings.m_iTuxBoxStreamtsPort);
+      streamURL.SetFileName(strVideoStream.c_str());
 
       if (!g_tuxbox.sZapstream.initialized)
         g_tuxbox.InitZapstream(strPath);
@@ -577,26 +606,33 @@ bool CTuxBoxUtil::GetZapUrl(const CStdString& strPath, CFileItem &items )
               CLog::Log(LOGDEBUG, "%s - Zapstream: Requested audio channel is %s, pid %s.", __FUNCTION__, sSelectedAudioChannel.name.c_str(), sSelectedAudioChannel.pid.c_str());
           }
         }
-        strStreamURL.Format("http://%s:%s@%s:%i/", url.GetUserName().c_str(), url.GetPassWord().c_str(), url.GetHostName().c_str(), g_advancedSettings.m_iTuxBoxZapstreamPort);
+        streamURL.SetFileName("");
+        streamURL.SetPort(g_advancedSettings.m_iTuxBoxZapstreamPort);
       }
 
-      if (g_application.IsPlaying() && !g_tuxbox.sZapstream.available)
+      if (g_application.m_pPlayer->IsPlaying() && !g_tuxbox.sZapstream.available)
         CApplicationMessenger::Get().MediaStop();
 
-      strLabel.Format("%s: %s %s-%s",items.GetLabel().c_str(), sCurSrvData.current_event_date.c_str(),sCurSrvData.current_event_start.c_str(), sCurSrvData.current_event_start.c_str());
-      strLabel2.Format("%s", sCurSrvData.current_event_description.c_str());
+      strLabel = StringUtils::Format("%s: %s %s-%s",
+                                     items.GetLabel().c_str(),
+                                     sCurSrvData.current_event_date.c_str(),
+                                     sCurSrvData.current_event_start.c_str(),
+                                     sCurSrvData.current_event_start.c_str());
+      strLabel2 = StringUtils::Format("%s", sCurSrvData.current_event_description.c_str());
 
       // Set Event details
-      CStdString strGenre, strTitle;
-      strGenre.Format("%s %s  -  (%s: %s)",g_localizeStrings.Get(143),sCurSrvData.current_event_description, g_localizeStrings.Get(209),sCurSrvData.next_event_description);
-      strTitle.Format("%s",sCurSrvData.current_event_details);
+      std::string strGenre, strTitle;
+      strGenre = StringUtils::Format("%s %s  -  (%s: %s)",
+                                     g_localizeStrings.Get(143).c_str(), sCurSrvData.current_event_description.c_str(),
+                                     g_localizeStrings.Get(209).c_str(), sCurSrvData.next_event_description.c_str());
+      strTitle = StringUtils::Format("%s", sCurSrvData.current_event_details.c_str());
       int iDuration = atoi(sCurSrvData.current_event_duration.c_str());
 
       items.GetVideoInfoTag()->m_genre = StringUtils::Split(strGenre, g_advancedSettings.m_videoItemSeparator);  // VIDEOPLAYER_GENRE: current_event_description (Film Name)
       items.GetVideoInfoTag()->m_strTitle = strTitle; // VIDEOPLAYER_TITLE: current_event_details     (Film beschreibung)
-      items.GetVideoInfoTag()->m_strRuntime = StringUtils::SecondsToTimeString(iDuration); //VIDEOPLAYER_DURATION: current_event_duration (laufzeit in sec.)
+      items.GetVideoInfoTag()->m_duration = iDuration; //VIDEOPLAYER_DURATION: current_event_duration (laufzeit in sec.)
 
-      items.SetPath(strStreamURL);
+      items.SetPath(streamURL.Get());
       items.m_iDriveType = url.GetPort(); // Dirty Hack! But i need to hold the Port ;)
       items.SetLabel(items.GetLabel()); // VIDEOPLAYER_DIRECTOR: service_name (Program Name)
       items.SetLabel2(sCurSrvData.current_event_description); // current_event_description (Film Name)
@@ -610,7 +646,7 @@ bool CTuxBoxUtil::GetZapUrl(const CStdString& strPath, CFileItem &items )
 
 // Notice: Zapstream is a streamts enhancement from PLi development team.
 // If you are using a non-PLi based image you might not have Zapstream installed.
-bool CTuxBoxUtil::InitZapstream(const CStdString& strPath)
+bool CTuxBoxUtil::InitZapstream(const std::string& strPath)
 {
   CURL url(strPath);
   CCurlFile http;
@@ -638,9 +674,9 @@ bool CTuxBoxUtil::InitZapstream(const CStdString& strPath)
     {
       http.Close();
       CHttpHeader h = http.GetHttpHeader();
-      CStdString strValue = h.GetValue("server");
+      std::string strValue = h.GetValue("server");
 
-      if (strValue.Find("zapstream") >= 0 )
+      if (strValue.find("zapstream") != std::string::npos)
       {
         CLog::Log(LOGDEBUG, "%s - Zapstream is available on port %i.", __FUNCTION__, g_advancedSettings.m_iTuxBoxZapstreamPort);
         return g_tuxbox.sZapstream.available = true;
@@ -654,7 +690,7 @@ bool CTuxBoxUtil::InitZapstream(const CStdString& strPath)
   CLog::Log(LOGDEBUG, "%s - Zapstream is not available on port %i.", __FUNCTION__, g_advancedSettings.m_iTuxBoxZapstreamPort);
   return false;
 }
-bool CTuxBoxUtil::SetAudioChannel( const CStdString& strPath, const AUDIOCHANNEL& sAC )
+bool CTuxBoxUtil::SetAudioChannel( const std::string& strPath, const AUDIOCHANNEL& sAC )
 {
   CURL url(strPath);
   CCurlFile http;
@@ -684,28 +720,28 @@ bool CTuxBoxUtil::SetAudioChannel( const CStdString& strPath, const AUDIOCHANNEL
 
   return false;
 }
-bool CTuxBoxUtil::GetHttpXML(CURL url,CStdString strRequestType)
+bool CTuxBoxUtil::GetHttpXML(CURL url,std::string strRequestType)
 {
   // Check and Set URL Request Option
-  if(!strRequestType.IsEmpty())
+  if(!strRequestType.empty())
   {
-    if(strRequestType.Equals("streaminfo"))
+    if(strRequestType == "streaminfo")
     {
       url.SetOptions("xml/streaminfo");
     }
-    else if(strRequestType.Equals("currentservicedata"))
+    else if(strRequestType == "currentservicedata")
     {
       url.SetOptions("xml/currentservicedata");
     }
-    else if(strRequestType.Equals("boxstatus"))
+    else if(strRequestType == "boxstatus")
     {
       url.SetOptions("xml/boxstatus");
     }
-    else if(strRequestType.Equals("boxinfo"))
+    else if(strRequestType == "boxinfo")
     {
       url.SetOptions("xml/boxinfo");
     }
-    else if(strRequestType.Equals("serviceepg"))
+    else if(strRequestType == "serviceepg")
     {
       url.SetOptions("xml/serviceepg");
     }
@@ -730,40 +766,39 @@ bool CTuxBoxUtil::GetHttpXML(CURL url,CStdString strRequestType)
   if(http.Open(url))
   {
     int size_read = 0;
-    int data_size = 0;
     int size_total = (int)http.GetLength();
 
     if(size_total > 0)
     {
       // read response from server into string buffer
-      CStdString strTmp;
+      std::string strTmp;
       strTmp.reserve(size_total);
       char buffer[16384];
       while( (size_read = http.Read( buffer, sizeof(buffer)-1) ) > 0 )
       {
         buffer[size_read] = 0;
         strTmp += buffer;
-        data_size += size_read;
       }
 
       // parse returned xml
       CXBMCTinyXML doc;
       TiXmlElement *XMLRoot=NULL;
-      strTmp.Replace("></",">-</"); //FILL EMPTY ELEMENTS WITH "-"!
-      doc.Parse(strTmp.c_str());
-      strTmp.Empty();
+      StringUtils::Replace(strTmp, "></",">-</"); //FILL EMPTY ELEMENTS WITH "-"!
+      doc.Parse(strTmp, http.GetServerReportedCharset());
+      strTmp.clear();
 
       XMLRoot = doc.RootElement();
-      CStdString strRoot = XMLRoot->Value();
-      if( strRoot.Equals("streaminfo"))
+      std::string strRoot = XMLRoot->Value();
+      if( strRoot == "streaminfo")
         return StreamInformations(XMLRoot);
-      if(strRoot.Equals("currentservicedata"))
+      if(strRoot == "currentservicedata")
         return CurrentServiceData(XMLRoot);
-      if(strRoot.Equals("boxstatus"))
+      if(strRoot == "boxstatus")
         return BoxStatus(XMLRoot);
-      if(strRoot.Equals("boxinfo"))
+      if(strRoot == "boxinfo")
         return BoxInfo(XMLRoot);
-      if(strRoot.Equals("serviceepg") || strRoot.Equals("service_epg"))
+      if(strRoot == "serviceepg" ||
+         strRoot == "service_epg")
         return ServiceEPG(XMLRoot);
 
       CLog::Log(LOGERROR, "%s - Unable to parse xml", __FUNCTION__);
@@ -800,7 +835,6 @@ bool CTuxBoxUtil::StreamInformations(TiXmlElement *pRootElement)
   TiXmlNode *pIt = NULL;
   if(pRootElement != NULL)
   {
-    CStdString strRoot = pRootElement->Value();
     pNode = pRootElement->FirstChild("frontend");
     if (pNode)
     {
@@ -1427,20 +1461,20 @@ bool CTuxBoxUtil::GetGUIRequestedAudioChannel(AUDIOCHANNEL& sRequestedAC)
   }
   return false;
 }
-bool CTuxBoxUtil::GetRequestedAudioChannel(AUDIOCHANNEL& sRequestedAC)
+bool CTuxBoxUtil::GetRequestedAudioChannel(AUDIOCHANNEL& sRequestedAC) const
 {
   sRequestedAC = sCurSrvData.audio_channels[sCurSrvData.requested_audio_channel];
 
   return true;
 }
-bool CTuxBoxUtil::GetVideoSubChannels(CStdString& strVideoSubChannelName, CStdString& strVideoSubChannelPid)
+bool CTuxBoxUtil::GetVideoSubChannels(std::string& strVideoSubChannelName, std::string& strVideoSubChannelPid)
 {
   // no video sub channel return false!
   if(vVideoSubChannel.name.size() <= 0 || vVideoSubChannel.reference.size() <= 0)
     return false;
 
   // IsPlaying, Stop it..
-  if(g_application.IsPlaying())
+  if(g_application.m_pPlayer->IsPlaying())
     CApplicationMessenger::Get().MediaStop();
 
   // popup the context menu
@@ -1465,22 +1499,21 @@ bool CTuxBoxUtil::GetVideoSubChannels(CStdString& strVideoSubChannelName, CStdSt
 }
 //Input: Service Name (Channel Namne)
 //Output: picon url (on ERROR the default icon path will be returned)
-CStdString CTuxBoxUtil::GetPicon(CStdString strServiceName)
+std::string CTuxBoxUtil::GetPicon(std::string strServiceName)
 {
   if(!g_advancedSettings.m_bTuxBoxPictureIcon)
   {
     CLog::Log(LOGDEBUG, "%s PictureIcon Detection is Disabled! Using default icon", __FUNCTION__);
     return "";
   }
-  if (strServiceName.IsEmpty())
+  if (strServiceName.empty())
   {
     CLog::Log(LOGDEBUG, "%s Service Name is Empty! Can not detect a PictureIcon. Using default icon!", __FUNCTION__);
     return "";
   }
   else
   {
-    CStdString piconXML, piconPath, defaultPng;
-    CStdString strName, strPng;
+    std::string piconXML, piconPath, defaultPng;
     piconPath = "special://xbmc/userdata/PictureIcon/Picon/";
     defaultPng = piconPath+"tuxbox.png";
     piconXML = "special://xbmc/userdata/PictureIcon/picon.xml";
@@ -1507,16 +1540,13 @@ CStdString CTuxBoxUtil::GetPicon(CStdString strServiceName)
     pService = pServices->FirstChildElement("service");
     while(pService)
     {
-      if(pService->Attribute("name"))
-        strName.Format("%s",pService->Attribute("name"));
+      std::string strName = XMLUtils::GetAttribute(pService, "name");
+      std::string  strPng = XMLUtils::GetAttribute(pService, "png");
 
-      if(pService->Attribute("png"))
-        strPng.Format("%s",pService->Attribute("png"));
-
-      if(strName.Equals(strServiceName))
+      if(strName == strServiceName)
       {
-        strPng.Format("%s%s",piconPath.c_str(), strPng.c_str());
-        strPng.ToLower();
+        strPng = piconPath + strPng;
+        StringUtils::ToLower(strPng);
         CLog::Log(LOGDEBUG, "%s %s: Path is: %s", __FUNCTION__,strServiceName.c_str(), strPng.c_str());
         return strPng;
       }
@@ -1528,20 +1558,20 @@ CStdString CTuxBoxUtil::GetPicon(CStdString strServiceName)
 
 // iMODE: 0 = TV, 1 = Radio, 2 = Data, 3 = Movies, 4 = Root
 // SUBMODE: 0 = n/a, 1 = All, 2 = Satellites, 2 = Providers, 4 = Bouquets
-CStdString CTuxBoxUtil::GetSubMode(int iMode, CStdString& strXMLRootString, CStdString& strXMLChildString)
+std::string CTuxBoxUtil::GetSubMode(int iMode, std::string& strXMLRootString, std::string& strXMLChildString)
 {
   //Todo: add a setting: "Don't Use Request mode" to advanced.xml
 
   // MODE: 0 = TV, 1 = Radio, 2 = Data, 3 = Movies, 4 = Root
   // SUBMODE: 0 = n/a, 1 = All, 2 = Satellites, 2 = Providers, 4 = Bouquets
   // Default Submode
-  CStdString strSubMode;
+  std::string strSubMode;
 
   if(iMode <0 || iMode >4)
   {
-    strSubMode.Format("xml/services?mode=0&submode=4");
-    strXMLRootString.Format("bouquets");
-    strXMLChildString.Format("bouquet");
+    strSubMode = StringUtils::Format("xml/services?mode=0&submode=4");
+    strXMLRootString = StringUtils::Format("bouquets");
+    strXMLChildString = StringUtils::Format("bouquet");
     return strSubMode;
   }
 
@@ -1557,62 +1587,61 @@ CStdString CTuxBoxUtil::GetSubMode(int iMode, CStdString& strXMLRootString, CStd
   int iSubMode = CGUIDialogContextMenu::ShowAndGetChoice(choices);
   if (iSubMode == 1)
   {
-    strXMLRootString.Format("services");
-    strXMLChildString.Format("service");
+    strXMLRootString = StringUtils::Format("services");
+    strXMLChildString = StringUtils::Format("service");
   }
   else if (iSubMode == 2)
   {
-    strXMLRootString.Format("satellites");
-    strXMLChildString.Format("satellite");
+    strXMLRootString = StringUtils::Format("satellites");
+    strXMLChildString = StringUtils::Format("satellite");
   }
   else if (iSubMode == 3)
   {
-    strXMLRootString.Format("providers");
-    strXMLChildString.Format("provider");
+    strXMLRootString = StringUtils::Format("providers");
+    strXMLChildString = StringUtils::Format("provider");
   }
   else // if (iSubMode == 4 || iSubMode < 0)
   {
     iSubMode = 4;
-    strXMLRootString.Format("bouquets");
-    strXMLChildString.Format("bouquet");
+    strXMLRootString = StringUtils::Format("bouquets");
+    strXMLChildString = StringUtils::Format("bouquet");
   }
-  strSubMode.Format("xml/services?mode=%i&submode=%i",iMode,iSubMode);
+  strSubMode = StringUtils::Format("xml/services?mode=%i&submode=%i",iMode,iSubMode);
   return strSubMode;
 }
 //Input: url/path of share/item file/folder
 //Output: the detected submode root and child string
-CStdString CTuxBoxUtil::DetectSubMode(CStdString strSubMode, CStdString& strXMLRootString, CStdString& strXMLChildString)
+std::string CTuxBoxUtil::DetectSubMode(std::string strSubMode, std::string& strXMLRootString, std::string& strXMLChildString)
 {
   //strSubMode = "xml/services?mode=0&submode=1"
-  CStdString strFilter;
-  int ipointMode = strSubMode.Find("?mode=");
-  int ipointSubMode = strSubMode.Find("&submode=");
-  if (ipointMode >=0)
-    strFilter = strSubMode.GetAt(ipointMode+6);
+  std::string strFilter;
+  size_t ipointMode = strSubMode.find("?mode=");
+  size_t ipointSubMode = strSubMode.find("&submode=");
+  if (ipointMode != std::string::npos)
+    strFilter.assign(1, strSubMode.at(ipointMode + 6));
 
-  if (ipointSubMode >=0)
+  if (ipointSubMode != std::string::npos)
   {
-    CStdString strTemp;
-    strTemp = strSubMode.GetAt(ipointSubMode+9);
-    if(strTemp.Equals("1"))
+    char v = strSubMode.at(ipointSubMode + 9);
+    if(v == '1')
     {
-      strXMLRootString.Format("unknowns");
-      strXMLChildString.Format("unknown");
+      strXMLRootString = "unknowns";
+      strXMLChildString = "unknown";
     }
-    else if(strTemp.Equals("2"))
+    else if(v == '2')
     {
-      strXMLRootString.Format("satellites");
-      strXMLChildString.Format("satellite");
+      strXMLRootString = "satellites";
+      strXMLChildString = "satellite";
     }
-    else if(strTemp.Equals("3"))
+    else if(v == '3')
     {
-      strXMLRootString.Format("providers");
-      strXMLChildString.Format("provider");
+      strXMLRootString = "providers";
+      strXMLChildString = "provider";
     }
-    else if(strTemp.Equals("4"))
+    else if(v == '4')
     {
-      strXMLRootString.Format("bouquets");
-      strXMLChildString.Format("bouquet");
+      strXMLRootString = "bouquets";
+      strXMLChildString = "bouquet";
     }
 
   }

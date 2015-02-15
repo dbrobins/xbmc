@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <scraperfunctions>
 	<GetLastFMDiscographyByMBID dest="5" clearbuffers="no">
 		<RegExp input="$$1" output="&lt;details&gt;&lt;url function=&quot;ParseLastFMDiscography&quot; cache=&quot;lastfmdiscog-\1.xml&quot;&gt;http://ws.audioscrobbler.com/2.0/?method=artist.gettopalbums&amp;amp;mbid=\1&amp;amp;api_key=71e468a84c1f40d4991ddccc46e40f1b&lt;/url&gt;&lt;/details&gt;" dest="5">
@@ -37,9 +38,12 @@
 			<RegExp input="$$1" output="\1" dest="11">
 				<expression fixchars="1">&lt;content&gt;&lt;!\[CDATA\[(.*?)\]\]</expression>
 			</RegExp>
-			<RegExp input="$$11" output="$$12" dest="2">
+			<RegExp input="$$11" output="$$12" dest="6">
 				<RegExp input="$INFO[biogfbsource]" output="&lt;chain function=&quot;GetAMGFallbackBiographyByAMGID&quot;&gt;$$9&lt;/chain&gt;" dest="12">
 					<expression>allmusic.com</expression>
+				</RegExp>
+				<RegExp input="$INFO[biogfbsource]" output="&lt;chain function=&quot;GetTADBFMFallbackBiographyByMBID&quot;&gt;$$9&lt;/chain&gt;" dest="12">
+					<expression>TheAudioDb.com</expression>
 				</RegExp>
 				<expression>^$</expression>
 			</RegExp>
@@ -83,6 +87,9 @@
 			<RegExp input="$$11" output="$$12" dest="4">
 				<RegExp input="$INFO[genresfbsource]" output="&lt;chain function=&quot;GetAMGFallbackArtistGenresByAMGID&quot;&gt;$$9&lt;/chain&gt;" dest="12">
 					<expression>allmusic.com</expression>
+				</RegExp>
+				<RegExp input="$INFO[genresfbsource]" output="&lt;chain function=&quot;GetTADBFallbackArtistGenresByMBID&quot;&gt;$$8&lt;/chain&gt;" dest="12">
+					<expression>TheAudioDb.com</expression>
 				</RegExp>
 				<expression>&lt;genre&gt;&lt;/genre&gt;</expression>
 			</RegExp>

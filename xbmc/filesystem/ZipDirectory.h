@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
  *
  */
 
-
 #include "IFileDirectory.h"
 
 namespace XFILE
@@ -29,8 +28,8 @@ namespace XFILE
   public:
     CZipDirectory();
     ~CZipDirectory();
-    virtual bool GetDirectory(const CStdString& strPath, CFileItemList& items);
-    virtual bool ContainsFiles(const CStdString& strPath);
-    virtual DIR_CACHE_TYPE GetCacheType(const CStdString& strPath) const { return DIR_CACHE_ALWAYS; };
+    virtual bool GetDirectory(const CURL& url, CFileItemList& items);
+    virtual bool ContainsFiles(const CURL& url);
+    virtual DIR_CACHE_TYPE GetCacheType(const CURL& url) const { return DIR_CACHE_ALWAYS; };
   };
 }

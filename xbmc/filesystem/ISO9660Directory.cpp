@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "iso9660.h"
 #include "Util.h"
 #include "utils/URIUtils.h"
+#include "utils/StringUtils.h"
 #include "URL.h"
 #include "FileItem.h"
 
@@ -33,27 +34,25 @@ CISO9660Directory::CISO9660Directory(void)
 CISO9660Directory::~CISO9660Directory(void)
 {}
 
-bool CISO9660Directory::GetDirectory(const CStdString& strPath, CFileItemList &items)
+bool CISO9660Directory::GetDirectory(const CURL& url, CFileItemList &items)
 {
-  CStdString strRoot = strPath;
+  std::string strRoot = url.Get();
   URIUtils::AddSlashAtEnd(strRoot);
 
   // Scan active disc if not done before
   if (!m_isoReader.IsScanned())
     m_isoReader.Scan();
 
-  CURL url(strPath);
-
   WIN32_FIND_DATA wfd;
   HANDLE hFind;
 
   memset(&wfd, 0, sizeof(wfd));
 
-  CStdString strSearchMask;
-  CStdString strDirectory = url.GetFileName();
+  std::string strSearchMask;
+  std::string strDirectory = url.GetFileName();
   if (strDirectory != "")
   {
-    strSearchMask.Format("\\%s", strDirectory.c_str());
+    strSearchMask = StringUtils::Format("\\%s", strDirectory.c_str());
   }
   else
   {
@@ -74,11 +73,11 @@ bool CISO9660Directory::GetDirectory(const CStdString& strPath, CFileItemList &i
     {
       if ( (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) )
       {
-        CStdString strDir = wfd.cFileName;
+        std::string strDir = wfd.cFileName;
         if (strDir != "." && strDir != "..")
         {
           CFileItemPtr pItem(new CFileItem(wfd.cFileName));
-          CStdString path = strRoot + wfd.cFileName;
+          std::string path = strRoot + wfd.cFileName;
           URIUtils::AddSlashAtEnd(path);
           pItem->SetPath(path);
           pItem->m_bIsFolder = true;
@@ -107,10 +106,10 @@ bool CISO9660Directory::GetDirectory(const CStdString& strPath, CFileItemList &i
   return true;
 }
 
-bool CISO9660Directory::Exists(const char* strPath)
+bool CISO9660Directory::Exists(const CURL& url)
 {
   CFileItemList items;
-  if (GetDirectory(strPath,items))
+  if (GetDirectory(url,items))
     return true;
 
   return false;

@@ -1,17 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <window>
 	<allowoverlay>no</allowoverlay>
-	<defaultcontrol>9000</defaultcontrol>
 	<coordinates>
 		<system>1</system>
-		<posx>0</posx>
-		<posy>0</posy>
+		<left>0</left>
+		<top>0</top>
 	</coordinates>
 	<controls>
 		<control type="group" id="100">
 			<include>VisibleFadeEffect</include>
 			<!-- control type="image">
-				<posx>0</posx>
-				<posy>0</posy>
+				<left>0</left>
+				<top>0</top>
 				<width>1280</width>
 				<height>720</height>
 				<texture background="true">$INFO[Container(111).ListItem.Property(Fanart_Image)]</texture>
@@ -22,8 +22,8 @@
 				<visible>Control.HasFocus(111)</visible>
 			</control>
 			<control type="image">
-				<posx>0</posx>
-				<posy>0</posy>
+				<left>0</left>
+				<top>0</top>
 				<width>1280</width>
 				<height>720</height>
 				<texture background="true">$INFO[Container(121).ListItem.Property(Fanart_Image)]</texture>
@@ -34,8 +34,8 @@
 				<visible>Control.HasFocus(121)</visible>
 			</control>
 			<control type="image">
-				<posx>0</posx>
-				<posy>0</posy>
+				<left>0</left>
+				<top>0</top>
 				<width>1280</width>
 				<height>720</height>
 				<texture background="true">$INFO[Container(131).ListItem.Property(Fanart_Image)]</texture>
@@ -46,8 +46,8 @@
 				<visible>Control.HasFocus(131)</visible>
 			</control>
 			<control type="image">
-				<posx>0</posx>
-				<posy>0</posy>
+				<left>0</left>
+				<top>0</top>
 				<width>1280</width>
 				<height>720</height>
 				<texture background="true">$INFO[Container(141).ListItem.Property(Fanart_Image)]</texture>
@@ -58,8 +58,8 @@
 				<visible>Control.HasFocus(141)</visible>
 			</control>
 			<control type="image">
-				<posx>0</posx>
-				<posy>0</posy>
+				<left>0</left>
+				<top>0</top>
 				<width>1280</width>
 				<height>720</height>
 				<texture background="true">$INFO[Container(151).ListItem.Property(Fanart_Image)]</texture>
@@ -70,8 +70,8 @@
 				<visible>Control.HasFocus(151)</visible>
 			</control>
 			<control type="image">
-				<posx>0</posx>
-				<posy>0</posy>
+				<left>0</left>
+				<top>0</top>
 				<width>1280</width>
 				<height>720</height>
 				<texture background="true">$INFO[Container(161).ListItem.Property(Fanart_Image)]</texture>
@@ -82,8 +82,8 @@
 				<visible>Control.HasFocus(161)</visible>
 			</control>
 			<control type="image">
-				<posx>0</posx>
-				<posy>0</posy>
+				<left>0</left>
+				<top>0</top>
 				<width>1280</width>
 				<height>720</height>
 				<texture background="true">$INFO[Container(171).ListItem.Property(Fanart_Image)]</texture>
@@ -94,8 +94,8 @@
 				<visible>Control.HasFocus(171)</visible>
 			</control>
 			<control type="image">
-				<posx>0</posx>
-				<posy>0</posy>
+				<left>0</left>
+				<top>0</top>
 				<width>1280</width>
 				<height>720</height>
 				<texture background="true">$INFO[Container(181).ListItem.Property(Fanart_Image)]</texture>
@@ -106,8 +106,8 @@
 				<visible>Control.HasFocus(181)</visible>
 			</control -->
 			<control type="image">
-				<posx>0</posx>
-				<posy>0</posy>
+				<left>0</left>
+				<top>0</top>
 				<width>1280</width>
 				<height>720</height>
 				<texture>black-back.png</texture>
@@ -115,34 +115,34 @@
 				<animation effect="fade" time="200">WindowClose</animation>
 			</control>
 			<control type="group">
-				<posx>90</posx>
-				<posy>30</posy>
+				<left>90</left>
+				<top>30</top>
 				<animation type="WindowOpen" reversible="false">
-					<effect type="zoom" start="80" end="100" center="640,360" easing="out" tween="back" time="300" />
-					<effect type="fade" start="0" end="100" time="300" />
+					<effect type="zoom" start="80" end="100" center="640,360" easing="out" tween="back" time="300"/>
+					<effect type="fade" start="0" end="100" time="300"/>
 				</animation>
 				<animation type="WindowClose" reversible="false">
-					<effect type="zoom" start="100" end="80" center="640,360" easing="in" tween="back" time="300" />
-					<effect type="fade" start="100" end="0" time="300" />
+					<effect type="zoom" start="100" end="80" center="640,360" easing="in" tween="back" time="300"/>
+					<effect type="fade" start="100" end="0" time="300"/>
 				</animation>
 				<control type="image">
-					<posx>5</posx>
-					<posy>5</posy>
+					<left>5</left>
+					<top>5</top>
 					<width>1090</width>
 					<height>630</height>
 					<texture border="15">ContentPanel.png</texture>
 				</control>
 				<control type="image">
-					<posx>5</posx>
-					<posy>5</posy>
+					<left>5</left>
+					<top>5</top>
 					<width>1090</width>
 					<height>630</height>
 					<texture border="15">ContentPanel.png</texture>
 				</control>
 				<control type="button">
 					<description>Close Window button</description>
-					<posx>980</posx>
-					<posy>11</posy>
+					<left>980</left>
+					<top>11</top>
 					<width>64</width>
 					<height>32</height>
 					<label>-</label>
@@ -158,16 +158,16 @@
 				</control>
 				<control type="image">
 					<description>LOGO</description>
-					<posx>30</posx>
-					<posy>10</posy>
+					<left>30</left>
+					<top>10</top>
 					<width>220</width>
 					<height>80</height>
 					<aspectratio>keep</aspectratio>
 					<texture>Confluence_Logo.png</texture>
 				</control>
 				<control type="list" id="9000">
-					<posx>10</posx>
-					<posy>80</posy>
+					<left>10</left>
+					<top>80</top>
 					<width>260</width>
 					<height>540</height>
 					<onleft>9010</onleft>
@@ -178,16 +178,16 @@
 					<scrolltime>300</scrolltime>
 					<itemlayout height="60" width="260">
 						<control type="image">
-							<posx>0</posx>
-							<posy>0</posy>
+							<left>0</left>
+							<top>0</top>
 							<width>260</width>
 							<height>61</height>
 							<texture border="5">MenuItemNF.png</texture>
 						</control>
 						<control type="label">
-							<posx>250</posx>
-							<posy>4</posy>
-							<width>380</width>
+							<left>10</left>
+							<top>4</top>
+							<width>240</width>
 							<height>25</height>
 							<font>font24_title</font>
 							<textcolor>grey3</textcolor>
@@ -196,9 +196,9 @@
 							<label>$INFO[ListItem.Label]</label>
 						</control>
 						<control type="label">
-							<posx>250</posx>
-							<posy>32</posy>
-							<width>870</width>
+							<left>10</left>
+							<top>32</top>
+							<width>240</width>
 							<height>20</height>
 							<font>font13</font>
 							<textcolor>grey2</textcolor>
@@ -209,17 +209,17 @@
 					</itemlayout>
 					<focusedlayout height="60" width="260">
 						<control type="image">
-							<posx>0</posx>
-							<posy>0</posy>
+							<left>0</left>
+							<top>0</top>
 							<width>260</width>
 							<height>61</height>
 							<texture border="5">MenuItemFO.png</texture>
 							<animation effect="fade" start="100" end="50" time="100" condition="!Control.HasFocus(9000)">Conditional</animation>
 						</control>
 						<control type="label">
-							<posx>250</posx>
-							<posy>4</posy>
-							<width>380</width>
+							<left>10</left>
+							<top>4</top>
+							<width>240</width>
 							<height>25</height>
 							<font>font24_title</font>
 							<textcolor>white</textcolor>
@@ -228,9 +228,9 @@
 							<label>$INFO[ListItem.Label]</label>
 						</control>
 						<control type="label">
-							<posx>250</posx>
-							<posy>32</posy>
-							<width>870</width>
+							<left>10</left>
+							<top>32</top>
+							<width>240</width>
 							<height>20</height>
 							<font>font13</font>
 							<textcolor>grey2</textcolor>
@@ -243,49 +243,55 @@
 						<item id="1">
 							<label>$LOCALIZE[342]</label>
 							<label2>$LOCALIZE[31206] $INFO[Control.GetLabel(110)] $LOCALIZE[31025]</label2>
-							<onclick>-</onclick>
+							<onclick>noop</onclick>
 							<visible>Control.IsVisible(119)</visible>
 						</item>
 						<item id="2">
-							<label>$LOCALIZE[20343]</label>
-							<label2>$LOCALIZE[31206] $INFO[Control.GetLabel(120)] $LOCALIZE[31025]</label2>
-							<onclick>-</onclick>
-							<visible>Control.IsVisible(129)</visible>
+							<label>$LOCALIZE[344]</label>
+							<label2>$LOCALIZE[31206] $INFO[Control.GetLabel(210)] $LOCALIZE[31025]</label2>
+							<onclick>noop</onclick>
+							<visible>Control.IsVisible(219)</visible>
 						</item>
 						<item id="3">
-							<label>$LOCALIZE[33054]</label>
-							<label2>$LOCALIZE[31206] $INFO[Control.GetLabel(130)] $LOCALIZE[31025]</label2>
-							<onclick>-</onclick>
-							<visible>Control.IsVisible(139)</visible>
+							<label>$LOCALIZE[20343]</label>
+							<label2>$LOCALIZE[31206] $INFO[Control.GetLabel(120)] $LOCALIZE[31025]</label2>
+							<onclick>noop</onclick>
+							<visible>Control.IsVisible(129)</visible>
 						</item>
 						<item id="4">
-							<label>$LOCALIZE[20360]</label>
-							<label2>$LOCALIZE[31206] $INFO[Control.GetLabel(140)] $LOCALIZE[31025]</label2>
-							<onclick>-</onclick>
-							<visible>Control.IsVisible(149)</visible>
+							<label>$LOCALIZE[33054]</label>
+							<label2>$LOCALIZE[31206] $INFO[Control.GetLabel(130)] $LOCALIZE[31025]</label2>
+							<onclick>noop</onclick>
+							<visible>Control.IsVisible(139)</visible>
 						</item>
 						<item id="5">
-							<label>$LOCALIZE[20389]</label>
-							<label2>$LOCALIZE[31206] $INFO[Control.GetLabel(150)] $LOCALIZE[31025]</label2>
-							<onclick>-</onclick>
-							<visible>Control.IsVisible(159)</visible>
+							<label>$LOCALIZE[20360]</label>
+							<label2>$LOCALIZE[31206] $INFO[Control.GetLabel(140)] $LOCALIZE[31025]</label2>
+							<onclick>noop</onclick>
+							<visible>Control.IsVisible(149)</visible>
 						</item>
 						<item id="6">
-							<label>$LOCALIZE[133]</label>
-							<label2>$LOCALIZE[31206] $INFO[Control.GetLabel(160)] $LOCALIZE[31025]</label2>
-							<onclick>-</onclick>
-							<visible>Control.IsVisible(169)</visible>
+							<label>$LOCALIZE[20389]</label>
+							<label2>$LOCALIZE[31206] $INFO[Control.GetLabel(150)] $LOCALIZE[31025]</label2>
+							<onclick>noop</onclick>
+							<visible>Control.IsVisible(159)</visible>
 						</item>
 						<item id="7">
-							<label>$LOCALIZE[132]</label>
-							<label2>$LOCALIZE[31206] $INFO[Control.GetLabel(170)] $LOCALIZE[31025]</label2>
-							<onclick>-</onclick>
-							<visible>Control.IsVisible(179)</visible>
+							<label>$LOCALIZE[133]</label>
+							<label2>$LOCALIZE[31206] $INFO[Control.GetLabel(160)] $LOCALIZE[31025]</label2>
+							<onclick>noop</onclick>
+							<visible>Control.IsVisible(169)</visible>
 						</item>
 						<item id="8">
+							<label>$LOCALIZE[132]</label>
+							<label2>$LOCALIZE[31206] $INFO[Control.GetLabel(170)] $LOCALIZE[31025]</label2>
+							<onclick>noop</onclick>
+							<visible>Control.IsVisible(179)</visible>
+						</item>
+						<item id="9">
 							<label>$LOCALIZE[134]</label>
 							<label2>$LOCALIZE[31206] $INFO[Control.GetLabel(180)] $LOCALIZE[31025]</label2>
-							<onclick>-</onclick>
+							<onclick>noop</onclick>
 							<visible>Control.IsVisible(189)</visible>
 						</item>
 						<item id="10">
@@ -298,29 +304,28 @@
 					</content>
 				</control>
 				<control type="image">
-					<posx>268</posx>
-					<posy>10</posy>
+					<left>268</left>
+					<top>10</top>
 					<width>790</width>
 					<height>618</height>
 					<texture border="5">black-back2.png</texture>
 				</control>
 				<control type="image">
-					<posx>268</posx>
-					<posy>10</posy>
+					<left>268</left>
+					<top>10</top>
 					<width>804</width>
-					<height>100</height>
-					<aspectratio>stretch</aspectratio>
-					<texture>GlassTitleBar.png</texture>
+					<height>52</height>
+					<texture>dialogheader.png</texture>
 				</control>
 				<control type="label">
 					<description>header label Finished Searching</description>
-					<posx>300</posx>
-					<posy>20</posy>
+					<left>300</left>
+					<top>20</top>
 					<width>740</width>
 					<height>30</height>
 					<font>font16</font>
 					<label>$INFO[Container(9000).ListItem.Label]</label>
-					<align>left</align>
+					<align>center</align>
 					<aligny>center</aligny>
 					<textcolor>white</textcolor>
 					<shadowcolor>black</shadowcolor>
@@ -328,13 +333,13 @@
 				</control>
 				<control type="label">
 					<description>header Label Still Searching</description>
-					<posx>300</posx>
-					<posy>20</posy>
+					<left>300</left>
+					<top>20</top>
 					<width>740</width>
 					<height>30</height>
 					<font>font16</font>
 					<label>$INFO[Control.GetLabel(190)] $INFO[Control.GetLabel(191)]</label>
-					<align>left</align>
+					<align>center</align>
 					<aligny>center</aligny>
 					<textcolor>blue</textcolor>
 					<shadowcolor>black</shadowcolor>
@@ -342,8 +347,8 @@
 				</control>
 				<control type="label" id="190">
 					<!-- Hide this Control off the screen because we use the label above instead -->
-					<posx>2000</posx>
-					<posy>2000</posy>
+					<left>2000</left>
+					<top>2000</top>
 					<width>100</width>
 					<height>0</height>
 					<label>-</label>
@@ -352,45 +357,45 @@
 				</control>
 				<control type="label" id="191">
 					<!-- Hide this Control off the screen because we use the label above instead -->
-					<posx>2000</posx>
-					<posy>2000</posy>
+					<left>2000</left>
+					<top>2000</top>
 					<width>100</width>
 					<height>0</height>
 					<label>-</label>
 					<font>-</font>
 				</control>
 				<control type="label" id="199">
-					<posx>40</posx>
-					<posy>358</posy>
+					<left>40</left>
+					<top>358</top>
 					<width>1200</width>
 					<height>20</height>
 					<label>[B]$LOCALIZE[284][/B]</label>
 					<font>font16caps</font>
-					<textcolor>FFFFFFFF</textcolor>
+					<textcolor>white</textcolor>
 					<align>center</align>
 					<aligny>center</aligny>
 				</control>
 			</control>
 			<control type="group">
 				<animation type="WindowOpen" reversible="false">
-					<effect type="zoom" start="80" end="100" center="640,360" easing="out" tween="back" time="300" />
-					<effect type="fade" start="0" end="100" time="300" />
+					<effect type="zoom" start="80" end="100" center="640,360" easing="out" tween="back" time="300"/>
+					<effect type="fade" start="0" end="100" time="300"/>
 				</animation>
 				<animation type="WindowClose" reversible="false">
-					<effect type="zoom" start="100" end="80" center="640,360" easing="in" tween="back" time="300" />
-					<effect type="fade" start="100" end="0" time="300" />
+					<effect type="zoom" start="100" end="80" center="640,360" easing="in" tween="back" time="300"/>
+					<effect type="fade" start="100" end="0" time="300"/>
 				</animation>
-				<posx>380</posx>
-				<posy>90</posy>
+				<left>380</left>
+				<top>90</top>
 				<control type="button" id="198">
 					<!-- Hide this button  off the screen because we use the list above to pass to it instead -->
-					<posx>2000</posx>
-					<posy>2000</posy>
+					<left>2000</left>
+					<top>2000</top>
 					<width>10</width>
 					<height>10</height>
 					<label>-</label>
 					<font>font10</font>
-					<textcolor>FFFFFFFF</textcolor>
+					<textcolor>white</textcolor>
 					<align>center</align>
 					<aligny>center</aligny>
 					<texturefocus border="5">button-focus.png</texturefocus>
@@ -401,15 +406,16 @@
 					<onright>101</onright>
 				</control>
 				<control type="group" id="101">
+					<top>4</top>
 					<control type="group" id="119">
-						<posx>0</posx>
-						<posy>0</posy>
+						<left>0</left>
+						<top>0</top>
 						<width>750</width>
 						<height>530</height>
 						<control type="label" id="110">
 							<!-- Hide this Control off the screen because we use the list above to pass to it instead -->
-							<posx>2000</posx>
-							<posy>2000</posy>
+							<left>2000</left>
+							<top>2000</top>
 							<width>100</width>
 							<height>0</height>
 							<label>-</label>
@@ -419,8 +425,8 @@
 						<control type="panel" id="111">
 							<visible>Container(9000).HasFocus(1)</visible>
 							<include>VisibleFadeEffect</include>
-							<posx>0</posx>
-							<posy>0</posy>
+							<left>0</left>
+							<top>0</top>
 							<width>750</width>
 							<height>530</height>
 							<onleft>9000</onleft>
@@ -432,30 +438,31 @@
 							<pagecontrol>118</pagecontrol>
 							<itemlayout width="375" height="130">
 								<control type="image">
-									<posx>0</posx>
-									<posy>0</posy>
+									<left>0</left>
+									<top>0</top>
 									<width>370</width>
 									<height>125</height>
 									<texture border="5">button-nofocus.png</texture>
 								</control>
 								<control type="image">
-									<posx>5</posx>
-									<posy>5</posy>
+									<left>5</left>
+									<top>5</top>
 									<width>80</width>
 									<height>115</height>
 									<texture background="true">$INFO[ListItem.Icon]</texture>
+									<aspectratio>keep</aspectratio>
 								</control>
 								<control type="image">
-									<posx>50</posx>
-									<posy>70</posy>
+									<left>50</left>
+									<top>70</top>
 									<width>30</width>
 									<height>30</height>
 									<texture>OverlayWatched.png</texture>
 									<visible>IntegerGreaterThan(ListItem.Property(PlayCount),0)</visible>
 								</control>
 								<control type="label">
-									<posx>100</posx>
-									<posy>10</posy>
+									<left>100</left>
+									<top>10</top>
 									<width>265</width>
 									<height>12</height>
 									<label>[B]$INFO[ListItem.Label][/B]</label>
@@ -464,8 +471,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>100</posx>
-									<posy>30</posy>
+									<left>100</left>
+									<top>30</top>
 									<width>265</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Year),, - ]$INFO[ListItem.Property(Duration),, $LOCALIZE[12391]]</label>
@@ -475,8 +482,8 @@
 									<visible>!SubString(ListItem.Property(Duration),min)</visible>
 								</control>
 								<control type="label">
-									<posx>100</posx>
-									<posy>30</posy>
+									<left>100</left>
+									<top>30</top>
 									<width>265</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Year),, - ]$INFO[ListItem.Property(Duration)]</label>
@@ -486,29 +493,29 @@
 									<visible>SubString(ListItem.Property(Duration),min)</visible>
 								</control>
 								<control type="textbox">
-									<posx>100</posx>
-									<posy>45</posy>
+									<left>100</left>
+									<top>47</top>
 									<width>265</width>
-									<height>75</height>
+									<height>73</height>
 									<label>$INFO[ListItem.Property(Tagline)]</label>
 									<font>font10</font>
 									<textcolor>white</textcolor>
 								</control>
 								<control type="textbox">
-									<posx>100</posx>
-									<posy>45</posy>
+									<left>100</left>
+									<top>47</top>
 									<width>265</width>
-									<height>75</height>
+									<height>73</height>
 									<label>$INFO[ListItem.Property(PlotOutline)]</label>
 									<font>font10</font>
 									<textcolor>white</textcolor>
 									<visible>IsEmpty(ListItem.Property(TagLine))</visible>
 								</control>
 								<control type="textbox">
-									<posx>100</posx>
-									<posy>45</posy>
+									<left>100</left>
+									<top>47</top>
 									<width>265</width>
-									<height>75</height>
+									<height>73</height>
 									<label>$INFO[ListItem.Property(Plot)]</label>
 									<font>font10</font>
 									<textcolor>white</textcolor>
@@ -517,30 +524,31 @@
 							</itemlayout>
 							<focusedlayout width="375" height="130">
 								<control type="image">
-									<posx>0</posx>
-									<posy>0</posy>
+									<left>0</left>
+									<top>0</top>
 									<width>370</width>
 									<height>125</height>
 									<texture border="5">button-focus2.png</texture>
 								</control>
 								<control type="image">
-									<posx>5</posx>
-									<posy>5</posy>
+									<left>5</left>
+									<top>5</top>
 									<width>80</width>
 									<height>115</height>
 									<texture background="true">$INFO[ListItem.Icon]</texture>
+									<aspectratio>keep</aspectratio>
 								</control>
 								<control type="image">
-									<posx>50</posx>
-									<posy>70</posy>
+									<left>50</left>
+									<top>70</top>
 									<width>30</width>
 									<height>30</height>
 									<texture>OverlayWatched.png</texture>
 									<visible>IntegerGreaterThan(ListItem.Property(PlayCount),0)</visible>
 								</control>
 								<control type="label">
-									<posx>100</posx>
-									<posy>10</posy>
+									<left>100</left>
+									<top>10</top>
 									<width>265</width>
 									<height>12</height>
 									<label>[B]$INFO[ListItem.Label][/B]</label>
@@ -549,8 +557,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>100</posx>
-									<posy>30</posy>
+									<left>100</left>
+									<top>30</top>
 									<width>265</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Year),, - ]$INFO[ListItem.Property(Duration),, $LOCALIZE[12391]]</label>
@@ -560,8 +568,8 @@
 									<visible>!SubString(ListItem.Property(Duration),min)</visible>
 								</control>
 								<control type="label">
-									<posx>100</posx>
-									<posy>30</posy>
+									<left>100</left>
+									<top>30</top>
 									<width>265</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Year),, - ]$INFO[ListItem.Property(Duration)]</label>
@@ -571,29 +579,29 @@
 									<visible>SubString(ListItem.Property(Duration),min)</visible>
 								</control>
 								<control type="textbox">
-									<posx>100</posx>
-									<posy>45</posy>
+									<left>100</left>
+									<top>47</top>
 									<width>265</width>
-									<height>75</height>
+									<height>73</height>
 									<label>$INFO[ListItem.Property(Tagline)]</label>
 									<font>font10</font>
 									<textcolor>white</textcolor>
 								</control>
 								<control type="textbox">
-									<posx>100</posx>
-									<posy>45</posy>
+									<left>100</left>
+									<top>47</top>
 									<width>265</width>
-									<height>75</height>
+									<height>73</height>
 									<label>$INFO[ListItem.Property(PlotOutline)]</label>
 									<font>font10</font>
 									<textcolor>white</textcolor>
 									<visible>IsEmpty(ListItem.Property(TagLine))</visible>
 								</control>
 								<control type="textbox">
-									<posx>100</posx>
-									<posy>45</posy>
+									<left>100</left>
+									<top>47</top>
 									<width>265</width>
-									<height>75</height>
+									<height>73</height>
 									<label>$INFO[ListItem.Property(Plot)]</label>
 									<font>font10</font>
 									<textcolor>white</textcolor>
@@ -602,8 +610,8 @@
 							</focusedlayout>
 						</control>
 						<control type="scrollbar" id="118">
-							<posx>770</posx>
-							<posy>0</posy>
+							<left>770</left>
+							<top>0</top>
 							<width>25</width>
 							<height>530</height>
 							<texturesliderbackground border="0,14,0,14">ScrollBarV.png</texturesliderbackground>
@@ -619,8 +627,8 @@
 						</control>
 						<control type="label">
 							<description>number of files/pages in list text label</description>
-							<posx>750</posx>
-							<posy>530</posy>
+							<left>250</left>
+							<top>530</top>
 							<width>500</width>
 							<height>35</height>
 							<font>font12</font>
@@ -631,17 +639,249 @@
 							<label>([COLOR=blue]$INFO[Container(111).NumItems][/COLOR]) $LOCALIZE[31025] - $LOCALIZE[31024] ([COLOR=blue]$INFO[Container(111).CurrentPage]/$INFO[Container(111).NumPages][/COLOR])</label>
 							<visible>Container(9000).Hasfocus(1)</visible>
 						</control>
-
+					</control>
+					<control type="group" id="219">
+						<left>0</left>
+						<top>0</top>
+						<width>750</width>
+						<height>530</height>
+						<control type="label" id="210">
+							<!-- Hide this Control off the screen because we use the list above to pass to it instead -->
+							<left>2000</left>
+							<top>2000</top>
+							<width>100</width>
+							<height>0</height>
+							<label>-</label>
+							<font>-</font>
+							<textcolor>-</textcolor>
+						</control>
+						<control type="panel" id="211">
+							<visible>Container(9000).HasFocus(2)</visible>
+							<include>VisibleFadeEffect</include>
+							<left>0</left>
+							<top>0</top>
+							<width>750</width>
+							<height>530</height>
+							<onleft>9000</onleft>
+							<onright>218</onright>
+							<onup>211</onup>
+							<ondown>211</ondown>
+							<viewtype label="535">panel</viewtype>
+							<preloaditems>2</preloaditems>
+							<pagecontrol>118</pagecontrol>
+							<itemlayout width="375" height="130">
+								<control type="image">
+									<left>0</left>
+									<top>0</top>
+									<width>370</width>
+									<height>125</height>
+									<texture border="5">button-nofocus.png</texture>
+								</control>
+								<control type="image">
+									<left>5</left>
+									<top>5</top>
+									<width>80</width>
+									<height>115</height>
+									<texture background="true">$INFO[ListItem.Icon]</texture>
+									<aspectratio>keep</aspectratio>
+								</control>
+								<control type="image">
+									<left>50</left>
+									<top>70</top>
+									<width>30</width>
+									<height>30</height>
+									<texture>OverlayWatched.png</texture>
+									<visible>IntegerGreaterThan(ListItem.Property(PlayCount),0)</visible>
+								</control>
+								<control type="label">
+									<left>100</left>
+									<top>10</top>
+									<width>265</width>
+									<height>12</height>
+									<label>[B]$INFO[ListItem.Label][/B]</label>
+									<font>font12</font>
+									<textcolor>white</textcolor>
+									<aligny>center</aligny>
+								</control>
+								<control type="label">
+									<left>100</left>
+									<top>30</top>
+									<width>265</width>
+									<height>15</height>
+									<label>$INFO[ListItem.Property(Year),, - ]$INFO[ListItem.Property(Duration),, $LOCALIZE[12391]]</label>
+									<font>font12</font>
+									<textcolor>grey2</textcolor>
+									<aligny>center</aligny>
+									<visible>!SubString(ListItem.Property(Duration),min)</visible>
+								</control>
+								<control type="label">
+									<left>100</left>
+									<top>30</top>
+									<width>265</width>
+									<height>15</height>
+									<label>$INFO[ListItem.Property(Year),, - ]$INFO[ListItem.Property(Duration)]</label>
+									<font>font12</font>
+									<textcolor>grey2</textcolor>
+									<aligny>center</aligny>
+									<visible>SubString(ListItem.Property(Duration),min)</visible>
+								</control>
+								<control type="textbox">
+									<left>100</left>
+									<top>47</top>
+									<width>265</width>
+									<height>73</height>
+									<label>$INFO[ListItem.Property(Tagline)]</label>
+									<font>font10</font>
+									<textcolor>white</textcolor>
+								</control>
+								<control type="textbox">
+									<left>100</left>
+									<top>47</top>
+									<width>265</width>
+									<height>73</height>
+									<label>$INFO[ListItem.Property(PlotOutline)]</label>
+									<font>font10</font>
+									<textcolor>white</textcolor>
+									<visible>IsEmpty(ListItem.Property(TagLine))</visible>
+								</control>
+								<control type="textbox">
+									<left>100</left>
+									<top>47</top>
+									<width>265</width>
+									<height>73</height>
+									<label>$INFO[ListItem.Property(Plot)]</label>
+									<font>font10</font>
+									<textcolor>white</textcolor>
+									<visible>IsEmpty(ListItem.Property(TagLine)) + IsEmpty(ListItem.Property(PlotOutline))</visible>
+								</control>
+							</itemlayout>
+							<focusedlayout width="375" height="130">
+								<control type="image">
+									<left>0</left>
+									<top>0</top>
+									<width>370</width>
+									<height>125</height>
+									<texture border="5">button-focus2.png</texture>
+								</control>
+								<control type="image">
+									<left>5</left>
+									<top>5</top>
+									<width>80</width>
+									<height>115</height>
+									<texture background="true">$INFO[ListItem.Icon]</texture>
+									<aspectratio>keep</aspectratio>
+								</control>
+								<control type="image">
+									<left>50</left>
+									<top>70</top>
+									<width>30</width>
+									<height>30</height>
+									<texture>OverlayWatched.png</texture>
+									<visible>IntegerGreaterThan(ListItem.Property(PlayCount),0)</visible>
+								</control>
+								<control type="label">
+									<left>100</left>
+									<top>10</top>
+									<width>265</width>
+									<height>12</height>
+									<label>[B]$INFO[ListItem.Label][/B]</label>
+									<font>font12</font>
+									<textcolor>white</textcolor>
+									<aligny>center</aligny>
+								</control>
+								<control type="label">
+									<left>100</left>
+									<top>30</top>
+									<width>265</width>
+									<height>15</height>
+									<label>$INFO[ListItem.Property(Year),, - ]$INFO[ListItem.Property(Duration),, $LOCALIZE[12391]]</label>
+									<font>font12</font>
+									<textcolor>grey2</textcolor>
+									<aligny>center</aligny>
+									<visible>!SubString(ListItem.Property(Duration),min)</visible>
+								</control>
+								<control type="label">
+									<left>100</left>
+									<top>30</top>
+									<width>265</width>
+									<height>15</height>
+									<label>$INFO[ListItem.Property(Year),, - ]$INFO[ListItem.Property(Duration)]</label>
+									<font>font12</font>
+									<textcolor>grey2</textcolor>
+									<aligny>center</aligny>
+									<visible>SubString(ListItem.Property(Duration),min)</visible>
+								</control>
+								<control type="textbox">
+									<left>100</left>
+									<top>47</top>
+									<width>265</width>
+									<height>73</height>
+									<label>$INFO[ListItem.Property(Tagline)]</label>
+									<font>font10</font>
+									<textcolor>white</textcolor>
+								</control>
+								<control type="textbox">
+									<left>100</left>
+									<top>47</top>
+									<width>265</width>
+									<height>73</height>
+									<label>$INFO[ListItem.Property(PlotOutline)]</label>
+									<font>font10</font>
+									<textcolor>white</textcolor>
+									<visible>IsEmpty(ListItem.Property(TagLine))</visible>
+								</control>
+								<control type="textbox">
+									<left>100</left>
+									<top>47</top>
+									<width>265</width>
+									<height>73</height>
+									<label>$INFO[ListItem.Property(Plot)]</label>
+									<font>font10</font>
+									<textcolor>white</textcolor>
+									<visible>IsEmpty(ListItem.Property(TagLine)) + IsEmpty(ListItem.Property(PlotOutline))</visible>
+								</control>
+							</focusedlayout>
+						</control>
+						<control type="scrollbar" id="218">
+							<left>770</left>
+							<top>0</top>
+							<width>25</width>
+							<height>530</height>
+							<texturesliderbackground border="0,14,0,14">ScrollBarV.png</texturesliderbackground>
+							<texturesliderbar border="0,14,0,14">ScrollBarV_bar.png</texturesliderbar>
+							<texturesliderbarfocus border="0,14,0,14">ScrollBarV_bar_focus.png</texturesliderbarfocus>
+							<textureslidernib>ScrollBarNib.png</textureslidernib>
+							<textureslidernibfocus>ScrollBarNib.png</textureslidernibfocus>
+							<onleft>211</onleft>
+							<onright>9000</onright>
+							<showonepage>false</showonepage>
+							<orientation>vertical</orientation>
+							<visible>Container(9000).Hasfocus(2)</visible>
+						</control>
+						<control type="label">
+							<description>number of files/pages in list text label</description>
+							<left>250</left>
+							<top>530</top>
+							<width>500</width>
+							<height>35</height>
+							<font>font12</font>
+							<align>right</align>
+							<aligny>center</aligny>
+							<scroll>true</scroll>
+							<textcolor>grey</textcolor>
+							<label>([COLOR=blue]$INFO[Container(211).NumItems][/COLOR]) $LOCALIZE[31025] - $LOCALIZE[31024] ([COLOR=blue]$INFO[Container(211).CurrentPage]/$INFO[Container(211).NumPages][/COLOR])</label>
+							<visible>Container(9000).Hasfocus(2)</visible>
+						</control>
 					</control>
 					<control type="group" id="129">
-						<posx>0</posx>
-						<posy>0</posy>
+						<left>0</left>
+						<top>0</top>
 						<width>750</width>
 						<height>530</height>
 						<control type="label" id="120">
 							<!-- Hide this Control off the screen because we use the list above to pass to it instead -->
-							<posx>2000</posx>
-							<posy>2000</posy>
+							<left>2000</left>
+							<top>2000</top>
 							<width>100</width>
 							<height>0</height>
 							<label>-</label>
@@ -649,10 +889,10 @@
 							<textcolor>-</textcolor>
 						</control>
 						<control type="panel" id="121">
-							<visible>Container(9000).HasFocus(2)</visible>
+							<visible>Container(9000).HasFocus(3)</visible>
 							<include>VisibleFadeEffect</include>
-							<posx>0</posx>
-							<posy>0</posy>
+							<left>0</left>
+							<top>0</top>
 							<width>750</width>
 							<height>530</height>
 							<onleft>9000</onleft>
@@ -664,30 +904,31 @@
 							<pagecontrol>128</pagecontrol>
 							<itemlayout width="375" height="175">
 								<control type="image">
-									<posx>0</posx>
-									<posy>0</posy>
+									<left>0</left>
+									<top>0</top>
 									<width>370</width>
 									<height>170</height>
 									<texture border="5">button-nofocus.png</texture>
 								</control>
 								<control type="image">
-									<posx>5</posx>
-									<posy>5</posy>
+									<left>5</left>
+									<top>5</top>
 									<width>360</width>
 									<height>65</height>
 									<texture background="true">$INFO[ListItem.Icon]</texture>
+									<aspectratio>keep</aspectratio>
 								</control>
 								<control type="image">
-									<posx>330</posx>
-									<posy>70</posy>
+									<left>330</left>
+									<top>70</top>
 									<width>30</width>
 									<height>30</height>
 									<texture>OverlayWatched.png</texture>
 									<visible>IntegerGreaterThan(ListItem.Property(PlayCount),0)</visible>
 								</control>
 								<control type="label">
-									<posx>187</posx>
-									<posy>75</posy>
+									<left>7</left>
+									<top>75</top>
 									<width>360</width>
 									<height>15</height>
 									<label>[B]$INFO[ListItem.Label][/B]</label>
@@ -697,8 +938,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>187</posx>
-									<posy>95</posy>
+									<left>7</left>
+									<top>95</top>
 									<width>360</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Premiered)]</label>
@@ -708,10 +949,10 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="textbox">
-									<posx>5</posx>
-									<posy>110</posy>
+									<left>5</left>
+									<top>112</top>
 									<width>360</width>
-									<height>55</height>
+									<height>53</height>
 									<label>$INFO[ListItem.Property(Plot)]</label>
 									<font>font10</font>
 									<textcolor>white</textcolor>
@@ -720,30 +961,31 @@
 							</itemlayout>
 							<focusedlayout width="375" height="175">
 								<control type="image">
-									<posx>0</posx>
-									<posy>0</posy>
+									<left>0</left>
+									<top>0</top>
 									<width>370</width>
 									<height>170</height>
 									<texture border="5">button-focus2.png</texture>
 								</control>
 								<control type="image">
-									<posx>5</posx>
-									<posy>5</posy>
+									<left>5</left>
+									<top>5</top>
 									<width>360</width>
 									<height>65</height>
 									<texture background="true">$INFO[ListItem.Icon]</texture>
+									<aspectratio>keep</aspectratio>
 								</control>
 								<control type="image">
-									<posx>330</posx>
-									<posy>70</posy>
+									<left>330</left>
+									<top>70</top>
 									<width>30</width>
 									<height>30</height>
 									<texture>OverlayWatched.png</texture>
 									<visible>IntegerGreaterThan(ListItem.Property(PlayCount),0)</visible>
 								</control>
 								<control type="label">
-									<posx>187</posx>
-									<posy>75</posy>
+									<left>7</left>
+									<top>75</top>
 									<width>360</width>
 									<height>15</height>
 									<label>[B]$INFO[ListItem.Label][/B]</label>
@@ -753,8 +995,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>187</posx>
-									<posy>95</posy>
+									<left>7</left>
+									<top>95</top>
 									<width>360</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Premiered)]</label>
@@ -764,10 +1006,10 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="textbox">
-									<posx>5</posx>
-									<posy>110</posy>
+									<left>5</left>
+									<top>112</top>
 									<width>360</width>
-									<height>55</height>
+									<height>53</height>
 									<label>$INFO[ListItem.Property(Plot)]</label>
 									<font>font10</font>
 									<textcolor>white</textcolor>
@@ -776,8 +1018,8 @@
 							</focusedlayout>
 						</control>
 						<control type="scrollbar" id="128">
-							<posx>770</posx>
-							<posy>0</posy>
+							<left>770</left>
+							<top>0</top>
 							<width>25</width>
 							<height>530</height>
 							<texturesliderbackground border="0,14,0,14">ScrollBarV.png</texturesliderbackground>
@@ -789,12 +1031,12 @@
 							<onright>9000</onright>
 							<showonepage>false</showonepage>
 							<orientation>vertical</orientation>
-							<visible>Container(9000).Hasfocus(2)</visible>
+							<visible>Container(9000).HasFocus(3)</visible>
 						</control>
 						<control type="label">
 							<description>number of files/pages in list text label</description>
-							<posx>750</posx>
-							<posy>530</posy>
+							<left>250</left>
+							<top>530</top>
 							<width>500</width>
 							<height>35</height>
 							<font>font12</font>
@@ -803,18 +1045,18 @@
 							<scroll>true</scroll>
 							<textcolor>grey</textcolor>
 							<label>([COLOR=blue]$INFO[Container(121).NumItems][/COLOR]) $LOCALIZE[31025] - $LOCALIZE[31024] ([COLOR=blue]$INFO[Container(121).CurrentPage]/$INFO[Container(121).NumPages][/COLOR])</label>
-							<visible>Container(9000).Hasfocus(2)</visible>
+							<visible>Container(9000).HasFocus(3)</visible>
 						</control>
 					</control>
 					<control type="group" id="139">
-						<posx>0</posx>
-						<posy>0</posy>
+						<left>0</left>
+						<top>0</top>
 						<width>750</width>
 						<height>530</height>
 						<control type="label" id="130">
 							<!-- Hide this Control off the screen because we use the list above to pass to it instead -->
-							<posx>2000</posx>
-							<posy>2000</posy>
+							<left>2000</left>
+							<top>2000</top>
 							<width>100</width>
 							<height>0</height>
 							<label>-</label>
@@ -822,10 +1064,10 @@
 							<textcolor>-</textcolor>
 						</control>
 						<control type="panel" id="131">
-							<visible>Container(9000).HasFocus(3)</visible>
+							<visible>Container(9000).HasFocus(4)</visible>
 							<include>VisibleFadeEffect</include>
-							<posx>0</posx>
-							<posy>0</posy>
+							<left>0</left>
+							<top>0</top>
 							<width>750</width>
 							<height>530</height>
 							<onleft>9000</onleft>
@@ -837,22 +1079,23 @@
 							<pagecontrol>138</pagecontrol>
 							<itemlayout width="375" height="130">
 								<control type="image">
-									<posx>0</posx>
-									<posy>0</posy>
+									<left>0</left>
+									<top>0</top>
 									<width>370</width>
 									<height>125</height>
 									<texture border="5">button-nofocus.png</texture>
 								</control>
 								<control type="image">
-									<posx>5</posx>
-									<posy>5</posy>
+									<left>5</left>
+									<top>5</top>
 									<width>80</width>
 									<height>115</height>
 									<texture background="true">$INFO[ListItem.Icon]</texture>
+									<aspectratio>keep</aspectratio>
 								</control>
 								<control type="label">
-									<posx>100</posx>
-									<posy>10</posy>
+									<left>100</left>
+									<top>10</top>
 									<width>260</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Label]</label>
@@ -861,10 +1104,10 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="textbox">
-									<posx>100</posx>
-									<posy>30</posy>
+									<left>100</left>
+									<top>32</top>
 									<width>260</width>
-									<height>120</height>
+									<height>118</height>
 									<label>$INFO[ListItem.Property(TvShowTitle)]</label>
 									<font>font12</font>
 									<textcolor>grey2</textcolor>
@@ -872,22 +1115,23 @@
 							</itemlayout>
 							<focusedlayout width="375" height="130">
 								<control type="image">
-									<posx>0</posx>
-									<posy>0</posy>
+									<left>0</left>
+									<top>0</top>
 									<width>370</width>
 									<height>125</height>
 									<texture border="5">button-focus2.png</texture>
 								</control>
 								<control type="image">
-									<posx>5</posx>
-									<posy>5</posy>
+									<left>5</left>
+									<top>5</top>
 									<width>80</width>
 									<height>115</height>
 									<texture background="true">$INFO[ListItem.Icon]</texture>
+									<aspectratio>keep</aspectratio>
 								</control>
 								<control type="label">
-									<posx>100</posx>
-									<posy>10</posy>
+									<left>100</left>
+									<top>10</top>
 									<width>260</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Label]</label>
@@ -896,10 +1140,10 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="textbox">
-									<posx>100</posx>
-									<posy>30</posy>
+									<left>100</left>
+									<top>32</top>
 									<width>260</width>
-									<height>120</height>
+									<height>118</height>
 									<label>$INFO[ListItem.Property(TvShowTitle)]</label>
 									<font>font12</font>
 									<textcolor>grey2</textcolor>
@@ -907,8 +1151,8 @@
 							</focusedlayout>
 						</control>
 						<control type="scrollbar" id="138">
-							<posx>770</posx>
-							<posy>0</posy>
+							<left>770</left>
+							<top>0</top>
 							<width>25</width>
 							<height>530</height>
 							<texturesliderbackground border="0,14,0,14">ScrollBarV.png</texturesliderbackground>
@@ -920,12 +1164,12 @@
 							<onright>9000</onright>
 							<showonepage>false</showonepage>
 							<orientation>vertical</orientation>
-							<visible>Container(9000).Hasfocus(3)</visible>
+							<visible>Container(9000).HasFocus(4)</visible>
 						</control>
 						<control type="label">
 							<description>number of files/pages in list text label</description>
-							<posx>750</posx>
-							<posy>530</posy>
+							<left>250</left>
+							<top>530</top>
 							<width>500</width>
 							<height>35</height>
 							<font>font12</font>
@@ -934,18 +1178,18 @@
 							<scroll>true</scroll>
 							<textcolor>grey</textcolor>
 							<label>([COLOR=blue]$INFO[Container(131).NumItems][/COLOR]) $LOCALIZE[31025] - $LOCALIZE[31024] ([COLOR=blue]$INFO[Container(131).CurrentPage]/$INFO[Container(131).NumPages][/COLOR])</label>
-							<visible>Container(9000).Hasfocus(3)</visible>
+							<visible>Container(9000).HasFocus(4)</visible>
 						</control>
 					</control>
 					<control type="group" id="149">
-						<posx>0</posx>
-						<posy>0</posy>
+						<left>0</left>
+						<top>0</top>
 						<width>750</width>
 						<height>530</height>
 						<control type="label" id="140">
 							<!-- Hide this Control off the screen because we use the list above to pass to it instead -->
-							<posx>2000</posx>
-							<posy>2000</posy>
+							<left>2000</left>
+							<top>2000</top>
 							<width>100</width>
 							<height>0</height>
 							<label>-</label>
@@ -953,9 +1197,9 @@
 							<textcolor>-</textcolor>
 						</control>
 						<control type="panel" id="141">
-							<visible>Container(9000).HasFocus(4)</visible>
-							<posx>0</posx>
-							<posy>0</posy>
+							<visible>Container(9000).HasFocus(5)</visible>
+							<left>0</left>
+							<top>0</top>
 							<width>750</width>
 							<height>530</height>
 							<onleft>9000</onleft>
@@ -967,31 +1211,32 @@
 							<pagecontrol>148</pagecontrol>
 							<itemlayout width="750" height="106">
 								<control type="image">
-									<posx>0</posx>
-									<posy>0</posy>
+									<left>0</left>
+									<top>0</top>
 									<width>750</width>
 									<height>101</height>
 									<texture border="5">button-nofocus.png</texture>
 								</control>
 								<control type="image">
-									<posx>5</posx>
-									<posy>5</posy>
+									<left>5</left>
+									<top>5</top>
 									<width>150</width>
 									<height>90</height>
 									<aspectratio>scale</aspectratio>
 									<texture background="true">$INFO[ListItem.Icon]</texture>
+									<aspectratio>keep</aspectratio>
 								</control>
 								<control type="image">
-									<posx>120</posx>
-									<posy>70</posy>
+									<left>120</left>
+									<top>70</top>
 									<width>30</width>
 									<height>30</height>
 									<texture>OverlayWatched.png</texture>
 									<visible>IntegerGreaterThan(ListItem.Property(PlayCount),0)</visible>
 								</control>
 								<control type="label">
-									<posx>160</posx>
-									<posy>10</posy>
+									<left>160</left>
+									<top>10</top>
 									<width>585</width>
 									<height>15</height>
 									<label>[B]$INFO[ListItem.Label][/B]</label>
@@ -1000,8 +1245,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>160</posx>
-									<posy>30</posy>
+									<left>160</left>
+									<top>30</top>
 									<width>585</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(TvShowTitle)]</label>
@@ -1010,10 +1255,10 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="textbox">
-									<posx>160</posx>
-									<posy>50</posy>
+									<left>160</left>
+									<top>52</top>
 									<width>585</width>
-									<height>45</height>
+									<height>43</height>
 									<label>$INFO[ListItem.Property(Plot)]</label>
 									<font>font10</font>
 									<textcolor>white</textcolor>
@@ -1021,31 +1266,32 @@
 							</itemlayout>
 							<focusedlayout width="750" height="106">
 								<control type="image">
-									<posx>0</posx>
-									<posy>0</posy>
+									<left>0</left>
+									<top>0</top>
 									<width>750</width>
 									<height>101</height>
 									<texture border="5">button-focus2.png</texture>
 								</control>
 								<control type="image">
-									<posx>5</posx>
-									<posy>5</posy>
+									<left>5</left>
+									<top>5</top>
 									<width>150</width>
 									<height>90</height>
 									<aspectratio>scale</aspectratio>
 									<texture background="true">$INFO[ListItem.Icon]</texture>
+									<aspectratio>keep</aspectratio>
 								</control>
 								<control type="image">
-									<posx>120</posx>
-									<posy>70</posy>
+									<left>120</left>
+									<top>70</top>
 									<width>30</width>
 									<height>30</height>
 									<texture>OverlayWatched.png</texture>
 									<visible>IntegerGreaterThan(ListItem.Property(PlayCount),0)</visible>
 								</control>
 								<control type="label">
-									<posx>160</posx>
-									<posy>10</posy>
+									<left>160</left>
+									<top>10</top>
 									<width>585</width>
 									<height>15</height>
 									<label>[B]$INFO[ListItem.Label][/B]</label>
@@ -1054,8 +1300,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>160</posx>
-									<posy>30</posy>
+									<left>160</left>
+									<top>30</top>
 									<width>585</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(TvShowTitle)]</label>
@@ -1064,10 +1310,10 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="textbox">
-									<posx>160</posx>
-									<posy>50</posy>
+									<left>160</left>
+									<top>52</top>
 									<width>585</width>
-									<height>45</height>
+									<height>43</height>
 									<label>$INFO[ListItem.Property(Plot)]</label>
 									<font>font10</font>
 									<textcolor>white</textcolor>
@@ -1075,8 +1321,8 @@
 							</focusedlayout>
 						</control>
 						<control type="scrollbar" id="148">
-							<posx>770</posx>
-							<posy>0</posy>
+							<left>770</left>
+							<top>0</top>
 							<width>25</width>
 							<height>530</height>
 							<texturesliderbackground border="0,14,0,14">ScrollBarV.png</texturesliderbackground>
@@ -1088,12 +1334,12 @@
 							<onright>9000</onright>
 							<showonepage>false</showonepage>
 							<orientation>vertical</orientation>
-							<visible>Container(9000).Hasfocus(4)</visible>
+							<visible>Container(9000).HasFocus(5)</visible>
 						</control>
 						<control type="label">
 							<description>number of files/pages in list text label</description>
-							<posx>750</posx>
-							<posy>530</posy>
+							<left>250</left>
+							<top>530</top>
 							<width>500</width>
 							<height>35</height>
 							<font>font12</font>
@@ -1102,29 +1348,29 @@
 							<scroll>true</scroll>
 							<textcolor>grey</textcolor>
 							<label>([COLOR=blue]$INFO[Container(141).NumItems][/COLOR]) $LOCALIZE[31025] - $LOCALIZE[31024] ([COLOR=blue]$INFO[Container(141).CurrentPage]/$INFO[Container(141).NumPages][/COLOR])</label>
-							<visible>Container(9000).Hasfocus(4)</visible>
+							<visible>Container(9000).HasFocus(5)</visible>
 						</control>
 					</control>
 					<control type="group" id="159">
-						<posx>0</posx>
-						<posy>0</posy>
+						<left>0</left>
+						<top>0</top>
 						<width>750</width>
 						<height>530</height>
 						<control type="label" id="150">
 							<!-- Hide this Control off the screen because we use the list above to pass to it instead -->
-							<posx>2000</posx>
-							<posy>2000</posy>
+							<left>2000</left>
+							<top>2000</top>
 							<width>100</width>
 							<height>0</height>
 							<label>-</label>
 							<font>-</font>
 							<textcolor>-</textcolor>
-							</control>
+						</control>
 						<control type="panel" id="151">
-							<visible>Container(9000).HasFocus(5)</visible>
+							<visible>Container(9000).HasFocus(6)</visible>
 							<include>VisibleFadeEffect</include>
-							<posx>0</posx>
-							<posy>0</posy>
+							<left>0</left>
+							<top>0</top>
 							<width>750</width>
 							<height>530</height>
 							<onleft>9000</onleft>
@@ -1136,30 +1382,31 @@
 							<pagecontrol>158</pagecontrol>
 							<itemlayout width="375" height="106">
 								<control type="image">
-									<posx>0</posx>
-									<posy>0</posy>
+									<left>0</left>
+									<top>0</top>
 									<width>370</width>
 									<height>101</height>
 									<texture border="5">button-nofocus.png</texture>
 								</control>
 								<control type="image">
-									<posx>5</posx>
-									<posy>5</posy>
+									<left>5</left>
+									<top>5</top>
 									<width>120</width>
 									<height>90</height>
 									<texture background="true">$INFO[ListItem.Icon]</texture>
+									<aspectratio>keep</aspectratio>
 								</control>
 								<control type="image">
-									<posx>100</posx>
-									<posy>65</posy>
+									<left>100</left>
+									<top>65</top>
 									<width>30</width>
 									<height>30</height>
 									<texture>OverlayWatched.png</texture>
 									<visible>IntegerGreaterThan(ListItem.Property(PlayCount),0)</visible>
 								</control>
 								<control type="label">
-									<posx>135</posx>
-									<posy>10</posy>
+									<left>135</left>
+									<top>10</top>
 									<width>230</width>
 									<height>15</height>
 									<label>[B]$INFO[ListItem.Label][/B]</label>
@@ -1168,8 +1415,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>135</posx>
-									<posy>30</posy>
+									<left>135</left>
+									<top>30</top>
 									<width>230</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Artist)]</label>
@@ -1178,8 +1425,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>135</posx>
-									<posy>55</posy>
+									<left>135</left>
+									<top>55</top>
 									<width>230</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Year)]</label>
@@ -1188,8 +1435,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>135</posx>
-									<posy>75</posy>
+									<left>135</left>
+									<top>75</top>
 									<width>230</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Duration)]</label>
@@ -1200,30 +1447,31 @@
 							</itemlayout>
 							<focusedlayout width="375" height="106">
 								<control type="image">
-									<posx>0</posx>
-									<posy>0</posy>
+									<left>0</left>
+									<top>0</top>
 									<width>370</width>
 									<height>101</height>
 									<texture border="5">button-focus2.png</texture>
 								</control>
 								<control type="image">
-									<posx>5</posx>
-									<posy>5</posy>
+									<left>5</left>
+									<top>5</top>
 									<width>120</width>
 									<height>90</height>
 									<texture background="true">$INFO[ListItem.Icon]</texture>
+									<aspectratio>keep</aspectratio>
 								</control>
 								<control type="image">
-									<posx>100</posx>
-									<posy>65</posy>
+									<left>100</left>
+									<top>65</top>
 									<width>30</width>
 									<height>30</height>
 									<texture>OverlayWatched.png</texture>
 									<visible>IntegerGreaterThan(ListItem.Property(PlayCount),0)</visible>
 								</control>
 								<control type="label">
-									<posx>135</posx>
-									<posy>10</posy>
+									<left>135</left>
+									<top>10</top>
 									<width>230</width>
 									<height>15</height>
 									<label>[B]$INFO[ListItem.Label][/B]</label>
@@ -1232,8 +1480,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>135</posx>
-									<posy>30</posy>
+									<left>135</left>
+									<top>30</top>
 									<width>230</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Artist)]</label>
@@ -1242,8 +1490,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>135</posx>
-									<posy>55</posy>
+									<left>135</left>
+									<top>55</top>
 									<width>230</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Year)]</label>
@@ -1252,8 +1500,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>135</posx>
-									<posy>75</posy>
+									<left>135</left>
+									<top>75</top>
 									<width>230</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Duration)]</label>
@@ -1264,8 +1512,8 @@
 							</focusedlayout>
 						</control>
 						<control type="scrollbar" id="158">
-							<posx>770</posx>
-							<posy>0</posy>
+							<left>770</left>
+							<top>0</top>
 							<width>25</width>
 							<height>530</height>
 							<texturesliderbackground border="0,14,0,14">ScrollBarV.png</texturesliderbackground>
@@ -1277,12 +1525,12 @@
 							<onright>9000</onright>
 							<showonepage>false</showonepage>
 							<orientation>vertical</orientation>
-							<visible>Container(9000).Hasfocus(5)</visible>
+							<visible>Container(9000).HasFocus(6)</visible>
 						</control>
 						<control type="label">
 							<description>number of files/pages in list text label</description>
-							<posx>750</posx>
-							<posy>530</posy>
+							<left>250</left>
+							<top>530</top>
 							<width>500</width>
 							<height>35</height>
 							<font>font12</font>
@@ -1291,18 +1539,18 @@
 							<scroll>true</scroll>
 							<textcolor>grey</textcolor>
 							<label>([COLOR=blue]$INFO[Container(151).NumItems][/COLOR]) $LOCALIZE[31025] - $LOCALIZE[31024] ([COLOR=blue]$INFO[Container(151).CurrentPage]/$INFO[Container(151).NumPages][/COLOR])</label>
-							<visible>Container(9000).Hasfocus(5)</visible>
+							<visible>Container(9000).HasFocus(6)</visible>
 						</control>
 					</control>
 					<control type="group" id="169">
-						<posx>0</posx>
-						<posy>0</posy>
+						<left>0</left>
+						<top>0</top>
 						<width>750</width>
 						<height>530</height>
 						<control type="label" id="160">
 							<!-- Hide this Control off the screen because we use the list above to pass to it instead -->
-							<posx>2000</posx>
-							<posy>2000</posy>
+							<left>2000</left>
+							<top>2000</top>
 							<width>100</width>
 							<height>0</height>
 							<label>-</label>
@@ -1310,10 +1558,10 @@
 							<textcolor>-</textcolor>
 						</control>
 						<control type="panel" id="161">
-							<visible>Container(9000).HasFocus(6)</visible>
+							<visible>Container(9000).HasFocus(7)</visible>
 							<include>VisibleFadeEffect</include>
-							<posx>0</posx>
-							<posy>0</posy>
+							<left>0</left>
+							<top>0</top>
 							<width>750</width>
 							<height>530</height>
 							<onleft>9000</onleft>
@@ -1325,23 +1573,23 @@
 							<pagecontrol>168</pagecontrol>
 							<itemlayout width="750" height="106">
 								<control type="image">
-									<posx>0</posx>
-									<posy>0</posy>
+									<left>0</left>
+									<top>0</top>
 									<width>750</width>
 									<height>101</height>
 									<texture border="5">button-nofocus.png</texture>
 								</control>
 								<control type="image">
-									<posx>5</posx>
-									<posy>5</posy>
+									<left>5</left>
+									<top>5</top>
 									<width>150</width>
 									<height>90</height>
 									<aspectratio>keep</aspectratio>
 									<texture background="true">$INFO[ListItem.Icon]</texture>
 								</control>
 								<control type="label">
-									<posx>160</posx>
-									<posy>10</posy>
+									<left>160</left>
+									<top>10</top>
 									<width>580</width>
 									<height>15</height>
 									<label>[B]$INFO[ListItem.Label][/B]</label>
@@ -1350,8 +1598,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>160</posx>
-									<posy>30</posy>
+									<left>160</left>
+									<top>30</top>
 									<width>585</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Artist_Genre)]</label>
@@ -1360,10 +1608,10 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="textbox">
-									<posx>160</posx>
-									<posy>50</posy>
+									<left>160</left>
+									<top>52</top>
 									<width>585</width>
-									<height>45</height>
+									<height>43</height>
 									<label>$INFO[ListItem.Property(Artist_Description)]</label>
 									<font>font10</font>
 									<textcolor>white</textcolor>
@@ -1371,23 +1619,23 @@
 							</itemlayout>
 							<focusedlayout width="400" height="110">
 								<control type="image">
-									<posx>0</posx>
-									<posy>0</posy>
+									<left>0</left>
+									<top>0</top>
 									<width>750</width>
 									<height>101</height>
 									<texture border="5">button-focus2.png</texture>
 								</control>
 								<control type="image">
-									<posx>5</posx>
-									<posy>5</posy>
+									<left>5</left>
+									<top>5</top>
 									<width>150</width>
 									<height>90</height>
 									<aspectratio>keep</aspectratio>
 									<texture background="true">$INFO[ListItem.Icon]</texture>
 								</control>
 								<control type="label">
-									<posx>160</posx>
-									<posy>10</posy>
+									<left>160</left>
+									<top>10</top>
 									<width>580</width>
 									<height>15</height>
 									<label>[B]$INFO[ListItem.Label][/B]</label>
@@ -1396,8 +1644,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>160</posx>
-									<posy>30</posy>
+									<left>160</left>
+									<top>30</top>
 									<width>585</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Artist_Genre)]</label>
@@ -1406,10 +1654,10 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="textbox">
-									<posx>160</posx>
-									<posy>50</posy>
+									<left>160</left>
+									<top>52</top>
 									<width>585</width>
-									<height>45</height>
+									<height>43</height>
 									<label>$INFO[ListItem.Property(Artist_Description)]</label>
 									<font>font10</font>
 									<textcolor>white</textcolor>
@@ -1417,8 +1665,8 @@
 							</focusedlayout>
 						</control>
 						<control type="scrollbar" id="168">
-							<posx>770</posx>
-							<posy>0</posy>
+							<left>770</left>
+							<top>0</top>
 							<width>25</width>
 							<height>530</height>
 							<texturesliderbackground border="0,14,0,14">ScrollBarV.png</texturesliderbackground>
@@ -1430,12 +1678,12 @@
 							<onright>9000</onright>
 							<showonepage>false</showonepage>
 							<orientation>vertical</orientation>
-							<visible>Container(9000).Hasfocus(6)</visible>
+							<visible>Container(9000).HasFocus(7)</visible>
 						</control>
 						<control type="label">
 							<description>number of files/pages in list text label</description>
-							<posx>750</posx>
-							<posy>530</posy>
+							<left>250</left>
+							<top>530</top>
 							<width>500</width>
 							<height>35</height>
 							<font>font12</font>
@@ -1444,18 +1692,18 @@
 							<scroll>true</scroll>
 							<textcolor>grey</textcolor>
 							<label>([COLOR=blue]$INFO[Container(161).NumItems][/COLOR]) $LOCALIZE[31025] - $LOCALIZE[31024] ([COLOR=blue]$INFO[Container(161).CurrentPage]/$INFO[Container(161).NumPages][/COLOR])</label>
-							<visible>Container(9000).Hasfocus(6)</visible>
+							<visible>Container(9000).HasFocus(7)</visible>
 						</control>
 					</control>
 					<control type="group" id="179">
-						<posx>0</posx>
-						<posy>0</posy>
+						<left>0</left>
+						<top>0</top>
 						<width>750</width>
 						<height>530</height>
 						<control type="label" id="170">
 							<!-- Hide this Control off the screen because we use the list above to pass to it instead -->
-							<posx>2000</posx>
-							<posy>2000</posy>
+							<left>2000</left>
+							<top>2000</top>
 							<width>100</width>
 							<height>0</height>
 							<label>-</label>
@@ -1463,10 +1711,10 @@
 							<textcolor>-</textcolor>
 						</control>
 						<control type="panel" id="171">
-							<visible>Container(9000).HasFocus(7)</visible>
+							<visible>Container(9000).HasFocus(8)</visible>
 							<include>VisibleFadeEffect</include>
-							<posx>0</posx>
-							<posy>0</posy>
+							<left>0</left>
+							<top>0</top>
 							<width>750</width>
 							<height>530</height>
 							<onleft>9000</onleft>
@@ -1478,23 +1726,23 @@
 							<pagecontrol>178</pagecontrol>
 							<itemlayout width="750" height="106">
 								<control type="image">
-									<posx>0</posx>
-									<posy>0</posy>
+									<left>0</left>
+									<top>0</top>
 									<width>750</width>
 									<height>101</height>
 									<texture border="5">button-nofocus.png</texture>
 								</control>
 								<control type="image">
-									<posx>5</posx>
-									<posy>5</posy>
+									<left>5</left>
+									<top>5</top>
 									<width>100</width>
 									<height>90</height>
 									<aspectratio>keep</aspectratio>
 									<texture background="true">$INFO[ListItem.Icon]</texture>
 								</control>
 								<control type="label">
-									<posx>110</posx>
-									<posy>10</posy>
+									<left>110</left>
+									<top>10</top>
 									<width>630</width>
 									<height>15</height>
 									<label>[B]$INFO[ListItem.Label][/B]</label>
@@ -1503,8 +1751,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>110</posx>
-									<posy>30</posy>
+									<left>110</left>
+									<top>30</top>
 									<width>630</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Artist)]</label>
@@ -1513,10 +1761,10 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="textbox">
-									<posx>110</posx>
-									<posy>50</posy>
+									<left>110</left>
+									<top>52</top>
 									<width>630</width>
-									<height>45</height>
+									<height>43</height>
 									<label>$INFO[ListItem.Property(Album_Description)]</label>
 									<font>font10</font>
 									<textcolor>white</textcolor>
@@ -1524,23 +1772,23 @@
 							</itemlayout>
 							<focusedlayout width="400" height="110">
 								<control type="image">
-									<posx>0</posx>
-									<posy>0</posy>
+									<left>0</left>
+									<top>0</top>
 									<width>750</width>
 									<height>101</height>
 									<texture border="5">button-focus2.png</texture>
 								</control>
 								<control type="image">
-									<posx>5</posx>
-									<posy>5</posy>
+									<left>5</left>
+									<top>5</top>
 									<width>100</width>
 									<height>90</height>
 									<aspectratio>keep</aspectratio>
 									<texture background="true">$INFO[ListItem.Icon]</texture>
 								</control>
 								<control type="label">
-									<posx>110</posx>
-									<posy>10</posy>
+									<left>110</left>
+									<top>10</top>
 									<width>630</width>
 									<height>15</height>
 									<label>[B]$INFO[ListItem.Label][/B]</label>
@@ -1549,8 +1797,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>110</posx>
-									<posy>30</posy>
+									<left>110</left>
+									<top>30</top>
 									<width>630</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Artist)]</label>
@@ -1559,10 +1807,10 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="textbox">
-									<posx>110</posx>
-									<posy>50</posy>
+									<left>110</left>
+									<top>52</top>
 									<width>630</width>
-									<height>45</height>
+									<height>43</height>
 									<label>$INFO[ListItem.Property(Album_Description)]</label>
 									<font>font10</font>
 									<textcolor>white</textcolor>
@@ -1570,8 +1818,8 @@
 							</focusedlayout>
 						</control>
 						<control type="scrollbar" id="178">
-							<posx>770</posx>
-							<posy>0</posy>
+							<left>770</left>
+							<top>0</top>
 							<width>25</width>
 							<height>530</height>
 							<texturesliderbackground border="0,14,0,14">ScrollBarV.png</texturesliderbackground>
@@ -1583,12 +1831,12 @@
 							<onright>9000</onright>
 							<showonepage>false</showonepage>
 							<orientation>vertical</orientation>
-							<visible>Container(9000).Hasfocus(7)</visible>
+							<visible>Container(9000).HasFocus(8)</visible>
 						</control>
 						<control type="label">
 							<description>number of files/pages in list text label</description>
-							<posx>750</posx>
-							<posy>530</posy>
+							<left>250</left>
+							<top>530</top>
 							<width>500</width>
 							<height>35</height>
 							<font>font12</font>
@@ -1597,18 +1845,18 @@
 							<scroll>true</scroll>
 							<textcolor>grey</textcolor>
 							<label>([COLOR=blue]$INFO[Container(171).NumItems][/COLOR]) $LOCALIZE[31025] - $LOCALIZE[31024] ([COLOR=blue]$INFO[Container(171).CurrentPage]/$INFO[Container(171).NumPages][/COLOR])</label>
-							<visible>Container(9000).Hasfocus(7)</visible>
+							<visible>Container(9000).HasFocus(8)</visible>
 						</control>
 					</control>
 					<control type="group" id="189">
-						<posx>0</posx>
-						<posy>0</posy>
+						<left>0</left>
+						<top>0</top>
 						<width>750</width>
 						<height>530</height>
 						<control type="label" id="180">
 							<!-- Hide this Control off the screen because we use the list above to pass to it instead -->
-							<posx>2000</posx>
-							<posy>2000</posy>
+							<left>2000</left>
+							<top>2000</top>
 							<width>100</width>
 							<height>0</height>
 							<label>-</label>
@@ -1616,10 +1864,10 @@
 							<textcolor>-</textcolor>
 						</control>
 						<control type="panel" id="181">
-							<visible>Container(9000).HasFocus(8)</visible>
+							<visible>Container(9000).HasFocus(9)</visible>
 							<include>VisibleFadeEffect</include>
-							<posx>0</posx>
-							<posy>0</posy>
+							<left>0</left>
+							<top>0</top>
 							<width>750</width>
 							<height>530</height>
 							<onleft>9000</onleft>
@@ -1631,22 +1879,23 @@
 							<pagecontrol>188</pagecontrol>
 							<itemlayout width="375" height="106">
 								<control type="image">
-									<posx>0</posx>
-									<posy>0</posy>
+									<left>0</left>
+									<top>0</top>
 									<width>370</width>
 									<height>101</height>
 									<texture border="5">button-nofocus.png</texture>
 								</control>
 								<control type="image">
-									<posx>5</posx>
-									<posy>5</posy>
+									<left>5</left>
+									<top>5</top>
 									<width>90</width>
 									<height>90</height>
 									<texture background="true">$INFO[ListItem.Icon]</texture>
+									<aspectratio>keep</aspectratio>
 								</control>
 								<control type="label">
-									<posx>110</posx>
-									<posy>10</posy>
+									<left>110</left>
+									<top>10</top>
 									<width>255</width>
 									<height>15</height>
 									<label>[B]$INFO[ListItem.Label][/B]</label>
@@ -1655,8 +1904,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>110</posx>
-									<posy>30</posy>
+									<left>110</left>
+									<top>30</top>
 									<width>255</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Artist)]</label>
@@ -1665,8 +1914,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>110</posx>
-									<posy>50</posy>
+									<left>110</left>
+									<top>50</top>
 									<width>255</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Genre)]</label>
@@ -1675,8 +1924,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>110</posx>
-									<posy>75</posy>
+									<left>110</left>
+									<top>75</top>
 									<width>255</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Duration)]</label>
@@ -1687,22 +1936,23 @@
 							</itemlayout>
 							<focusedlayout width="375" height="106">
 								<control type="image">
-									<posx>0</posx>
-									<posy>0</posy>
+									<left>0</left>
+									<top>0</top>
 									<width>370</width>
 									<height>101</height>
 									<texture border="5">button-focus2.png</texture>
 								</control>
 								<control type="image">
-									<posx>5</posx>
-									<posy>5</posy>
+									<left>5</left>
+									<top>5</top>
 									<width>90</width>
 									<height>90</height>
 									<texture background="true">$INFO[ListItem.Icon]</texture>
+									<aspectratio>keep</aspectratio>
 								</control>
 								<control type="label">
-									<posx>110</posx>
-									<posy>10</posy>
+									<left>110</left>
+									<top>10</top>
 									<width>255</width>
 									<height>15</height>
 									<label>[B]$INFO[ListItem.Label][/B]</label>
@@ -1711,8 +1961,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>110</posx>
-									<posy>30</posy>
+									<left>110</left>
+									<top>30</top>
 									<width>255</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Artist)]</label>
@@ -1721,8 +1971,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>110</posx>
-									<posy>50</posy>
+									<left>110</left>
+									<top>50</top>
 									<width>255</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Genre)]</label>
@@ -1731,8 +1981,8 @@
 									<aligny>center</aligny>
 								</control>
 								<control type="label">
-									<posx>110</posx>
-									<posy>75</posy>
+									<left>110</left>
+									<top>75</top>
 									<width>255</width>
 									<height>15</height>
 									<label>$INFO[ListItem.Property(Duration)]</label>
@@ -1743,8 +1993,8 @@
 							</focusedlayout>
 						</control>
 						<control type="scrollbar" id="188">
-							<posx>770</posx>
-							<posy>0</posy>
+							<left>770</left>
+							<top>0</top>
 							<width>25</width>
 							<height>530</height>
 							<texturesliderbackground border="0,14,0,14">ScrollBarV.png</texturesliderbackground>
@@ -1756,12 +2006,12 @@
 							<onright>9000</onright>
 							<showonepage>false</showonepage>
 							<orientation>vertical</orientation>
-							<visible>Container(9000).Hasfocus(8)</visible>
+							<visible>Container(9000).HasFocus(9)</visible>
 						</control>
 						<control type="label">
 							<description>number of files/pages in list text label</description>
-							<posx>750</posx>
-							<posy>530</posy>
+							<left>250</left>
+							<top>530</top>
 							<width>500</width>
 							<height>35</height>
 							<font>font12</font>
@@ -1770,7 +2020,7 @@
 							<scroll>true</scroll>
 							<textcolor>grey</textcolor>
 							<label>([COLOR=blue]$INFO[Container(181).NumItems][/COLOR]) $LOCALIZE[31025] - $LOCALIZE[31024] ([COLOR=blue]$INFO[Container(181).CurrentPage]/$INFO[Container(181).NumPages][/COLOR])</label>
-							<visible>Container(9000).Hasfocus(8)</visible>
+							<visible>Container(9000).HasFocus(9)</visible>
 						</control>
 					</control>
 				</control>

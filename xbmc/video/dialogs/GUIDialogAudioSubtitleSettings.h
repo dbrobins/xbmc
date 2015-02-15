@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2014 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,30 +20,55 @@
  *
  */
 
-#include "settings/GUIDialogSettings.h"
+#include "settings/dialogs/GUIDialogSettingsManualBase.h"
 
-class CGUIDialogAudioSubtitleSettings :
-      public CGUIDialogSettings
+class CGUIDialogAudioSubtitleSettings : public CGUIDialogSettingsManualBase
 {
 public:
-  CGUIDialogAudioSubtitleSettings(void);
-  virtual ~CGUIDialogAudioSubtitleSettings(void);
+  CGUIDialogAudioSubtitleSettings();
+  virtual ~CGUIDialogAudioSubtitleSettings();
+
+  // specialization of CGUIWindow
   virtual void FrameMove();
 
-  static CStdString PercentAsDecibel(float value, float minimum);
-  static CStdString FormatDelay(float value, float minimum);
-  static CStdString FormatDecibel(float value, float minimum);
+  static std::string FormatDelay(float value, float interval);
+  static std::string FormatDecibel(float value);
+  static std::string FormatPercentAsDecibel(float value);
 
 protected:
-  virtual void CreateSettings();
-  virtual void OnSettingChanged(SettingInfo &setting);
+  // implementations of ISettingCallback
+  virtual void OnSettingChanged(const CSetting *setting);
+  virtual void OnSettingAction(const CSetting *setting);
 
-  void AddAudioStreams(unsigned int id);
-  void AddSubtitleStreams(unsigned int id);
+  // specialization of CGUIDialogSettingsBase
+  virtual bool AllowResettingSettings() const { return false; }
+  virtual void Save();
+  virtual void SetupView();
+
+  // specialization of CGUIDialogSettingsManualBase
+  virtual void InitializeSettings();
+
+  bool SupportsAudioFeature(int feature);
+  bool SupportsSubtitleFeature(int feature);
+
+  void AddAudioStreams(CSettingGroup *group, const std::string &settingId);
+  void AddSubtitleStreams(CSettingGroup *group, const std::string &settingId);
+
+  static bool IsPlayingPassthrough(const std::string &condition, const std::string &value, const CSetting *setting);
+
+  static void AudioStreamsOptionFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
+  static void SubtitleStreamsOptionFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
+  
+  static std::string SettingFormatterDelay(const CSettingControlSlider *control, const CVariant &value, const CVariant &minimum, const CVariant &step, const CVariant &maximum);
+  static std::string SettingFormatterPercentAsDecibel(const CSettingControlSlider *control, const CVariant &value, const CVariant &minimum, const CVariant &step, const CVariant &maximum);
 
   float m_volume;
   int m_audioStream;
+  bool m_passthrough;
   int m_subtitleStream;
-  int m_outputmode;
   bool m_subtitleVisible;
+
+  typedef std::vector<int> Features;
+  Features m_audioCaps;
+  Features m_subCaps;
 };

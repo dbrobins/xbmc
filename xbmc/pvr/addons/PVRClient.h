@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -42,9 +42,8 @@ namespace PVR
   class CPVRClient;
 
   typedef std::vector<PVR_MENUHOOK> PVR_MENUHOOKS;
-  typedef boost::shared_ptr<CPVRClient> PVR_CLIENT;
+  typedef std::shared_ptr<CPVRClient> PVR_CLIENT;
   #define PVR_INVALID_CLIENT_ID (-2)
-  #define PVR_VIRTUAL_CLIENT_ID (-1)
 
   /*!
    * Interface from XBMC to a PVR add-on.
@@ -58,6 +57,15 @@ namespace PVR
     CPVRClient(const cp_extension_t *ext);
     ~CPVRClient(void);
 
+    virtual void OnDisabled();
+    virtual void OnEnabled();
+    virtual ADDON::AddonPtr GetRunningInstance() const;
+    virtual bool OnPreInstall();
+    virtual void OnPostInstall(bool restart, bool update);
+    virtual void OnPreUnInstall();
+    virtual void OnPostUnInstall();
+    virtual bool CanInstall(const std::string &referer);
+
     /** @name PVR add-on methods */
     //@{
 
@@ -65,7 +73,7 @@ namespace PVR
      * @brief Initialise the instance of this add-on.
      * @param iClientId The ID of this add-on.
      */
-    bool Create(int iClientId);
+    ADDON_STATUS Create(int iClientId);
 
     /*!
      * @return True when the dll for this add-on was loaded, false otherwise (e.g. unresolved symbols)
@@ -112,22 +120,27 @@ namespace PVR
     /*!
      * @return The name reported by the backend.
      */
-    CStdString GetBackendName(void) const;
+    const std::string& GetBackendName(void) const;
 
     /*!
      * @return The version string reported by the backend.
      */
-    CStdString GetBackendVersion(void) const;
+    const std::string& GetBackendVersion(void) const;
+
+    /*!
+     * @brief the ip address or alias of the pvr backend server
+     */
+    const std::string& GetBackendHostname(void) const;
 
     /*!
      * @return The connection string reported by the backend.
      */
-    CStdString GetConnectionString(void) const;
+    const std::string& GetConnectionString(void) const;
 
     /*!
      * @return A friendly name for this add-on that can be used in log messages.
      */
-    CStdString GetFriendlyName(void) const;
+    const std::string& GetFriendlyName(void) const;
 
     /*!
      * @brief Get the disk space reported by the server.
@@ -146,7 +159,7 @@ namespace PVR
     /*!
      * @return True if this add-on has menu hooks, false otherwise.
      */
-    bool HaveMenuHooks(void) const;
+    bool HaveMenuHooks(PVR_MENUHOOK_CAT cat) const;
 
     /*!
      * @return The menu hooks for this add-on.
@@ -156,8 +169,9 @@ namespace PVR
     /*!
      * @brief Call one of the menu hooks of this client.
      * @param hook The hook to call.
+     * @param item The selected file item for which the hook was called.
      */
-    void CallMenuHook(const PVR_MENUHOOK &hook);
+    void CallMenuHook(const PVR_MENUHOOK &hook, const CFileItem *item);
 
     //@}
     /** @name PVR EPG methods */
@@ -267,6 +281,13 @@ namespace PVR
     */
     int GetRecordingLastPlayedPosition(const CPVRRecording &recording);
 
+    /*!
+    * @brief Retrieve the edit decision list (EDL) from the backend.
+    * @param recording The recording.
+    * @return The edit decision list (empty on error).
+    */
+    std::vector<PVR_EDL_ENTRY> GetRecordingEdl(const CPVRRecording &recording);
+
     //@}
     /** @name PVR timer methods */
     //@{
@@ -304,7 +325,7 @@ namespace PVR
      * @param strNewName The new name of the timer.
      * @return PVR_ERROR_NO_ERROR if the timer has been renamed successfully.
      */
-    PVR_ERROR RenameTimer(const CPVRTimerInfoTag &timer, const CStdString &strNewName);
+    PVR_ERROR RenameTimer(const CPVRTimerInfoTag &timer, const std::string &strNewName);
 
     /*!
      * @brief Update the timer information on the server.
@@ -357,6 +378,11 @@ namespace PVR
     int64_t GetStreamLength(void);
 
     /*!
+     * @brief (Un)Pause a stream
+     */
+    void PauseStream(bool bPaused);
+
+    /*!
      * @return The channel number on the server of the live stream that's currently being read.
      */
     int GetCurrentClientChannel(void);
@@ -380,7 +406,34 @@ namespace PVR
      * @param channel The channel to get the stream URL for.
      * @return The requested URL.
      */
-    CStdString GetLiveStreamURL(const CPVRChannel &channel);
+    std::string GetLiveStreamURL(const CPVRChannel &channel);
+
+    /*!
+     * @brief Check whether PVR backend supports pausing the currently playing stream
+     */
+    bool CanPauseStream(void) const;
+
+    /*!
+     * @brief Check whether PVR backend supports seeking for the currently playing stream
+     */
+    bool CanSeekStream(void) const;
+
+    /*!
+     * Notify the pvr addon/demuxer that XBMC wishes to seek the stream by time
+     * @param time The absolute time since stream start
+     * @param backwards True to seek to keyframe BEFORE time, else AFTER
+     * @param startpts can be updated to point to where display should start
+     * @return True if the seek operation was possible
+     * @remarks Optional, and only used if addon has its own demuxer. Return False if this add-on won't provide this function.
+     */
+    bool SeekTime(int time, bool backwards, double *startpts);
+
+    /*!
+     * Notify the pvr addon/demuxer that XBMC wishes to change playback speed
+     * @param speed The requested playback speed
+     * @remarks Optional, and only used if addon has its own demuxer.
+     */
+    void SetSpeed(int speed);
 
     //@}
     /** @name PVR recording stream methods */
@@ -391,7 +444,7 @@ namespace PVR
      * @param recording The recording to open.
      * @return True if the stream has been opened succesfully, false otherwise.
      */
-    bool OpenStream(const CPVRRecording &recording);
+    bool OpenStream(const CPVRRecordingPtr &recording);
 
     //@}
     /** @name PVR demultiplexer methods */
@@ -428,6 +481,7 @@ namespace PVR
     bool SupportsRecordings(void) const;
     bool SupportsRecordingFolders(void) const;
     bool SupportsRecordingPlayCount(void) const;
+    bool SupportsRecordingEdl(void) const;
     bool SupportsTimers(void) const;
     bool SupportsTV(void) const;
     bool HandlesDemuxing(void) const;
@@ -440,35 +494,24 @@ namespace PVR
     bool IsPlayingRecording(void) const;
     bool IsPlaying(void) const;
     bool GetPlayingChannel(CPVRChannelPtr &channel) const;
-    bool GetPlayingRecording(CPVRRecording &recording) const;
-
-    /*! @name Signal status methods */
-    //@{
-
-    /*!
-     * @brief Get the quality data for the live stream that is currently playing.
-     * @param status A copy of the quality data.
-     */
-    void GetQualityData(PVR_SIGNAL_STATUS *status) const;
-
-    /*!
-     * @return The current signal quality level.
-     */
-    int GetSignalLevel(void) const;
-
-    /*!
-     * @return The current signal/noise ratio.
-     */
-    int GetSNR(void) const;
-
-    /*!
-     * @brief Update the signal status for the tv stream that's currently being read.
-     */
-    void UpdateCharInfoSignalStatus(void);
-
-    //@}
+    CPVRRecordingPtr GetPlayingRecording(void) const;
 
     static const char *ToString(const PVR_ERROR error);
+
+    /*!
+     * @brief actual playing time
+     */
+    time_t GetPlayingTime() const;
+
+    /*!
+     * @brief time of oldest packet in timeshift buffer
+     */
+    time_t GetBufferTimeStart() const;
+
+    /*!
+     * @brief time of latest packet in timeshift buffer
+     */
+    time_t GetBufferTimeEnd() const;
 
   private:
     /*!
@@ -480,9 +523,18 @@ namespace PVR
     static bool IsCompatibleAPIVersion(const ADDON::AddonVersion &minVersion, const ADDON::AddonVersion &version);
 
     /*!
-     * @brief Reset the signal quality data to the initial values.
+     * @brief Checks whether the provided GUI API version is compatible with XBMC
+     * @param minVersion The add-on's XBMC_GUI_MIN_API_VERSION version
+     * @param version The add-on's XBMC_GUI_API_VERSION version
+     * @return True when compatible, false otherwise
      */
-    void ResetQualityData(PVR_SIGNAL_STATUS &qualityInfo);
+    static bool IsCompatibleGUIAPIVersion(const ADDON::AddonVersion &minVersion, const ADDON::AddonVersion &version);
+
+    /*!
+     * @brief Request the API version from the add-on, and check if it's compatible
+     * @return True when compatible, false otherwise.
+     */
+    bool CheckAPIVersion(void);
 
     /*!
      * @brief Resets all class members to their defaults. Called by the constructors.
@@ -530,22 +582,22 @@ namespace PVR
     void LogException(const std::exception &e, const char *strFunctionName) const;
 
     bool                   m_bReadyToUse;          /*!< true if this add-on is connected to the backend, false otherwise */
-    CStdString             m_strHostName;          /*!< the host name */
+    std::string            m_strHostName;          /*!< the host name */
     PVR_MENUHOOKS          m_menuhooks;            /*!< the menu hooks for this add-on */
     int                    m_iClientId;            /*!< database ID of the client */
 
     /* cached data */
-    CStdString             m_strBackendName;       /*!< the cached backend version */
+    std::string            m_strBackendName;       /*!< the cached backend version */
     bool                   m_bGotBackendName;      /*!< true if the backend name has already been fetched */
-    CStdString             m_strBackendVersion;    /*!< the cached backend version */
+    std::string            m_strBackendVersion;    /*!< the cached backend version */
     bool                   m_bGotBackendVersion;   /*!< true if the backend version has already been fetched */
-    CStdString             m_strConnectionString;  /*!< the cached connection string */
+    std::string            m_strConnectionString;  /*!< the cached connection string */
     bool                   m_bGotConnectionString; /*!< true if the connection string has already been fetched */
-    CStdString             m_strFriendlyName;      /*!< the cached friendly name */
+    std::string            m_strFriendlyName;      /*!< the cached friendly name */
     bool                   m_bGotFriendlyName;     /*!< true if the friendly name has already been fetched */
     PVR_ADDON_CAPABILITIES m_addonCapabilities;     /*!< the cached add-on capabilities */
     bool                   m_bGotAddonCapabilities; /*!< true if the add-on capabilities have already been fetched */
-    PVR_SIGNAL_STATUS      m_qualityInfo;           /*!< stream quality information */
+    std::string            m_strBackendHostname;    /*!< the cached backend hostname */
 
     /* stored strings to make sure const char* members in PVR_PROPERTIES stay valid */
     std::string m_strUserPath;    /*!< @brief translated path to the user profile */
@@ -553,10 +605,10 @@ namespace PVR
 
     CCriticalSection m_critSection;
 
-    bool           m_bIsPlayingTV;
-    CPVRChannelPtr m_playingChannel;
-    bool           m_bIsPlayingRecording;
-    CPVRRecording  m_playingRecording;
+    bool                m_bIsPlayingTV;
+    CPVRChannelPtr      m_playingChannel;
+    bool                m_bIsPlayingRecording;
+    CPVRRecordingPtr    m_playingRecording;
     ADDON::AddonVersion m_apiVersion;
   };
 }

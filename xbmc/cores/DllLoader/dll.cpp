@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -257,7 +257,7 @@ extern "C" DWORD WINAPI dllGetModuleFileNameA(HMODULE hModule, LPSTR lpFilename,
 {
   if (NULL == hModule)
   {
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
     return GetModuleFileNameA(hModule, lpFilename, nSize);
 #else
     CLog::Log(LOGDEBUG, "%s - No hModule specified", __FUNCTION__);
@@ -272,7 +272,7 @@ extern "C" DWORD WINAPI dllGetModuleFileNameA(HMODULE hModule, LPSTR lpFilename,
     return 0;
   }
 
-  char* sName = dll->GetFileName();
+  const char* sName = dll->GetFileName();
   if (sName)
   {
     strncpy(lpFilename, sName, nSize);

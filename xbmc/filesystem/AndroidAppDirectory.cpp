@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,9 @@
 #include "utils/URIUtils.h"
 #include <vector>
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 #include "URL.h"
+#include "CompileInfo.h"
 
 using namespace XFILE;
 using namespace std;
@@ -41,45 +43,40 @@ CAndroidAppDirectory::~CAndroidAppDirectory(void)
 {
 }
 
-bool CAndroidAppDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
+bool CAndroidAppDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
-  CURL url(strPath);
-  CStdString dirname = url.GetFileName();
+  std::string dirname = url.GetFileName();
   URIUtils::RemoveSlashAtEnd(dirname);
   CLog::Log(LOGDEBUG, "CAndroidAppDirectory::GetDirectory: %s",dirname.c_str()); 
+  std::string appName = CCompileInfo::GetAppName();
+  StringUtils::ToLower(appName);
+  std::string className = "org.xbmc." + appName;
+
   if (dirname == "apps")
   {
-    vector<androidPackage> applications;
-    CXBMCApp::ListApplications(&applications);
-    if (!applications.size())
+    vector<androidPackage> applications = CXBMCApp::GetApplications();
+    if (applications.empty())
     {
       CLog::Log(LOGERROR, "CAndroidAppDirectory::GetDirectory Application lookup listing failed");
       return false;
     }
-    for(unsigned int i = 0; i < applications.size(); i++)
+    for(std::vector<androidPackage>::iterator i = applications.begin(); i != applications.end(); ++i)
     {
-      if (applications[i].packageName == "org.xbmc.xbmc")
+      if ((*i).packageName == className.c_str())
         continue;
-      CFileItemPtr pItem(new CFileItem(applications[i].packageName));
+      CFileItemPtr pItem(new CFileItem((*i).packageName));
       pItem->m_bIsFolder = false;
-      CStdString path;
-      path.Format("androidapp://%s/%s/%s", url.GetHostName(), dirname,  applications[i].packageName);
+      std::string path = StringUtils::Format("androidapp://%s/%s/%s", url.GetHostName().c_str(), dirname.c_str(), (*i).packageName.c_str());
       pItem->SetPath(path);
-      pItem->SetLabel(applications[i].packageLabel);
-      pItem->SetThumbnailImage(path+".png");
+      pItem->SetLabel((*i).packageLabel);
+      pItem->SetArt("thumb", path+".png");
       items.Add(pItem);
     }
     return true;
   }
 
-  CLog::Log(LOGERROR, "CAndroidAppDirectory::GetDirectory Failed to open %s",strPath.c_str());
+  CLog::Log(LOGERROR, "CAndroidAppDirectory::GetDirectory Failed to open %s", url.Get().c_str());
   return false;
-}
-
-bool CAndroidAppDirectory::IsAllowed(const CStdString& strFile) const
-{
-  // Entries are virtual, so we want them all.
-  return true;
 }
 
 #endif

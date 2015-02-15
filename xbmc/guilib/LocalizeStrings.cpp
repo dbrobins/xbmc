@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,8 @@
 #include "utils/URIUtils.h"
 #include "utils/POUtils.h"
 #include "filesystem/Directory.h"
+#include "threads/SingleLock.h"
+#include "utils/StringUtils.h"
 
 CLocalizeStrings::CLocalizeStrings(void)
 {
@@ -38,13 +40,13 @@ CLocalizeStrings::~CLocalizeStrings(void)
 
 }
 
-CStdString CLocalizeStrings::ToUTF8(const CStdString& strEncoding, const CStdString& str)
+std::string CLocalizeStrings::ToUTF8(const std::string& strEncoding, const std::string& str)
 {
-  if (strEncoding.IsEmpty())
+  if (strEncoding.empty())
     return str;
 
-  CStdString ret;
-  g_charsetConverter.stringCharsetToUtf8(strEncoding, str, ret);
+  std::string ret;
+  g_charsetConverter.ToUtf8(strEncoding, str, ret);
   return ret;
 }
 
@@ -54,28 +56,28 @@ void CLocalizeStrings::ClearSkinStrings()
   Clear(31000, 31999);
 }
 
-bool CLocalizeStrings::LoadSkinStrings(const CStdString& path, const CStdString& language)
+bool CLocalizeStrings::LoadSkinStrings(const std::string& path, const std::string& language)
 {
   ClearSkinStrings();
   // load the skin strings in.
-  CStdString encoding;
+  std::string encoding;
   if (!LoadStr2Mem(path, language, encoding))
   {
-    if (language.Equals(SOURCE_LANGUAGE)) // no fallback, nothing to do
+    if (StringUtils::EqualsNoCase(language, SOURCE_LANGUAGE)) // no fallback, nothing to do
       return false;
   }
 
   // load the fallback
-  if (!language.Equals(SOURCE_LANGUAGE))
+  if (!StringUtils::EqualsNoCase(language, SOURCE_LANGUAGE))
     LoadStr2Mem(path, SOURCE_LANGUAGE, encoding);
 
   return true;
 }
 
-bool CLocalizeStrings::LoadStr2Mem(const CStdString &pathname_in, const CStdString &language,
-                                   CStdString &encoding, uint32_t offset /* = 0 */)
+bool CLocalizeStrings::LoadStr2Mem(const std::string &pathname_in, const std::string &language,
+                                   std::string &encoding, uint32_t offset /* = 0 */)
 {
-  CStdString pathname = CSpecialProtocol::TranslatePathConvertCase(pathname_in + language);
+  std::string pathname = CSpecialProtocol::TranslatePathConvertCase(pathname_in + language);
   if (!XFILE::CDirectory::Exists(pathname))
   {
     CLog::Log(LOGDEBUG,
@@ -85,7 +87,7 @@ bool CLocalizeStrings::LoadStr2Mem(const CStdString &pathname_in, const CStdStri
   }
 
   if (LoadPO(URIUtils::AddFileToFolder(pathname, "strings.po"), encoding, offset,
-      language.Equals(SOURCE_LANGUAGE)))
+             StringUtils::EqualsNoCase(language, SOURCE_LANGUAGE)))
     return true;
 
   CLog::Log(LOGDEBUG, "LocalizeStrings: no strings.po file exist at %s, fallback to strings.xml",
@@ -93,7 +95,7 @@ bool CLocalizeStrings::LoadStr2Mem(const CStdString &pathname_in, const CStdStri
   return LoadXML(URIUtils::AddFileToFolder(pathname, "strings.xml"), encoding, offset);
 }
 
-bool CLocalizeStrings::LoadPO(const CStdString &filename, CStdString &encoding,
+bool CLocalizeStrings::LoadPO(const std::string &filename, std::string &encoding,
                               uint32_t offset /* = 0 */, bool bSourceLanguage)
 {
   CPODocument PODoc;
@@ -112,7 +114,7 @@ bool CLocalizeStrings::LoadPO(const CStdString &filename, CStdString &encoding,
 
       if (bSourceLanguage && !PODoc.GetMsgid().empty())
       {
-        if (bStrInMem && (m_strings[id + offset].strOriginal.IsEmpty() ||
+        if (bStrInMem && (m_strings[id + offset].strOriginal.empty() ||
             PODoc.GetMsgid() == m_strings[id + offset].strOriginal))
           continue;
         else if (bStrInMem)
@@ -148,7 +150,7 @@ bool CLocalizeStrings::LoadPO(const CStdString &filename, CStdString &encoding,
   return true;
 }
 
-bool CLocalizeStrings::LoadXML(const CStdString &filename, CStdString &encoding, uint32_t offset /* = 0 */)
+bool CLocalizeStrings::LoadXML(const std::string &filename, std::string &encoding, uint32_t offset /* = 0 */)
 {
   CXBMCTinyXML xmlDoc;
   if (!xmlDoc.LoadFile(filename))
@@ -157,11 +159,9 @@ bool CLocalizeStrings::LoadXML(const CStdString &filename, CStdString &encoding,
     return false;
   }
 
-  XMLUtils::GetEncoding(&xmlDoc, encoding);
-
   TiXmlElement* pRootElement = xmlDoc.RootElement();
   if (!pRootElement || pRootElement->NoChildren() ||
-       pRootElement->ValueStr()!=CStdString("strings"))
+       pRootElement->ValueStr()!="strings")
   {
     CLog::Log(LOGERROR, "%s Doesn't contain <strings>", filename.c_str());
     return false;
@@ -174,20 +174,21 @@ bool CLocalizeStrings::LoadXML(const CStdString &filename, CStdString &encoding,
     const char* attrId=pChild->Attribute("id");
     if (attrId && !pChild->NoChildren())
     {
-      int id = atoi(attrId) + offset;
+      uint32_t id = atoi(attrId) + offset;
       if (m_strings.find(id) == m_strings.end())
-        m_strings[id].strTranslated = ToUTF8(encoding, pChild->FirstChild()->Value());
+        m_strings[id].strTranslated = pChild->FirstChild()->Value();
     }
     pChild = pChild->NextSiblingElement("string");
   }
   return true;
 }
 
-bool CLocalizeStrings::Load(const CStdString& strPathName, const CStdString& strLanguage)
+bool CLocalizeStrings::Load(const std::string& strPathName, const std::string& strLanguage)
 {
-  bool bLoadFallback = !strLanguage.Equals(SOURCE_LANGUAGE);
+  bool bLoadFallback = !StringUtils::EqualsNoCase(strLanguage, SOURCE_LANGUAGE);
 
-  CStdString encoding;
+  std::string encoding;
+  CSingleLock lock(m_critSection);
   Clear();
 
   if (!LoadStr2Mem(strPathName, strLanguage, encoding))
@@ -229,14 +230,12 @@ bool CLocalizeStrings::Load(const CStdString& strPathName, const CStdString& str
   return true;
 }
 
-static CStdString szEmptyString = "";
-
-const CStdString& CLocalizeStrings::Get(uint32_t dwCode) const
+const std::string& CLocalizeStrings::Get(uint32_t dwCode) const
 {
   ciStrings i = m_strings.find(dwCode);
   if (i == m_strings.end())
   {
-    return szEmptyString;
+    return StringUtils::Empty;
   }
   return i->second.strTranslated;
 }
@@ -256,44 +255,4 @@ void CLocalizeStrings::Clear(uint32_t start, uint32_t end)
     else
       ++it;
   }
-}
-
-uint32_t CLocalizeStrings::LoadBlock(const CStdString &id, const CStdString &path, const CStdString &language)
-{
-  iBlocks it = m_blocks.find(id);
-  if (it != m_blocks.end())
-    return it->second;  // already loaded
-
-  // grab a new block
-  uint32_t offset = block_start + m_blocks.size()*block_size;
-  m_blocks.insert(make_pair(id, offset));
-
-  // load the strings
-  CStdString encoding;
-  bool success = LoadStr2Mem(path, language, encoding, offset);
-  if (!success)
-  {
-    if (language.Equals(SOURCE_LANGUAGE)) // no fallback, nothing to do
-      return 0;
-  }
-
-  // load the fallback
-  if (!language.Equals(SOURCE_LANGUAGE))
-    success |= LoadStr2Mem(path, SOURCE_LANGUAGE, encoding, offset);
-
-  return success ? offset : 0;
-}
-
-void CLocalizeStrings::ClearBlock(const CStdString &id)
-{
-  iBlocks it = m_blocks.find(id);
-  if (it == m_blocks.end())
-  {
-    CLog::Log(LOGERROR, "%s: Trying to clear non existent block %s", __FUNCTION__, id.c_str());
-    return; // doesn't exist
-  }
-
-  // clear our block
-  Clear(it->second, it->second + block_size);
-  m_blocks.erase(it);
 }

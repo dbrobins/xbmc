@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,16 +20,22 @@
  *
  */
 
+#include <vector>
+
 #include "guilib/Resolution.h"
 #include "guilib/Geometry.h"
 #include "RenderFormats.h"
+#include "RenderFeatures.h"
 
 #define MAX_PLANES 3
 #define MAX_FIELDS 3
+#define NUM_BUFFERS 6
+
+class CSetting;
 
 typedef struct YV12Image
 {
-  BYTE *   plane[MAX_PLANES];
+  uint8_t* plane[MAX_PLANES];
   int      planesize[MAX_PLANES];
   unsigned stride[MAX_PLANES];
   unsigned width;
@@ -48,18 +54,21 @@ enum EFIELDSYNC
   FS_BOT
 };
 
-enum ERENDERFEATURE
+// Render Methods
+enum RenderMethods
 {
-  RENDERFEATURE_GAMMA,
-  RENDERFEATURE_BRIGHTNESS,
-  RENDERFEATURE_CONTRAST,
-  RENDERFEATURE_NOISE,
-  RENDERFEATURE_SHARPNESS,
-  RENDERFEATURE_NONLINSTRETCH,
-  RENDERFEATURE_ROTATION
+  RENDER_METHOD_AUTO     = 0,
+  RENDER_METHOD_ARB,
+  RENDER_METHOD_GLSL,
+  RENDER_METHOD_SOFTWARE,
+  RENDER_METHOD_D3D_PS,
+  RENDER_METHOD_DXVA,
+  RENDER_METHOD_DXVAHD,
+  RENDER_OVERLAYS        = 99   // to retain compatibility
 };
 
 typedef void (*RenderUpdateCallBackFn)(const void *ctx, const CRect &SrcRect, const CRect &DestRect);
+typedef void (*RenderFeaturesCallBackFn)(const void *ctx, Features &renderFeatures);
 
 struct DVDVideoPicture;
 
@@ -74,10 +83,18 @@ public:
   void GetVideoRect(CRect &source, CRect &dest);
   float GetAspectRatio() const;
 
-  virtual bool AddVideoPicture(DVDVideoPicture* picture) { return false; }
+  virtual bool AddVideoPicture(DVDVideoPicture* picture, int index) { return false; }
   virtual void Flush() {};
 
-  virtual unsigned int GetProcessorSize() { return 0; }
+  /**
+   * Returns number of references a single buffer can retain when rendering a single frame
+   */
+  virtual unsigned int GetOptimalBufferSize() { return 0; }
+  virtual unsigned int GetMaxBufferSize() { return 0; }
+  virtual void         SetBufferSize(int numBuffers) { }
+  virtual void         ReleaseBuffer(int idx) { }
+  virtual bool         NeedBufferForRef(int idx) { return false; }
+  virtual bool         IsGuiLayer() { return true; }
 
   virtual bool Supports(ERENDERFEATURE feature) { return false; }
 
@@ -85,13 +102,16 @@ public:
   std::vector<ERenderFormat> SupportedFormats()  { return std::vector<ERenderFormat>(); }
 
   virtual void RegisterRenderUpdateCallBack(const void *ctx, RenderUpdateCallBackFn fn);
+  virtual void RegisterRenderFeaturesCallBack(const void *ctx, RenderFeaturesCallBackFn fn);
+
+  static void SettingOptionsRenderMethodsFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
 
 protected:
   void       ChooseBestResolution(float fps);
   bool       FindResolutionFromOverride(float fps, float& weight, bool fallback);
   void       FindResolutionFromFpsMatch(float fps, float& weight);
   RESOLUTION FindClosestResolution(float fps, float multiplier, RESOLUTION current, float& weight);
-  float      RefreshWeight(float refresh, float fps);
+  static float      RefreshWeight(float refresh, float fps);
   void       CalcNormalDisplayRect(float offsetX, float offsetY, float screenWidth, float screenHeight, float inputFrameRatio, float zoomAmount, float verticalShift);
   void       CalculateFrameAspectRatio(unsigned int desired_width, unsigned int desired_height);
   void       ManageDisplay();
@@ -100,6 +120,7 @@ protected:
   void       saveRotatedCoords();//saves the current state of m_rotatedDestCoords
   void       syncDestRectToRotatedPoints();//sync any changes of m_destRect to m_rotatedDestCoords
   void       restoreRotatedCoords();//restore the current state of m_rotatedDestCoords from saveRotatedCoords 
+  void       MarkDirty();
 
   RESOLUTION m_resolution;    // the resolution we're running in
   unsigned int m_sourceWidth;
@@ -121,7 +142,11 @@ protected:
 
   // rendering flags
   unsigned m_iFlags;
+  ERenderFormat m_format;
 
   const void* m_RenderUpdateCallBackCtx;
   RenderUpdateCallBackFn m_RenderUpdateCallBackFn;
+
+  const void* m_RenderFeaturesCallBackCtx;
+  RenderFeaturesCallBackFn m_RenderFeaturesCallBackFn;
 };

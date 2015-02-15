@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
  *
  */
 
+#include <algorithm>
 #include "threads/SystemClock.h"
 #include "DVDMessage.h"
 #include "DVDDemuxers/DVDDemuxUtils.h"
@@ -57,7 +58,7 @@ CDVDMsgGeneralSynchronize::~CDVDMsgGeneralSynchronize()
   delete m_p;
 }
 
-bool CDVDMsgGeneralSynchronize::Wait(unsigned long milliseconds, unsigned int source)
+bool CDVDMsgGeneralSynchronize::Wait(unsigned int milliseconds, unsigned int source)
 {
   if(source == 0)
     source = SYNCSOURCE_OWNER;

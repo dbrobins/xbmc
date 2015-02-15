@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -31,7 +31,7 @@
 
 CRemoteControl g_RemoteControl;
 
-CRemoteControl::CRemoteControl() : CThread("CRemoteControl")
+CRemoteControl::CRemoteControl() : CThread("RemoteControl")
 {
   m_socket = INVALID_SOCKET;
   m_bInitialized = false;

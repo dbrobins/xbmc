@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include "FileItem.h"
 #include "utils/CharsetConverter.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 
 #include <zip.h>
@@ -33,19 +34,14 @@ using namespace XFILE;
 // Basically the same format as zip.
 // We might want to refactor CZipDirectory someday...
 //////////////////////////////////////////////////////////////////////
-bool CAPKDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
+bool CAPKDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
   // uses a <fully qualified path>/filename.apk/...
-  CURL url(strPath);
-
-  CStdString path = url.GetFileName();
-  CStdString host = url.GetHostName();
+  std::string path = url.GetFileName();
+  std::string host = url.GetHostName();
   URIUtils::AddSlashAtEnd(path);
 
-  // host name might be encoded rfc1738.txt, decode it.
-  CURL::Decode(host);
-
-  int zip_flags = 0, zip_error = 0, dir_marker = 0;
+  int zip_flags = 0, zip_error = 0;
   struct zip *zip_archive;
   zip_archive = zip_open(host.c_str(), zip_flags, &zip_error);
   if (!zip_archive || zip_error)
@@ -55,25 +51,25 @@ bool CAPKDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
     return false;
   }
 
-  CStdString test_name;
+  std::string test_name;
   int numFiles = zip_get_num_files(zip_archive);
   for (int zip_index = 0; zip_index < numFiles; zip_index++)
   {
     test_name = zip_get_name(zip_archive, zip_index, zip_flags);
 
     // check for non matching path.
-    if (!test_name.Left(path.size()).Equals(path))
+    if (!StringUtils::StartsWith(test_name, path))
       continue;
 
     // libzip does not index folders, only filenames. We search for a /,
     // add it if it's not in our list already, and hope that no one has
     // any "file/name.exe" files in a zip.
 
-    dir_marker = test_name.Find('/', path.size() + 1);
-    if (dir_marker > 0)
+    size_t dir_marker = test_name.find('/', path.size() + 1);
+    if (dir_marker != std::string::npos)
     {
       // return items relative to path
-      test_name=test_name.Left(dir_marker);
+      test_name=test_name.substr(0, dir_marker);
 
       if (items.Contains(host + "/" + test_name))
         continue;
@@ -89,7 +85,7 @@ bool CAPKDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
       pItem->m_dateTime  = sb.mtime;    
       pItem->m_bIsFolder = dir_marker > 0 ;
       pItem->SetPath(host + "/" + test_name);
-      pItem->SetLabel(test_name.Right(test_name.size() - path.size()));
+      pItem->SetLabel(test_name.substr(path.size()));
       items.Add(pItem);      
     }
   }
@@ -98,21 +94,20 @@ bool CAPKDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
   return true;
 }
 
-bool CAPKDirectory::ContainsFiles(const CStdString& strPath)
+bool CAPKDirectory::ContainsFiles(const CURL& url)
 {
   // TODO: why might we need this ?
   return false;
 }
 
-DIR_CACHE_TYPE CAPKDirectory::GetCacheType(const CStdString& strPath) const
+DIR_CACHE_TYPE CAPKDirectory::GetCacheType(const CURL& url) const
 {
   return DIR_CACHE_ALWAYS;
 }
 
-bool CAPKDirectory::Exists(const char* strPath)
+bool CAPKDirectory::Exists(const CURL& url)
 {
   // uses a <fully qualified path>/filename.apk/...
   CAPKFile apk;
-  CURL url(strPath);
   return apk.Exists(url);
 }

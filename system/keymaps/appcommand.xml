@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <keymap>
   <global>
     <appcommand>
@@ -14,9 +15,9 @@
       <next_track>SkipNext</next_track>
       <prev_track>SkipPrevious</prev_track>
       <stop>Stop</stop>
-      <play_pause>Play</play_pause>
+      <play_pause>PlayPause</play_pause>
       <launch_mail/>
-      <launch_media_select>XBMC.ActivateWindow(MyMusic)</launch_media_select>
+      <launch_media_select>ActivateWindow(MyMusic)</launch_media_select>
       <launch_app1>ActivateWindow(MyPrograms)</launch_app1>
       <launch_app2>ActivateWindow(MyPrograms)</launch_app2>
       <play>Play</play>

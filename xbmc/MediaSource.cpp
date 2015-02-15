@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,21 +24,22 @@
 #include "URL.h"
 #include "filesystem/MultiPathDirectory.h"
 #include "utils/URIUtils.h"
+#include "utils/StringUtils.h"
 
 using namespace std;
 using namespace XFILE;
 
 bool CMediaSource::IsWritable() const
 {
-  return CUtil::SupportsFileOperations(strPath);
+  return CUtil::SupportsWriteFileOperations(strPath);
 }
 
-void CMediaSource::FromNameAndPaths(const CStdString &category, const CStdString &name, const vector<CStdString> &paths)
+void CMediaSource::FromNameAndPaths(const std::string &category, const std::string &name, const vector<string> &paths)
 {
   vecPaths = paths;
   if (paths.size() == 0)
   { // no paths - return
-    strPath.Empty();
+    strPath.clear();
   }
   else if (paths.size() == 1)
   { // only one valid path? make it the strPath
@@ -54,10 +55,11 @@ void CMediaSource::FromNameAndPaths(const CStdString &category, const CStdString
   m_strLockCode = "0";
   m_iBadPwdCount = 0;
   m_iHasLock = 0;
+  m_allowSharing = true;
 
   if (URIUtils::IsMultiPath(strPath))
     m_iDriveType = SOURCE_TYPE_VPATH;
-  else if (strPath.Left(4).Equals("udf:"))
+  else if (StringUtils::StartsWithNoCase(strPath, "udf:"))
   {
     m_iDriveType = SOURCE_TYPE_VIRTUAL_DVD;
     strPath = "D:\\";
@@ -74,7 +76,6 @@ void CMediaSource::FromNameAndPaths(const CStdString &category, const CStdString
     m_iDriveType = SOURCE_TYPE_UNKNOWN;
   // check - convert to url and back again to make sure strPath is accurate
   // in terms of what we expect
-  URIUtils::AddSlashAtEnd(strPath);
   strPath = CURL(strPath).Get();
 }
 
@@ -96,7 +97,7 @@ void AddOrReplace(VECSOURCES& sources, const VECSOURCES& extras)
     unsigned int j;
     for ( j=0;j<sources.size();++j)
     {
-      if (sources[j].strPath.Equals(extras[i].strPath))
+      if (StringUtils::EqualsNoCase(sources[j].strPath, extras[i].strPath))
       {
         sources[j] = extras[i];
         break;
@@ -112,7 +113,7 @@ void AddOrReplace(VECSOURCES& sources, const CMediaSource& source)
   unsigned int i;
   for( i=0;i<sources.size();++i )
   {
-    if (sources[i].strPath.Equals(source.strPath))
+    if (StringUtils::EqualsNoCase(sources[i].strPath, source.strPath))
     {
       sources[i] = source;
       break;

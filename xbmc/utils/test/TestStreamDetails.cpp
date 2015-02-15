@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ TEST(TestStreamDetails, General)
   video->m_fAspect = 2.39f;
   video->m_iDuration = 30;
   video->m_strCodec = "h264";
+  video->m_strStereoMode = "left_right";
 
   audio->m_iChannels = 2;
   audio->m_strCodec = "aac";
@@ -53,6 +54,7 @@ TEST(TestStreamDetails, General)
   EXPECT_EQ(0, a.GetVideoWidth());
   EXPECT_EQ(0, a.GetVideoHeight());
   EXPECT_EQ(0, a.GetVideoDuration());
+  EXPECT_STREQ("", a.GetStereoMode().c_str());
 
   EXPECT_EQ(1, a.GetStreamCount(CStreamDetail::AUDIO));
   EXPECT_EQ(1, a.GetAudioStreamCount());
@@ -70,15 +72,16 @@ TEST(TestStreamDetails, General)
   EXPECT_EQ(1920, a.GetVideoWidth());
   EXPECT_EQ(1080, a.GetVideoHeight());
   EXPECT_EQ(30, a.GetVideoDuration());
+  EXPECT_STREQ("left_right", a.GetStereoMode().c_str());
 }
 
 TEST(TestStreamDetails, VideoDimsToResolutionDescription)
 {
   EXPECT_STREQ("1080",
-               CStreamDetails::VideoDimsToResolutionDescription(1920, 1080));
+               CStreamDetails::VideoDimsToResolutionDescription(1920, 1080).c_str());
 }
 
 TEST(TestStreamDetails, VideoAspectToAspectDescription)
 {
-  EXPECT_STREQ("2.35", CStreamDetails::VideoAspectToAspectDescription(2.39f));
+  EXPECT_STREQ("2.40", CStreamDetails::VideoAspectToAspectDescription(2.39f).c_str());
 }

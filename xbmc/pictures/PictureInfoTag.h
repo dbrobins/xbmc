@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,8 +21,9 @@
 
 #include "utils/ISerializable.h"
 #include "utils/ISortable.h"
-#include "utils/Archive.h"
+#include "utils/IArchivable.h"
 #include "DllLibExif.h"
+#include "XBDateTime.h"
 
 #define SLIDE_FILE_NAME             900         // Note that not all image tags will be present for each image
 #define SLIDE_FILE_PATH             901
@@ -34,6 +35,8 @@
 #define SLIDE_COLOUR                907
 #define SLIDE_PROCESS               908
 
+#define SLIDE_EXIF_LONG_DATE        917
+#define SLIDE_EXIF_LONG_DATE_TIME   918
 #define SLIDE_EXIF_DATE             919 /* Implementation only to just get
                                            localized date */
 #define SLIDE_EXIF_DATE_TIME        920
@@ -61,6 +64,9 @@
 #define SLIDE_EXIF_GPS_ALTITUDE     942
 #define SLIDE_EXIF_ORIENTATION      943
 
+#define SLIDE_IPTC_SUBLOCATION      957
+#define SLIDE_IPTC_IMAGETYPE        958
+#define SLIDE_IPTC_TIMECREATED      959
 #define SLIDE_IPTC_SUP_CATEGORIES   960
 #define SLIDE_IPTC_KEYWORDS         961
 #define SLIDE_IPTC_CAPTION          962
@@ -79,7 +85,7 @@
 #define SLIDE_IPTC_COUNTRY          975
 #define SLIDE_IPTC_TX_REFERENCE     976
 #define SLIDE_IPTC_DATE             977
-#define SLIDE_IPTC_COPYRIGHT        978
+#define SLIDE_IPTC_URGENCY          978
 #define SLIDE_IPTC_COUNTRY_CODE     979
 #define SLIDE_IPTC_REF_SERVICE      980
 
@@ -90,22 +96,31 @@ public:
   void Reset();
   virtual void Archive(CArchive& ar);
   virtual void Serialize(CVariant& value) const;
-  virtual void ToSortable(SortItem& sortable);
+  virtual void ToSortable(SortItem& sortable, Field field) const;
   const CPictureInfoTag& operator=(const CPictureInfoTag& item);
-  const CStdString GetInfo(int info) const;
+  const std::string GetInfo(int info) const;
 
   bool Loaded() const { return m_isLoaded; };
-  bool Load(const CStdString &path);
+  bool Load(const std::string &path);
 
-  static int TranslateString(const CStdString &info);
+  static int TranslateString(const std::string &info);
 
-  void SetInfo(int info, const CStdString& value);
-  void SetLoaded(bool loaded = true);
+  void SetInfo(int info, const std::string& value);
 
+  /**
+   * GetDateTimeTaken() -- Returns the EXIF DateTimeOriginal for current picture
+   * 
+   * The exif library returns DateTimeOriginal if available else the other
+   * DateTime tags. See libexif CExifParse::ProcessDir for details.
+   */
+  const CDateTime& GetDateTimeTaken() const;
 private:
   void GetStringFromArchive(CArchive &ar, char *string, size_t length);
   ExifInfo_t m_exifInfo;
   IPTCInfo_t m_iptcInfo;
-  bool       m_isLoaded;
+  bool       m_isLoaded;             // Set to true if metadata has been loaded from the picture file successfully
+  bool       m_isInfoSetExternally;  // Set to true if metadata has been set by an external call to SetInfo
+  CDateTime  m_dateTimeTaken;
+  void ConvertDateTime();
 };
 

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,9 +22,10 @@
 
 #include "guilib/GUIKeyboard.h"
 #include "guilib/GUIDialog.h"
+#include "input/KeyboardLayout.h"
 #include "utils/Variant.h"
 
-enum KEYBOARD {CAPS, LOWER, SYMBOLS };
+enum KEYBOARD {CAPS, LOWER, SYMBOLS};
 
 class CGUIDialogKeyboardGeneric : public CGUIDialog, public CGUIKeyboard
 {
@@ -33,53 +34,48 @@ class CGUIDialogKeyboardGeneric : public CGUIDialog, public CGUIKeyboard
 
     //CGUIKeyboard Interface
     virtual bool ShowAndGetInput(char_callback_t pCallback, const std::string &initialString, std::string &typedString, const std::string &heading, bool bHiddenInput);
+    virtual void Cancel();
     virtual int GetWindowId() const;
 
-    //CGUIDialog Interface
-    virtual void FrameMove();
     void SetHeading(const std::string& heading);
-    void SetText(const CStdString& aTextString);
-    CStdString GetText() const;
+    void SetText(const std::string& text);
+    const std::string &GetText() const;
     bool IsConfirmed() { return m_bIsConfirmed; };
     void SetHiddenInput(bool hiddenInput) { m_hiddenInput = hiddenInput; };
-    void Character(WCHAR wch);
 
   protected:
+    virtual void OnWindowLoaded();
     virtual void OnInitWindow();
     virtual bool OnAction(const CAction &action);
     virtual bool OnMessage(CGUIMessage& message);
     virtual void OnDeinitWindow(int nextWindowID);
-    void SetControlLabel(int id, const CStdString &label);
+    void SetControlLabel(int id, const std::string &label);
     void OnShift();
     void MoveCursor(int iAmount);
-    int GetCursorPos() const;
+    void OnLayout();
     void OnSymbols();
     void OnIPAddress();
     void OnOK();
 
   private:
     void OnClickButton(int iButtonControl);
-    void OnRemoteNumberClick(int key);
     void UpdateButtons();
     char GetCharacter(int iButton);
-    void UpdateLabel();
-    void ResetShiftAndSymbols();
+    void Character(const std::string &ch);
     void Backspace();
+    void SetEditText(const std::string& text);
     void SendSearchMessage();
 
-    CStdStringW m_strEdit;
     bool m_bIsConfirmed;
     KEYBOARD m_keyType;
-    int m_iMode;
     bool m_bShift;
     bool m_hiddenInput;
 
-    unsigned int m_lastRemoteClickTime;
-    WORD m_lastRemoteKeyClicked;
-    int m_indexInSeries;
-    std::string m_strHeading;
-    static const char* s_charsSeries[10];
+    std::vector<CKeyboardLayout> m_layouts;
+    unsigned int                 m_currentLayout;
 
+    std::string m_strHeading;
+    std::string m_text;       ///< current text
 
     char_callback_t m_pCharCallback;
 };

@@ -9,8 +9,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,19 +30,21 @@
 
 #include "GraphicContext.h"
 #include "IMsgTargetCallback.h"
+#include "utils/GlobalsHandling.h"
 
 // Forward
 class CGUIFont;
 class CGUIFontTTFBase;
 class CXBMCTinyXML;
 class TiXmlNode;
+class CSetting;
 
 struct OrigFontInfo
 {
    int size;
    float aspect;
-   CStdString fontFilePath;
-   CStdString fileName;
+   std::string fontFilePath;
+   std::string fileName;
    RESOLUTION_INFO sourceRes;
    bool preserveAspect;
    bool border;
@@ -60,10 +62,10 @@ public:
 
   virtual bool OnMessage(CGUIMessage &message);
 
-  void Unload(const CStdString& strFontName);
-  void LoadFonts(const CStdString& strFontSet);
-  CGUIFont* LoadTTF(const CStdString& strFontName, const CStdString& strFilename, color_t textColor, color_t shadowColor, const int iSize, const int iStyle, bool border = false, float lineSpacing = 1.0f, float aspect = 1.0f, const RESOLUTION_INFO *res = NULL, bool preserveAspect = false);
-  CGUIFont* GetFont(const CStdString& strFontName, bool fallback = true);
+  void Unload(const std::string& strFontName);
+  void LoadFonts(const std::string &fontSet);
+  CGUIFont* LoadTTF(const std::string& strFontName, const std::string& strFilename, color_t textColor, color_t shadowColor, const int iSize, const int iStyle, bool border = false, float lineSpacing = 1.0f, float aspect = 1.0f, const RESOLUTION_INFO *res = NULL, bool preserveAspect = false);
+  CGUIFont* GetFont(const std::string& strFontName, bool fallback = true);
 
   /*! \brief return a default font
    \param border whether the font should be a font with an outline
@@ -74,21 +76,18 @@ public:
   void Clear();
   void FreeFontFile(CGUIFontTTFBase *pFont);
 
-  bool IsFontSetUnicode() { return m_fontsetUnicode; }
-  bool IsFontSetUnicode(const CStdString& strFontSet);
-  bool GetFirstFontSetUnicode(CStdString& strFontSet);
+  static void SettingOptionsFontsFiller(const CSetting *setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
 
 protected:
-  void RescaleFontSizeAndAspect(float *size, float *aspect, const RESOLUTION_INFO &sourceRes, bool preserveAspect) const;
   void ReloadTTFFonts();
+  static void RescaleFontSizeAndAspect(float *size, float *aspect, const RESOLUTION_INFO &sourceRes, bool preserveAspect);
   void LoadFonts(const TiXmlNode* fontNode);
-  CGUIFontTTFBase* GetFontFile(const CStdString& strFontFile);
-  bool OpenFontFile(CXBMCTinyXML& xmlDoc);
+  CGUIFontTTFBase* GetFontFile(const std::string& strFontFile);
+  static void GetStyle(const TiXmlNode *fontNode, int &iStyle);
 
   std::vector<CGUIFont*> m_vecFonts;
   std::vector<CGUIFontTTFBase*> m_vecFontFiles;
   std::vector<OrigFontInfo> m_vecFontInfo;
-  bool m_fontsetUnicode;
   RESOLUTION_INFO m_skinResolution;
   bool m_canReload;
 };
@@ -97,5 +96,6 @@ protected:
  \ingroup textures
  \brief
  */
-extern GUIFontManager g_fontManager;
+XBMC_GLOBAL_REF(GUIFontManager, g_fontManager);
+#define g_fontManager XBMC_GLOBAL_USE(GUIFontManager)
 #endif

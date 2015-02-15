@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include "Episode.h"
 #include "XBDateTime.h"
 #include "filesystem/CurlFile.h"
+#include <string>
 
 // forward declarations
 class CXBMCTinyXML;
@@ -52,10 +53,10 @@ public:
    \param pProgress progress bar to update as we go. If NULL we run on thread, if non-NULL we run off thread.
    \return 1 on success, -1 on a scraper-specific error, 0 on some other error
    */
-  int FindMovie(const CStdString& strMovie, MOVIELIST& movielist, CGUIDialogProgress *pProgress = NULL);
+  int FindMovie(const std::string& strMovie, MOVIELIST& movielist, CGUIDialogProgress *pProgress = NULL);
   bool GetDetails(const CScraperUrl& url, CVideoInfoTag &movieDetails, CGUIDialogProgress *pProgress = NULL);
   bool GetEpisodeDetails(const CScraperUrl& url, CVideoInfoTag &movieDetails, CGUIDialogProgress *pProgress = NULL);
-  bool GetEpisodeList(const CScraperUrl& url, EPISODELIST& details, CGUIDialogProgress *pProgress = NULL);
+  bool GetEpisodeList(const CScraperUrl& url, VIDEO::EPISODELIST& details, CGUIDialogProgress *pProgress = NULL);
 
   static void ShowErrorDialog(const ADDON::CScraperError &sce);
 
@@ -66,20 +67,20 @@ protected:
                       GET_EPISODE_LIST = 3,
                       GET_EPISODE_DETAILS = 4 };
 
-  XFILE::CCurlFile* m_http;
-  CStdString        m_strMovie;
-  MOVIELIST         m_movieList;
-  CVideoInfoTag     m_movieDetails;
-  CScraperUrl       m_url;
-  EPISODELIST       m_episode;
-  LOOKUP_STATE      m_state;
-  int               m_found;
-  ADDON::ScraperPtr m_info;
+  XFILE::CCurlFile*   m_http;
+  std::string          m_strMovie;
+  MOVIELIST           m_movieList;
+  CVideoInfoTag       m_movieDetails;
+  CScraperUrl         m_url;
+  VIDEO::EPISODELIST  m_episode;
+  LOOKUP_STATE        m_state;
+  int                 m_found;
+  ADDON::ScraperPtr   m_info;
 
   // threaded stuff
   void Process();
   void CloseThread();
 
-  int InternalFindMovie(const CStdString& strMovie, MOVIELIST& movielist, bool cleanChars = true);
+  int InternalFindMovie(const std::string& strMovie, MOVIELIST& movielist, bool cleanChars = true);
 };
 

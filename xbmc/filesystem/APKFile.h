@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ namespace XFILE
     virtual bool Exists(const CURL& url);
 
     virtual int64_t Seek(int64_t iFilePosition, int iWhence = SEEK_SET);
-    virtual unsigned int Read(void* lpBuf, int64_t uiBufSize);
+    virtual ssize_t Read(void* lpBuf, size_t uiBufSize);
     virtual int Stat(struct __stat64* buffer);
     virtual int Stat(const CURL& url, struct __stat64* buffer);
     virtual int64_t GetLength();

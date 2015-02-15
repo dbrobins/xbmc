@@ -1,7 +1,7 @@
 #pragma once
 /*
-*      Copyright (C) 2005-2012 Team XBMC
-*      http://www.xbmc.org
+*      Copyright (C) 2005-2013 Team XBMC
+*      http://xbmc.org
 *
 *  This Program is free software; you can redistribute it and/or modify
 *  it under the terms of the GNU General Public License as published by
@@ -18,13 +18,12 @@
 *  <http://www.gnu.org/licenses/>.
 *
 */
-#include "boost/shared_ptr.hpp"
-#include "utils/StdString.h"
+#include <memory>
 
-#include <boost/enable_shared_from_this.hpp>
-
-#include <set>
 #include <map>
+#include <set>
+#include <string>
+#include <stdint.h>
 
 class TiXmlElement;
 
@@ -38,7 +37,7 @@ namespace ADDON
     ADDON_PVRDLL,
     ADDON_SCRIPT,
     ADDON_SCRIPT_WEATHER,
-    ADDON_SCRIPT_SUBTITLES,
+    ADDON_SUBTITLE_MODULE,
     ADDON_SCRIPT_LYRICS,
     ADDON_SCRAPER_ALBUMS,
     ADDON_SCRAPER_ARTISTS,
@@ -50,70 +49,80 @@ namespace ADDON
     ADDON_REPOSITORY,
     ADDON_WEB_INTERFACE,
     ADDON_SERVICE,
+    ADDON_AUDIOENCODER,
     ADDON_VIDEO, // virtual addon types
     ADDON_AUDIO,
     ADDON_IMAGE,
     ADDON_EXECUTABLE,
-    ADDON_VIZ_LIBRARY, // add noninstallable after this and installable before
+    ADDON_VIZ_LIBRARY,
     ADDON_SCRAPER_LIBRARY,
     ADDON_SCRIPT_LIBRARY,
-    ADDON_SCRIPT_MODULE
+    ADDON_SCRIPT_MODULE,
+    ADDON_MAX
   } TYPE;
 
   class IAddon;
-  typedef boost::shared_ptr<IAddon> AddonPtr;
+  typedef std::shared_ptr<IAddon> AddonPtr;
   class CVisualisation;
-  typedef boost::shared_ptr<CVisualisation> VizPtr;
+  typedef std::shared_ptr<CVisualisation> VizPtr;
   class CSkinInfo;
-  typedef boost::shared_ptr<CSkinInfo> SkinPtr;
+  typedef std::shared_ptr<CSkinInfo> SkinPtr;
   class CPluginSource;
-  typedef boost::shared_ptr<CPluginSource> PluginPtr;
+  typedef std::shared_ptr<CPluginSource> PluginPtr;
 
   class CAddonMgr;
   class AddonVersion;
-  typedef std::map<CStdString, std::pair<const AddonVersion, bool> > ADDONDEPS;
-  typedef std::map<CStdString, CStdString> InfoMap;
+  typedef std::map<std::string, std::pair<const AddonVersion, bool> > ADDONDEPS;
+  typedef std::map<std::string, std::string> InfoMap;
   class AddonProps;
 
-  class IAddon : public boost::enable_shared_from_this<IAddon>
+  class IAddon : public std::enable_shared_from_this<IAddon>
   {
   public:
     virtual ~IAddon() {};
-    virtual AddonPtr Clone(const AddonPtr& self) const =0;
+    virtual AddonPtr Clone() const =0;
     virtual TYPE Type() const =0;
     virtual bool IsType(TYPE type) const =0;
     virtual AddonProps Props() const =0;
     virtual AddonProps& Props() =0;
-    virtual const CStdString ID() const =0;
-    virtual const CStdString Name() const =0;
+    virtual const std::string ID() const =0;
+    virtual const std::string Name() const =0;
     virtual bool Enabled() const =0;
     virtual bool IsInUse() const =0;
     virtual const AddonVersion Version() const =0;
     virtual const AddonVersion MinVersion() const =0;
-    virtual const CStdString Summary() const =0;
-    virtual const CStdString Description() const =0;
-    virtual const CStdString Path() const =0;
-    virtual const CStdString Profile() const =0;
-    virtual const CStdString LibPath() const =0;
-    virtual const CStdString ChangeLog() const =0;
-    virtual const CStdString FanArt() const =0;
-    virtual const CStdString Author() const =0;
-    virtual const CStdString Icon() const =0;
+    virtual const std::string Summary() const =0;
+    virtual const std::string Description() const =0;
+    virtual const std::string Path() const =0;
+    virtual const std::string Profile() const =0;
+    virtual const std::string LibPath() const =0;
+    virtual const std::string ChangeLog() const =0;
+    virtual const std::string FanArt() const =0;
+    virtual const std::string Author() const =0;
+    virtual const std::string Icon() const =0;
     virtual int  Stars() const =0;
-    virtual const CStdString Disclaimer() const =0;
+    virtual const std::string Disclaimer() const =0;
     virtual const InfoMap &ExtraInfo() const =0;
     virtual bool HasSettings() =0;
     virtual void SaveSettings() =0;
-    virtual void UpdateSetting(const CStdString& key, const CStdString& value) =0;
-    virtual CStdString GetSetting(const CStdString& key) =0;
+    virtual void UpdateSetting(const std::string& key, const std::string& value) =0;
+    virtual std::string GetSetting(const std::string& key) =0;
     virtual TiXmlElement* GetSettingsXML() =0;
-    virtual CStdString GetString(uint32_t id) =0;
+    virtual std::string GetString(uint32_t id) =0;
     virtual const ADDONDEPS &GetDeps() const =0;
+    virtual AddonVersion GetDependencyVersion(const std::string &dependencyID) const =0;
     virtual bool MeetsVersion(const AddonVersion &version) const =0;
     virtual bool ReloadSettings() =0;
+    virtual void OnDisabled() =0;
+    virtual void OnEnabled() =0;
+    virtual AddonPtr GetRunningInstance() const=0;
+    virtual bool OnPreInstall() =0;
+    virtual void OnPostInstall(bool restart, bool update) =0;
+    virtual void OnPreUnInstall() =0;
+    virtual void OnPostUnInstall() =0;
+    virtual bool CanInstall(const std::string& referer) =0;
 
   protected:
-    virtual const AddonPtr Parent() const =0;
     virtual bool LoadSettings(bool bForce = false) =0;
 
   private:
@@ -124,15 +133,5 @@ namespace ADDON
     virtual bool LoadStrings() =0;
     virtual void ClearStrings() =0;
   };
-
-  // some utilitiy methods
-
-  /**
-   * This function will extract the Addon's currently assigned xbmc.python
-   * API version. If addon is NULL, or there is no xbmc.python dependency defined,
-   * then the version is assumed to be "1.0"
-   */
-  CStdString GetXbmcApiVersionDependency(ADDON::AddonPtr addon);
-
 };
 

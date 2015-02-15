@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,16 +22,17 @@
 #include "GUIWindowManager.h"
 #include "Key.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 
 using namespace std;
 
-CGUIMultiSelectTextControl::CSelectableString::CSelectableString(CGUIFont *font, const CStdString &text, bool selectable, const CStdString &clickAction)
+CGUIMultiSelectTextControl::CSelectableString::CSelectableString(CGUIFont *font, const std::string &text, bool selectable, const std::string &clickAction)
  : m_text(font, false)
+ , m_clickAction(clickAction)
 {
   m_selectable = selectable;
-  m_clickAction = clickAction;
-  m_clickAction.TrimLeft(" =");
-  m_clickAction.TrimRight(" ");
+  StringUtils::TrimLeft(m_clickAction, " =");
+  StringUtils::TrimRight(m_clickAction);
   m_text.Update(text);
   float height;
   m_text.GetTextExtent(m_length, height);
@@ -39,10 +40,10 @@ CGUIMultiSelectTextControl::CSelectableString::CSelectableString(CGUIFont *font,
 
 CGUIMultiSelectTextControl::CGUIMultiSelectTextControl(int parentID, int controlID, float posX, float posY, float width, float height, const CTextureInfo& textureFocus, const CTextureInfo& textureNoFocus, const CLabelInfo& labelInfo, const CGUIInfoLabel &content)
     : CGUIControl(parentID, controlID, posX, posY, width, height)
+    , m_label(labelInfo)
+    , m_info(content)
     , m_button(parentID, controlID, posX, posY, width, height, textureFocus, textureNoFocus, labelInfo)
 {
-  m_info = content;
-  m_label = labelInfo;
   m_selectedItem = 0;
   m_offset = 0;
   m_totalWidth = 0;
@@ -169,7 +170,7 @@ bool CGUIMultiSelectTextControl::OnAction(const CAction &action)
   if (action.GetID() == ACTION_SELECT_ITEM)
   {
     // item is clicked - see if we have a clickaction
-    CStdString clickAction;
+    std::string clickAction;
     unsigned int selected = 0;
     for (unsigned int i = 0; i < m_items.size(); i++)
     {
@@ -180,7 +181,7 @@ bool CGUIMultiSelectTextControl::OnAction(const CAction &action)
         selected++;
       }
     }
-    if (!clickAction.IsEmpty())
+    if (!clickAction.empty())
     { // have a click action -> perform it
       CGUIMessage message(GUI_MSG_EXECUTE, m_controlID, m_parentID);
       message.SetStringParam(clickAction);
@@ -213,9 +214,10 @@ void CGUIMultiSelectTextControl::OnRight()
 // movement functions (callable from lists)
 bool CGUIMultiSelectTextControl::MoveLeft()
 {
+  CGUIAction action = GetNavigateAction(ACTION_MOVE_LEFT);
   if (m_selectedItem > 0)
     ScrollToItem(m_selectedItem - 1);
-  else if (GetNumSelectable() && m_actionLeft.GetNavigation() && m_actionLeft.GetNavigation() == m_controlID)
+  else if (GetNumSelectable() && action.GetNavigation() && action.GetNavigation() == m_controlID)
     ScrollToItem(GetNumSelectable() - 1);
   else
     return false;
@@ -224,9 +226,10 @@ bool CGUIMultiSelectTextControl::MoveLeft()
 
 bool CGUIMultiSelectTextControl::MoveRight()
 {
+  CGUIAction action = GetNavigateAction(ACTION_MOVE_RIGHT);
   if (GetNumSelectable() && m_selectedItem < GetNumSelectable() - 1)
     ScrollToItem(m_selectedItem + 1);
-  else if (m_actionRight.GetNavigation() && m_actionRight.GetNavigation() == m_controlID)
+  else if (action.GetNavigation() && action.GetNavigation() == m_controlID)
     ScrollToItem(0);
   else
     return false;
@@ -287,7 +290,7 @@ int CGUIMultiSelectTextControl::GetItemFromPoint(const CPoint &point) const
   return -1;
 }
 
-void CGUIMultiSelectTextControl::UpdateText(const CStdString &text)
+void CGUIMultiSelectTextControl::UpdateText(const std::string &text)
 {
   if (text == m_oldText)
     return;
@@ -296,22 +299,22 @@ void CGUIMultiSelectTextControl::UpdateText(const CStdString &text)
 
   // parse our text into clickable blocks
   // format is [ONCLICK <action>] [/ONCLICK]
-  size_t startClickable = text.Find("[ONCLICK");
+  size_t startClickable = text.find("[ONCLICK");
   size_t startUnclickable = 0;
 
   // add the first unclickable block
-  if (startClickable != CStdString::npos)
-    AddString(text.Mid(startUnclickable, startClickable - startUnclickable), false);
+  if (startClickable != std::string::npos)
+    AddString(text.substr(startUnclickable, startClickable - startUnclickable), false);
   else
-    AddString(text.Mid(startUnclickable), false);
-  while (startClickable != CStdString::npos)
+    AddString(text.substr(startUnclickable), false);
+  while (startClickable != std::string::npos)
   {
     // grep out the action and the end of the string
-    size_t endAction = text.Find(']', startClickable + 8);
-    size_t endClickable = text.Find("[/ONCLICK]", startClickable + 8);
-    if (endAction != CStdString::npos && endClickable != CStdString::npos)
+    size_t endAction = text.find(']', startClickable + 8);
+    size_t endClickable = text.find("[/ONCLICK]", startClickable + 8);
+    if (endAction != std::string::npos && endClickable != std::string::npos)
     { // success - add the string, and move the start of our next unclickable portion along
-      AddString(text.Mid(endAction + 1, endClickable - endAction - 1), true, text.Mid(startClickable + 8, endAction - startClickable - 8));
+      AddString(text.substr(endAction + 1, endClickable - endAction - 1), true, text.substr(startClickable + 8, endAction - startClickable - 8));
       startUnclickable = endClickable + 10;
     }
     else
@@ -319,12 +322,12 @@ void CGUIMultiSelectTextControl::UpdateText(const CStdString &text)
       CLog::Log(LOGERROR, "Invalid multiselect string %s", text.c_str());
       break;
     }
-    startClickable = text.Find("[ONCLICK", startUnclickable);
+    startClickable = text.find("[ONCLICK", startUnclickable);
     // add the unclickable portion
-    if (startClickable != CStdString::npos)
-      AddString(text.Mid(startUnclickable, startClickable - startUnclickable), false);
+    if (startClickable != std::string::npos)
+      AddString(text.substr(startUnclickable, startClickable - startUnclickable), false);
     else
-      AddString(text.Mid(startUnclickable), false);
+      AddString(text.substr(startUnclickable), false);
   }
 
   m_oldText = text;
@@ -333,9 +336,9 @@ void CGUIMultiSelectTextControl::UpdateText(const CStdString &text)
   PositionButtons();
 }
 
-void CGUIMultiSelectTextControl::AddString(const CStdString &text, bool selectable, const CStdString &clickAction)
+void CGUIMultiSelectTextControl::AddString(const std::string &text, bool selectable, const std::string &clickAction)
 {
-  if (!text.IsEmpty())
+  if (!text.empty())
     m_items.push_back(CSelectableString(m_label.font, text, selectable, clickAction));
 }
 
@@ -365,11 +368,11 @@ void CGUIMultiSelectTextControl::PositionButtons()
     m_totalWidth += m_label.offsetX;
 }
 
-CStdString CGUIMultiSelectTextControl::GetDescription() const
+std::string CGUIMultiSelectTextControl::GetDescription() const
 {
   // We currently just return the entire string - should we bother returning the
   // particular subitems of this?
-  CStdString strLabel(m_info.GetLabel(m_parentID));
+  std::string strLabel(m_info.GetLabel(m_parentID));
   return strLabel;
 }
 

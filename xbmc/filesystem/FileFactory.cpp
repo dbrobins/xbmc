@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,22 +18,27 @@
  *
  */
 
-
-#if (defined HAVE_CONFIG_H) && (!defined WIN32)
+#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
   #include "config.h"
 #endif
+#include "network/Network.h"
 #include "system.h"
 #include "FileFactory.h"
-#include "HDFile.h"
+#ifdef TARGET_POSIX
+#include "posix/PosixFile.h"
+#elif defined(TARGET_WINDOWS)
+#include "win32/Win32File.h"
+#endif // TARGET_WINDOWS
 #include "CurlFile.h"
+#include "HTTPFile.h"
+#include "DAVFile.h"
 #include "ShoutcastFile.h"
-#include "LastFMFile.h"
 #include "FileReaderFile.h"
 #ifdef HAS_FILESYSTEM_SMB
-#ifdef _WIN32
-#include "windows/WINFileSmb.h"
+#ifdef TARGET_WINDOWS
+#include "win32/Win32SMBFile.h"
 #else
-#include "SmbFile.h"
+#include "SMBFile.h"
 #endif
 #endif
 #ifdef HAS_FILESYSTEM_CDDA
@@ -79,6 +84,9 @@
 #ifdef HAS_UPNP
 #include "UPnPFile.h"
 #endif
+#ifdef HAVE_LIBBLURAY
+#include "BlurayFile.h"
+#endif
 #include "PipesManager.h"
 #include "PipeFile.h"
 #include "MusicDatabaseFile.h"
@@ -93,6 +101,8 @@
 #include "Application.h"
 #include "URL.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
+#include "network/WakeOnAccess.h"
 
 using namespace XFILE;
 
@@ -104,7 +114,7 @@ CFileFactory::~CFileFactory()
 {
 }
 
-IFile* CFileFactory::CreateLoader(const CStdString& strFileName)
+IFile* CFileFactory::CreateLoader(const std::string& strFileName)
 {
   CURL url(strFileName);
   return CreateLoader(url);
@@ -112,14 +122,14 @@ IFile* CFileFactory::CreateLoader(const CStdString& strFileName)
 
 IFile* CFileFactory::CreateLoader(const CURL& url)
 {
-  CStdString strProtocol = url.GetProtocol();
-  strProtocol.MakeLower();
+  if (!CWakeOnAccess::Get().WakeUpHost(url))
+    return NULL;
 
 #if defined(TARGET_ANDROID)
-  if (strProtocol == "apk") return new CAPKFile();
+  if (url.IsProtocol("apk")) return new CAPKFile();
 #endif
-  if (strProtocol == "zip") return new CZipFile();
-  else if (strProtocol == "rar")
+  if (url.IsProtocol("zip")) return new CZipFile();
+  else if (url.IsProtocol("rar"))
   {
 #ifdef HAS_FILESYSTEM_RAR
     return new CRarFile();
@@ -127,79 +137,84 @@ IFile* CFileFactory::CreateLoader(const CURL& url)
     CLog::Log(LOGWARNING, "%s - Compiled without non-free, rar support is disabled", __FUNCTION__);
 #endif
   }
-  else if (strProtocol == "musicdb") return new CMusicDatabaseFile();
-  else if (strProtocol == "videodb") return NULL;
-  else if (strProtocol == "special") return new CSpecialProtocolFile();
-  else if (strProtocol == "multipath") return new CMultiPathFile();
-  else if (strProtocol == "image") return new CImageFile();
-  else if (strProtocol == "file" || strProtocol.IsEmpty()) return new CHDFile();
-  else if (strProtocol == "filereader") return new CFileReaderFile();
+  else if (url.IsProtocol("musicdb")) return new CMusicDatabaseFile();
+  else if (url.IsProtocol("videodb")) return NULL;
+  else if (url.IsProtocol("special")) return new CSpecialProtocolFile();
+  else if (url.IsProtocol("multipath")) return new CMultiPathFile();
+  else if (url.IsProtocol("image")) return new CImageFile();
+#ifdef TARGET_POSIX
+  else if (url.IsProtocol("file") || url.GetProtocol().empty()) return new CPosixFile();
+#elif defined(TARGET_WINDOWS)
+  else if (url.IsProtocol("file") || url.GetProtocol().empty()) return new CWin32File();
+#endif // TARGET_WINDOWS 
+  else if (url.IsProtocol("filereader")) return new CFileReaderFile();
 #if defined(HAS_FILESYSTEM_CDDA) && defined(HAS_DVD_DRIVE)
-  else if (strProtocol == "cdda") return new CFileCDDA();
+  else if (url.IsProtocol("cdda")) return new CFileCDDA();
 #endif
 #ifdef HAS_FILESYSTEM
-  else if (strProtocol == "iso9660") return new CISOFile();
+  else if (url.IsProtocol("iso9660")) return new CISOFile();
 #endif
-  else if(strProtocol == "udf") return new CUDFFile();
+  else if(url.IsProtocol("udf")) return new CUDFFile();
+#if defined(TARGET_ANDROID)
+  else if (url.IsProtocol("androidapp")) return new CFileAndroidApp();
+#endif
 
-  if( g_application.getNetwork().IsAvailable() )
+  bool networkAvailable = g_application.getNetwork().IsAvailable();
+  if (networkAvailable)
   {
-    if (strProtocol == "http"
-    ||  strProtocol == "https"
-    ||  strProtocol == "dav"
-    ||  strProtocol == "davs"
-    ||  strProtocol == "ftp"
-    ||  strProtocol == "ftps"
-    ||  strProtocol == "rss") return new CCurlFile();
+    if (url.IsProtocol("ftp")
+    ||  url.IsProtocol("ftps")
+    ||  url.IsProtocol("rss")) return new CCurlFile();
+    else if (url.IsProtocol("http") ||  url.IsProtocol("https")) return new CHTTPFile();
+    else if (url.IsProtocol("dav") || url.IsProtocol("davs")) return new CDAVFile();
 #ifdef HAS_FILESYSTEM_SFTP
-    else if (strProtocol == "sftp" || strProtocol == "ssh") return new CSFTPFile();
+    else if (url.IsProtocol("sftp") || url.IsProtocol("ssh")) return new CSFTPFile();
 #endif
-    else if (strProtocol == "shout") return new CShoutcastFile();
-    else if (strProtocol == "lastfm") return new CLastFMFile();
-    else if (strProtocol == "tuxbox") return new CTuxBoxFile();
-    else if (strProtocol == "hdhomerun") return new CHomeRunFile();
-    else if (strProtocol == "sling") return new CSlingboxFile();
-    else if (strProtocol == "myth") return new CMythFile();
-    else if (strProtocol == "cmyth") return new CMythFile();
+    else if (url.IsProtocol("shout")) return new CShoutcastFile();
+    else if (url.IsProtocol("tuxbox")) return new CTuxBoxFile();
+    else if (url.IsProtocol("hdhomerun")) return new CHomeRunFile();
+    else if (url.IsProtocol("sling")) return new CSlingboxFile();
+    else if (url.IsProtocol("myth")) return new CMythFile();
+    else if (url.IsProtocol("cmyth")) return new CMythFile();
 #ifdef HAS_FILESYSTEM_SMB
-#ifdef _WIN32
-    else if (strProtocol == "smb") return new CWINFileSMB();
+#ifdef TARGET_WINDOWS
+    else if (url.IsProtocol("smb")) return new CWin32SMBFile();
 #else
-    else if (strProtocol == "smb") return new CSmbFile();
+    else if (url.IsProtocol("smb")) return new CSMBFile();
 #endif
 #endif
 #ifdef HAS_FILESYSTEM
 #ifdef HAS_FILESYSTEM_RTV
-    else if (strProtocol == "rtv") return new CRTVFile();
+    else if (url.IsProtocol("rtv")) return new CRTVFile();
 #endif
 #ifdef HAS_FILESYSTEM_DAAP
-    else if (strProtocol == "daap") return new CDAAPFile();
+    else if (url.IsProtocol("daap")) return new CDAAPFile();
 #endif
 #endif
 #ifdef HAS_FILESYSTEM_SAP
-    else if (strProtocol == "sap") return new CSAPFile();
+    else if (url.IsProtocol("sap")) return new CSAPFile();
 #endif
 #ifdef HAS_FILESYSTEM_VTP
-    else if (strProtocol == "vtp") return new CVTPFile();
+    else if (url.IsProtocol("vtp")) return new CVTPFile();
 #endif
 #ifdef HAS_PVRCLIENTS
-    else if (strProtocol == "pvr") return new CPVRFile();
+    else if (url.IsProtocol("pvr")) return new CPVRFile();
 #endif
 #ifdef HAS_FILESYSTEM_NFS
-    else if (strProtocol == "nfs") return new CNFSFile();
+    else if (url.IsProtocol("nfs")) return new CNFSFile();
 #endif
 #ifdef HAS_FILESYSTEM_AFP
-    else if (strProtocol == "afp") return new CAFPFile();
+    else if (url.IsProtocol("afp")) return new CAFPFile();
 #endif
-    else if (strProtocol == "pipe") return new CPipeFile();    
+    else if (url.IsProtocol("pipe")) return new CPipeFile();    
 #ifdef HAS_UPNP
-    else if (strProtocol == "upnp") return new CUPnPFile();
+    else if (url.IsProtocol("upnp")) return new CUPnPFile();
 #endif
-#if defined(TARGET_ANDROID)
-    else if (strProtocol == "androidapp") return new CFileAndroidApp();
+#ifdef HAVE_LIBBLURAY
+    else if (url.IsProtocol("bluray")) return new CBlurayFile();
 #endif
   }
 
-  CLog::Log(LOGWARNING, "%s - Unsupported protocol(%s) in %s", __FUNCTION__, strProtocol.c_str(), url.Get().c_str() );
+  CLog::Log(LOGWARNING, "%s - %sunsupported protocol(%s) in %s", __FUNCTION__, networkAvailable ? "" : "Network down or ", url.GetProtocol().c_str(), url.GetRedacted().c_str());
   return NULL;
 }

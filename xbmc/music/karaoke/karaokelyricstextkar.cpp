@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,8 +22,9 @@
 
 #include "utils/CharsetConverter.h"
 #include "filesystem/File.h"
-#include "settings/GUISettings.h"
+#include "settings/Settings.h"
 #include "utils/log.h"
+#include "utils/Utf8Utils.h"
 #include <math.h>
 
 #include "karaokelyricstextkar.h"
@@ -34,7 +35,7 @@ typedef struct
 {
   unsigned int  clocks;
   unsigned int  track;
-  CStdString    text;
+  std::string    text;
   unsigned int  flags;
 
 } MidiLyrics;
@@ -132,17 +133,15 @@ class MidiTimestamp
 
 
 
-CKaraokeLyricsTextKAR::CKaraokeLyricsTextKAR( const CStdString & midiFile )
+CKaraokeLyricsTextKAR::CKaraokeLyricsTextKAR( const std::string & midiFile )
   : CKaraokeLyricsText()
+  , m_midiFile(midiFile)
 {
-  m_midiData = 0;
-  m_midiFile = midiFile;
 }
 
 
 CKaraokeLyricsTextKAR::~CKaraokeLyricsTextKAR()
 {
-  delete[] m_midiData;
 }
 
 
@@ -155,20 +154,7 @@ bool CKaraokeLyricsTextKAR::Load()
   // Clear the lyrics array
   clearLyrics();
 
-  if ( !file.Open( m_midiFile ) )
-    return false;
-
-  m_midiSize = (unsigned int) file.GetLength();
-
-  if ( !m_midiSize )
-    return false;  // shouldn't happen, but
-
-  file.Seek( 0, SEEK_SET );
-
-  m_midiData = new unsigned char [ m_midiSize ];
-
-  // Read the whole file
-  if ( !m_midiData || file.Read( m_midiData, m_midiSize) != m_midiSize )
+  if (file.LoadFile(m_midiFile, m_midiData) <= 0)
     return false;
 
   file.Close();
@@ -184,8 +170,7 @@ bool CKaraokeLyricsTextKAR::Load()
     succeed = false;
   }
 
-  delete [] m_midiData;
-  m_midiData = 0;
+  m_midiData.clear();
   return succeed;
 }
 
@@ -315,11 +300,11 @@ void CKaraokeLyricsTextKAR::parseMIDI()
             // Keywords
             if ( tempbuf[0] == '@' && tempbuf[1] == 'T' && strlen( tempbuf + 2 ) > 0 )
             {
-              if ( m_songName.IsEmpty() )
+              if ( m_songName.empty() )
                 m_songName = convertText( tempbuf + 2 );
               else
               {
-                if ( !m_artist.IsEmpty() )
+                if ( !m_artist.empty() )
                   m_artist += "[CR]";
 
                 m_artist += convertText( tempbuf + 2 );
@@ -508,33 +493,33 @@ void CKaraokeLyricsTextKAR::parseMIDI()
 
 unsigned char CKaraokeLyricsTextKAR::readByte()
 {
-  if ( m_midiOffset >= m_midiSize )
+  if (m_midiOffset >= m_midiData.size())
     throw( "Cannot read byte: premature end of file" );
 
-  const unsigned char * p = m_midiData + m_midiOffset;
-  m_midiOffset += 1;
-  return p[0];
+  return (unsigned char) m_midiData.get()[m_midiOffset++];
 }
 
 unsigned short CKaraokeLyricsTextKAR::readWord()
 {
-  if ( m_midiOffset + 1 >= m_midiSize )
+  if (m_midiOffset + 1 >= m_midiData.size())
     throw( "Cannot read word: premature end of file" );
 
-  const unsigned char * p = m_midiData + m_midiOffset;
   m_midiOffset += 2;
-  return p[0] << 8 | p[1];
+  return ((unsigned int)((unsigned char)m_midiData.get()[m_midiOffset-2])) << 8 |
+         ((unsigned int)((unsigned char)m_midiData.get()[m_midiOffset-1]));
 }
 
 
 unsigned int CKaraokeLyricsTextKAR::readDword()
 {
-  if ( m_midiOffset + 3 >= m_midiSize )
+  if (m_midiOffset + 3 >= m_midiData.size())
     throw( "Cannot read dword: premature end of file" );
 
-  const unsigned char * p = m_midiData + m_midiOffset;
   m_midiOffset += 4;
-  return p[0] << 24 | p[1] << 16 | p[2] << 8 | p[3];
+  return ((unsigned int)((unsigned char)m_midiData.get()[m_midiOffset-4])) << 24 |
+         ((unsigned int)((unsigned char)m_midiData.get()[m_midiOffset-3])) << 16 |
+         ((unsigned int)((unsigned char)m_midiData.get()[m_midiOffset-2])) << 8 |
+         ((unsigned int)((unsigned char)m_midiData.get()[m_midiOffset-1]));
 }
 
 int CKaraokeLyricsTextKAR::readVarLen()
@@ -595,15 +580,15 @@ void CKaraokeLyricsTextKAR::readData(void * buf, unsigned int length)
     *((char*)buf + i) = readByte();
 }
 
-CStdString CKaraokeLyricsTextKAR::convertText( const char * data )
+std::string CKaraokeLyricsTextKAR::convertText( const char * data )
 {
-  CStdString strUTF8;
+  std::string strUTF8;
 
   // Use some heuristics; need to replace by real detection stuff later
-  if ( g_charsetConverter.isValidUtf8(data) || g_guiSettings.GetString("karaoke.charset") == "DEFAULT" )
+  if (CUtf8Utils::isValidUtf8(data) || CSettings::Get().GetString("karaoke.charset") == "DEFAULT")
     strUTF8 = data;
   else
-    g_charsetConverter.stringCharsetToUtf8( g_guiSettings.GetString("karaoke.charset"), data, strUTF8 );
+    g_charsetConverter.ToUtf8( CSettings::Get().GetString("karaoke.charset"), data, strUTF8 );
 
   if ( strUTF8.size() == 0 )
     strUTF8 = " ";

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "DVDSubtitleStream.h"
 #include "DVDCodecs/Overlay/DVDOverlayText.h"
 #include "utils/RegExp.h"
+#include "utils/StringUtils.h"
 
 CDVDSubtitleTagSami::~CDVDSubtitleTagSami()
 {
@@ -31,6 +32,8 @@ CDVDSubtitleTagSami::~CDVDSubtitleTagSami()
 
 bool CDVDSubtitleTagSami::Init()
 {
+  delete m_tags;
+  delete m_tagOptions;
   m_tags = new CRegExp(true);
   if (!m_tags->RegComp("(<[^>]*>|\\{[^\\}]*\\})"))
     return false;
@@ -44,17 +47,17 @@ bool CDVDSubtitleTagSami::Init()
 
 void CDVDSubtitleTagSami::ConvertLine(CDVDOverlayText* pOverlay, const char* line, int len, const char* lang)
 {
-  CStdStringA strUTF8;
+  std::string strUTF8;
   strUTF8.assign(line, len);
-  strUTF8.Trim();
+  StringUtils::Trim(strUTF8);
 
   int pos = 0;
   int del_start = 0;
   while ((pos=m_tags->RegFind(strUTF8.c_str(), pos)) >= 0)
   {
     // Parse Tags
-    CStdString fullTag = m_tags->GetMatch(0);
-    fullTag.ToLower();
+    std::string fullTag = m_tags->GetMatch(0);
+    StringUtils::ToLower(fullTag);
     strUTF8.erase(pos, fullTag.length());
     if (fullTag == "<b>" || fullTag == "{\\b1}")
     {
@@ -86,12 +89,13 @@ void CDVDSubtitleTagSami::ConvertLine(CDVDOverlayText* pOverlay, const char* lin
       strUTF8.insert(pos, "[/COLOR]");
       pos += 8;
     }
-    else if (fullTag.Left(5) == "{\\c&h" || fullTag.Left(6) == "{\\1c&h")
+    else if (StringUtils::StartsWith(fullTag, "{\\c&h") ||
+             StringUtils::StartsWith(fullTag, "{\\1c&h"))
     {
       m_flag[FLAG_COLOR] = true;
-      CStdString tempColorTag = "[COLOR FF";
-      CStdString tagOptionValue;
-      if (fullTag.Left(5) == "{\\c&h")
+      std::string tempColorTag = "[COLOR FF";
+      std::string tagOptionValue;
+      if (StringUtils::StartsWith(fullTag, "{\\c&h"))
          tagOptionValue = fullTag.substr(5,6);
       else
          tagOptionValue = fullTag.substr(6,6);
@@ -102,18 +106,18 @@ void CDVDSubtitleTagSami::ConvertLine(CDVDOverlayText* pOverlay, const char* lin
       strUTF8.insert(pos, tempColorTag);
       pos += tempColorTag.length();
     }
-    else if (fullTag.Left(5) == "<font")
+    else if (StringUtils::StartsWith(fullTag, "<font"))
     {
       int pos2 = 5;
       while ((pos2 = m_tagOptions->RegFind(fullTag.c_str(), pos2)) >= 0)
       {
-        CStdString tagOptionName = m_tagOptions->GetMatch(1);
-        CStdString tagOptionValue = m_tagOptions->GetMatch(2);
+        std::string tagOptionName = m_tagOptions->GetMatch(1);
+        std::string tagOptionValue = m_tagOptions->GetMatch(2);
         pos2 += tagOptionName.length() + tagOptionValue.length();
         if (tagOptionName == "color")
         {
           m_flag[FLAG_COLOR] = true;
-          CStdString tempColorTag = "[COLOR ";
+          std::string tempColorTag = "[COLOR ";
           if (tagOptionValue[0] == '#')
           {
             tagOptionValue.erase(0, 1);
@@ -142,13 +146,13 @@ void CDVDSubtitleTagSami::ConvertLine(CDVDOverlayText* pOverlay, const char* lin
         }
       }
     }
-    else if (lang && (fullTag.Left(3) == "<p "))
+    else if (lang && (StringUtils::StartsWith(fullTag, "<p ")))
     {
       int pos2 = 3;
       while ((pos2 = m_tagOptions->RegFind(fullTag.c_str(), pos2)) >= 0)
       {
-        CStdString tagOptionName = m_tagOptions->GetMatch(1);
-        CStdString tagOptionValue = m_tagOptions->GetMatch(2);
+        std::string tagOptionName = m_tagOptions->GetMatch(1);
+        std::string tagOptionValue = m_tagOptions->GetMatch(2);
         pos2 += tagOptionName.length() + tagOptionValue.length();
         if (tagOptionName == "class")
         {
@@ -157,7 +161,7 @@ void CDVDSubtitleTagSami::ConvertLine(CDVDOverlayText* pOverlay, const char* lin
             strUTF8.erase(del_start, pos - del_start);
             pos = del_start;
           }
-          if (!tagOptionValue.Compare(lang))
+          if (!tagOptionValue.compare(lang))
           {
             m_flag[FLAG_LANGUAGE] = false;
           }
@@ -176,9 +180,9 @@ void CDVDSubtitleTagSami::ConvertLine(CDVDOverlayText* pOverlay, const char* lin
       pos = del_start;
       m_flag[FLAG_LANGUAGE] = false;
     }
-    else if (fullTag == "<br>" && !strUTF8.IsEmpty())
+    else if (fullTag == "<br>" && !strUTF8.empty())
     {
-      strUTF8.Insert(pos, "\n");
+      strUTF8.insert(pos, "\n");
       pos += 1;
     }
   }
@@ -186,11 +190,11 @@ void CDVDSubtitleTagSami::ConvertLine(CDVDOverlayText* pOverlay, const char* lin
   if(m_flag[FLAG_LANGUAGE])
     strUTF8.erase(del_start);
 
-  if (strUTF8.IsEmpty())
+  if (strUTF8.empty())
     return;
 
   if( strUTF8[strUTF8.size()-1] == '\n' )
-    strUTF8.Delete(strUTF8.size()-1);
+    strUTF8.erase(strUTF8.size()-1);
 
   // add a new text element to our container
   pOverlay->AddElement(new CDVDOverlayText::CElementText(strUTF8.c_str()));
@@ -241,9 +245,9 @@ void CDVDSubtitleTagSami::LoadHead(CDVDSubtitleStream* samiStream)
           lc.Name = reg.GetMatch(2);
           lc.Lang = reg.GetMatch(3);
           lc.SAMIType = reg.GetMatch(4);
-          lc.Name.Trim();
-          lc.Lang.Trim();
-          lc.SAMIType.Trim();
+          StringUtils::Trim(lc.Name);
+          StringUtils::Trim(lc.Lang);
+          StringUtils::Trim(lc.SAMIType);
           m_Langclass.push_back(lc);
         }
       }

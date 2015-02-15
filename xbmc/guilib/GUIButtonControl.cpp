@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,8 +21,8 @@
 #include "GUIButtonControl.h"
 #include "GUIWindowManager.h"
 #include "GUIDialog.h"
-#include "utils/CharsetConverter.h"
 #include "GUIFontManager.h"
+#include "Key.h"
 
 using namespace std;
 
@@ -122,10 +122,10 @@ void CGUIButtonControl::ProcessText(unsigned int currentTime)
   changed |= m_label.SetScrolling(HasFocus());
 
   // render the second label if it exists
-  CStdString label2(m_info2.GetLabel(m_parentID));
+  std::string label2(m_info2.GetLabel(m_parentID));
   changed |= m_label2.SetMaxRect(m_posX, m_posY, m_width, m_height);
   changed |= m_label2.SetText(label2);
-  if (!label2.IsEmpty())
+  if (!label2.empty())
   {
     changed |= m_label2.SetAlign(XBFONT_RIGHT | (m_label.GetLabelInfo().align & XBFONT_CENTER_Y) | XBFONT_TRUNCATED);
     changed |= m_label2.SetScrolling(HasFocus());
@@ -137,8 +137,10 @@ void CGUIButtonControl::ProcessText(unsigned int currentTime)
                   m_label2.GetRenderRect() != label2RenderRect);
 
     changed |= m_label2.SetColor(GetTextColor());
+    changed |= m_label2.Process(currentTime);
   }
   changed |= m_label.SetColor(GetTextColor());
+  changed |= m_label.Process(currentTime);
   if (changed)
     MarkDirtyRegion();
 }
@@ -167,14 +169,19 @@ bool CGUIButtonControl::OnMessage(CGUIMessage& message)
       SetLabel2(message.GetLabel());
       return true;
     }
-    if (message.GetMessage() == GUI_MSG_SELECTED)
+    if (message.GetMessage() == GUI_MSG_IS_SELECTED)
+    {
+      message.SetParam1(m_bSelected ? 1 : 0);
+      return true;
+    }
+    if (message.GetMessage() == GUI_MSG_SET_SELECTED)
     {
       if (!m_bSelected)
         SetInvalid();
       m_bSelected = true;
       return true;
     }
-    if (message.GetMessage() == GUI_MSG_DESELECTED)
+    if (message.GetMessage() == GUI_MSG_SET_DESELECTED)
     {
       if (m_bSelected)
         SetInvalid();
@@ -275,19 +282,19 @@ EVENT_RESULT CGUIButtonControl::OnMouseEvent(const CPoint &point, const CMouseEv
   return EVENT_RESULT_UNHANDLED;
 }
 
-CStdString CGUIButtonControl::GetDescription() const
+std::string CGUIButtonControl::GetDescription() const
 {
-  CStdString strLabel(m_info.GetLabel(m_parentID));
+  std::string strLabel(m_info.GetLabel(m_parentID));
   return strLabel;
 }
 
-CStdString CGUIButtonControl::GetLabel2() const
+std::string CGUIButtonControl::GetLabel2() const
 {
-  CStdString strLabel(m_info2.GetLabel(m_parentID));
+  std::string strLabel(m_info2.GetLabel(m_parentID));
   return strLabel;
 }
 
-void CGUIButtonControl::PythonSetLabel(const CStdString &strFont, const string &strText, color_t textColor, color_t shadowColor, color_t focusedColor)
+void CGUIButtonControl::PythonSetLabel(const std::string &strFont, const string &strText, color_t textColor, color_t shadowColor, color_t focusedColor)
 {
   m_label.GetLabelInfo().font = g_fontManager.GetFont(strFont);
   m_label.GetLabelInfo().textColor = textColor;
@@ -299,11 +306,6 @@ void CGUIButtonControl::PythonSetLabel(const CStdString &strFont, const string &
 void CGUIButtonControl::PythonSetDisabledColor(color_t disabledColor)
 {
   m_label.GetLabelInfo().disabledColor = disabledColor;
-}
-
-void CGUIButtonControl::SettingsCategorySetTextAlign(uint32_t align)
-{
-  m_label.SetAlign(align);
 }
 
 void CGUIButtonControl::OnClick()

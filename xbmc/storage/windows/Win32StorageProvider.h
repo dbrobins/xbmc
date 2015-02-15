@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,9 +33,9 @@ public:
   virtual void GetRemovableDrives(VECSOURCES &removableDrives);
   virtual std::string GetFirstOpticalDeviceFileName();
 
-  virtual bool Eject(CStdString mountpath);
+  virtual bool Eject(const std::string& mountpath);
 
-  virtual std::vector<CStdString> GetDiskUsage();
+  virtual std::vector<std::string> GetDiskUsage();
 
   virtual bool PumpDriveChangeEvents(IStorageEventsCallback *callback);
 
@@ -46,11 +46,11 @@ public:
 class CDetectDisc : public CJob
 {
 public:
-  CDetectDisc(const CStdString &strPath, const bool bautorun);
+  CDetectDisc(const std::string &strPath, const bool bautorun);
   bool DoWork();
 
 private:
-  CStdString  m_strPath;
+  std::string  m_strPath;
   bool        m_bautorun;
 };
 

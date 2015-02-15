@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 
 #include "DVDInputStream.h"
 #include "FileItem.h"
+#include "threads/SystemClock.h"
 
 namespace XFILE {
 class IFile;
@@ -39,13 +40,14 @@ class CDVDInputStreamPVRManager
   : public CDVDInputStream
   , public CDVDInputStream::IChannel
   , public CDVDInputStream::IDisplayTime
+  , public CDVDInputStream::ISeekable
 {
 public:
   CDVDInputStreamPVRManager(IDVDPlayer* pPlayer);
   virtual ~CDVDInputStreamPVRManager();
   virtual bool Open(const char* strFile, const std::string &content);
   virtual void Close();
-  virtual int Read(BYTE* buf, int buf_size);
+  virtual int Read(uint8_t* buf, int buf_size);
   virtual int64_t Seek(int64_t offset, int whence);
   virtual bool Pause(double dTime) { return false; }
   virtual bool IsEOF();
@@ -65,6 +67,9 @@ public:
   bool            CanRecord();
   bool            IsRecording();
   bool            Record(bool bOnOff);
+  bool            CanSeek();
+  bool            CanPause();
+  void            Pause(bool bPaused);
 
   bool            UpdateItem(CFileItem& item);
 
@@ -77,7 +82,7 @@ public:
    list of the input formats.
    \return The name of the input format
    */
-  CStdString      GetInputFormat();
+  std::string      GetInputFormat();
 
   /* returns m_pOtherStream */
   CDVDInputStream* GetOtherStream();
@@ -85,7 +90,7 @@ public:
   void ResetScanTimeout(unsigned int iTimeoutMs);
 protected:
   bool CloseAndOpen(const char* strFile);
-  bool SupportsChannelSwitch(void) const;
+  static bool SupportsChannelSwitch(void);
 
   IDVDPlayer*               m_pPlayer;
   CDVDInputStream*          m_pOtherStream;
@@ -94,8 +99,7 @@ protected:
   XFILE::IRecordable*       m_pRecordable;
   bool                      m_eof;
   std::string               m_strContent;
-  bool                      m_bReopened;
-  unsigned int              m_iScanTimeout;
+  XbmcThreads::EndTime      m_ScanTimeout;
 };
 
 

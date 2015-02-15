@@ -1,9 +1,11 @@
 #ifndef _FILEUDF_H
 #define _FILEUDF_H
-
 /*
  *      Copyright (C) 2010 Team Boxee
  *      http://www.boxee.tv
+ *
+ *      Copyright (C) 2010-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,7 +22,6 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-
 #include "IFile.h"
 #include "udf25.h"
 
@@ -37,7 +38,7 @@ public:
   virtual bool Open(const CURL& url);
   virtual bool Exists(const CURL& url);
   virtual int Stat(const CURL& url, struct __stat64* buffer);
-  virtual unsigned int Read(void* lpBuf, int64_t uiBufSize);
+  virtual ssize_t Read(void* lpBuf, size_t uiBufSize);
   virtual int64_t Seek(int64_t iFilePosition, int iWhence = SEEK_SET);
   virtual void Close();
 protected:

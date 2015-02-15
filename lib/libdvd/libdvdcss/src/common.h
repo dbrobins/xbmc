@@ -3,7 +3,6 @@
  * Collection of useful common types and macros definitions
  *****************************************************************************
  * Copyright (C) 1998, 1999, 2000 VideoLAN
- * $Id$
  *
  * Authors: Sam Hocevar <sam@via.ecp.fr>
  *          Vincent Seguin <seguin@via.ecp.fr>
@@ -19,10 +18,13 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with libdvdcss; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *****************************************************************************/
+
+#ifndef DVDCSS_COMMON_H
+#define DVDCSS_COMMON_H
 
 /*****************************************************************************
  * Basic types definitions
@@ -31,11 +33,6 @@
 #   include <stdint.h>
 #elif defined( HAVE_INTTYPES_H )
 #   include <inttypes.h>
-#elif defined( SYS_CYGWIN )
-#   include <sys/types.h>
-    /* Cygwin only defines half of these... */
-    typedef u_int8_t            uint8_t;
-    typedef u_int32_t           uint32_t;
 #else
     /* Fallback types (very x86-centric, sorry) */
     typedef unsigned char       uint8_t;
@@ -45,6 +42,7 @@
 #endif
 
 #if defined( WIN32 )
+#   include <io.h>                                             /* _lseeki64 */
 
 #   ifndef PATH_MAX
 #      define PATH_MAX MAX_PATH
@@ -71,11 +69,9 @@ typedef __int64 off_t;
 #           define off_t __int64
 #       endif
 #       define stat _stati64
-#   endif
-
-#   ifndef snprintf
-#       define snprintf _snprintf  /* snprintf not defined in mingw32 (bug?) */
+#       define snprintf _snprintf
 #   endif
 
 #endif
 
+#endif /* DVDCSS_COMMON_H */

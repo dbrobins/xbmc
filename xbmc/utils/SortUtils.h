@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,8 +21,11 @@
 
 #include <map>
 #include <string>
+#include <memory>
 
 #include "DatabaseUtils.h"
+#include "SortFileItem.h"
+#include "LabelFormatter.h"
 
 typedef enum {
   SortOrderNone = 0,
@@ -87,7 +90,9 @@ typedef enum {
   SortByListeners,
   SortByBitrate,
   SortByRandom,
-  SortByChannel
+  SortByChannel,
+  SortByChannelNumber,
+  SortByDateTaken
 } SortBy;
 
 typedef struct SortDescription {
@@ -103,25 +108,46 @@ typedef struct SortDescription {
   { }
 } SortDescription;
 
+typedef struct GUIViewSortDetails
+{
+  SortDescription m_sortDescription;
+  int m_buttonLabel;
+  LABEL_MASKS m_labelMasks;
+} GUIViewSortDetails;
+
 typedef DatabaseResult SortItem;
-typedef DatabaseResults SortItems;
+typedef std::shared_ptr<SortItem> SortItemPtr;
+typedef std::vector<SortItemPtr> SortItems;
 
 class SortUtils
 {
 public:
+  static SORT_METHOD TranslateOldSortMethod(SortBy sortBy, bool ignoreArticle);
+  static SortDescription TranslateOldSortMethod(SORT_METHOD sortBy);
+
+  /*! \brief retrieve the label id associated with a sort method for displaying in the UI.
+   \param sortBy the sort method in question.
+   \return the label id of the sort method.
+   */
+  static int GetSortLabel(SortBy sortBy);
+
+  static void Sort(SortBy sortBy, SortOrder sortOrder, SortAttribute attributes, DatabaseResults& items, int limitEnd = -1, int limitStart = 0);
   static void Sort(SortBy sortBy, SortOrder sortOrder, SortAttribute attributes, SortItems& items, int limitEnd = -1, int limitStart = 0);
+  static void Sort(const SortDescription &sortDescription, DatabaseResults& items);
   static void Sort(const SortDescription &sortDescription, SortItems& items);
-  static bool SortFromDataset(const SortDescription &sortDescription, MediaType mediaType, const std::auto_ptr<dbiplus::Dataset> &dataset, DatabaseResults &results);
+  static bool SortFromDataset(const SortDescription &sortDescription, const MediaType &mediaType, const std::unique_ptr<dbiplus::Dataset> &dataset, DatabaseResults &results);
   
   static const Fields& GetFieldsForSorting(SortBy sortBy);
   static std::string RemoveArticles(const std::string &label);
   
   typedef std::string (*SortPreparator) (SortAttribute, const SortItem&);
-  typedef bool (*Sorter) (const SortItem&, const SortItem&);
+  typedef bool (*Sorter) (const DatabaseResult &, const DatabaseResult &);
+  typedef bool (*SorterIndirect) (const SortItemPtr &, const SortItemPtr &);
   
 private:
   static const SortPreparator& getPreparator(SortBy sortBy);
   static Sorter getSorter(SortOrder sortOrder, SortAttribute attributes);
+  static SorterIndirect getSorterIndirect(SortOrder sortOrder, SortAttribute attributes);
 
   static std::map<SortBy, SortPreparator> m_preparators;
   static std::map<SortBy, Fields> m_sortingFields;

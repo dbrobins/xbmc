@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
  */
 
 #include "GUICheckMarkControl.h"
-#include "utils/CharsetConverter.h"
 #include "GUIFontManager.h"
 #include "Key.h"
 
@@ -30,8 +29,8 @@ CGUICheckMarkControl::CGUICheckMarkControl(int parentID, int controlID, float po
     , m_imgCheckMark(posX, posY, checkWidth, checkHeight, textureCheckMark)
     , m_imgCheckMarkNoFocus(posX, posY, checkWidth, checkHeight, textureCheckMarkNF)
     , m_label(posX, posY, width, height, labelInfo)
+    , m_strLabel("")
 {
-  m_strLabel = "";
   m_bSelected = false;
   m_label.GetLabelInfo().align |= XBFONT_CENTER_Y;
   ControlType = GUICONTROL_CHECKMARK;
@@ -180,7 +179,7 @@ void CGUICheckMarkControl::SetLabel(const string &label)
   }
 }
 
-void CGUICheckMarkControl::PythonSetLabel(const CStdString &strFont, const string &strText, color_t textColor)
+void CGUICheckMarkControl::PythonSetLabel(const std::string &strFont, const string &strText, color_t textColor)
 {
   m_label.GetLabelInfo().font = g_fontManager.GetFont(strFont);
   m_label.GetLabelInfo().textColor = textColor;

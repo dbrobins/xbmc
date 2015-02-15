@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,8 +28,6 @@ class CDummyVideoPlayer : public IPlayer, public CThread
 public:
   CDummyVideoPlayer(IPlayerCallback& callback);
   virtual ~CDummyVideoPlayer();
-  virtual void RegisterAudioCallback(IAudioCallback* pCallback) {}
-  virtual void UnRegisterAudioCallback()                        {}
   virtual bool OpenFile(const CFileItem& file, const CPlayerOptions &options);
   virtual bool CloseFile();
   virtual bool IsPlaying() const;
@@ -41,7 +39,7 @@ public:
   virtual void SwitchToNextLanguage();
   virtual void ToggleSubtitles();
   virtual bool CanSeek();
-  virtual void Seek(bool bPlus, bool bLargeStep);
+  virtual void Seek(bool bPlus, bool bLargeStep, bool bChapterOverride);
   virtual void SeekPercentage(float iPercent);
   virtual float GetPercentage();
   virtual void SetVolume(float volume) {}
@@ -50,9 +48,9 @@ public:
   virtual void SetBrightness(bool bPlus) {}
   virtual void SetHue(bool bPlus) {}
   virtual void SetSaturation(bool bPlus) {}
-  virtual void GetAudioInfo(CStdString& strAudioInfo);
-  virtual void GetVideoInfo(CStdString& strVideoInfo);
-  virtual void GetGeneralInfo( CStdString& strVideoInfo);
+  virtual void GetAudioInfo(std::string& strAudioInfo);
+  virtual void GetVideoInfo(std::string& strVideoInfo);
+  virtual void GetGeneralInfo( std::string& strVideoInfo);
   virtual void Update(bool bPauseDrawing)                       {}
   virtual void SwitchToNextAudioLanguage();
   virtual bool CanRecord() { return false; }
@@ -72,8 +70,8 @@ public:
   virtual void ShowOSD(bool bOnoff);
   virtual void DoAudioWork()                                    {}
   
-  virtual CStdString GetPlayerState();
-  virtual bool SetPlayerState(CStdString state);
+  virtual std::string GetPlayerState();
+  virtual bool SetPlayerState(const std::string& state);
   
 private:
   virtual void Process();

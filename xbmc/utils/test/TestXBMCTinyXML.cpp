@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
  */
 
 #include "utils/XBMCTinyXML.h"
+#include "utils/StringUtils.h"
 #include "test/TestUtils.h"
 
 #include "gtest/gtest.h"
@@ -28,7 +29,7 @@ TEST(TestXBMCTinyXML, ParseFromString)
   bool retval = false;
   // scraper results with unescaped &
   CXBMCTinyXML doc;
-  CStdString data("<details><url function=\"ParseTMDBRating\" "
+  std::string data("<details><url function=\"ParseTMDBRating\" "
                   "cache=\"tmdb-en-12244.json\">"
                   "http://api.themoviedb.org/3/movie/12244"
                   "?api_key=57983e31fb435df4df77afb854740ea9"
@@ -51,7 +52,7 @@ TEST(TestXBMCTinyXML, ParseFromFileHandle)
   bool retval = false;
   // scraper results with unescaped &
   CXBMCTinyXML doc;
-  FILE *f = fopen(XBMC_REF_FILE_PATH("/xbmc/utils/test/CXBMCTinyXML-test.xml"), "r");
+  FILE *f = fopen(XBMC_REF_FILE_PATH("/xbmc/utils/test/CXBMCTinyXML-test.xml").c_str(), "r");
   ASSERT_TRUE(f);
   doc.LoadFile(f);
   fclose(f);
@@ -61,8 +62,8 @@ TEST(TestXBMCTinyXML, ParseFromFileHandle)
     TiXmlElement *url = root->FirstChildElement("url");
     if (url && url->FirstChild())
     {
-      CStdString str = url->FirstChild()->ValueStr();
-      retval = (str.Trim() == "http://api.themoviedb.org/3/movie/12244?api_key=57983e31fb435df4df77afb854740ea9&language=en???");
+      std::string str = url->FirstChild()->ValueStr();
+      retval = (StringUtils::Trim(str) == "http://api.themoviedb.org/3/movie/12244?api_key=57983e31fb435df4df77afb854740ea9&language=en???");
     }
   }
   EXPECT_TRUE(retval);

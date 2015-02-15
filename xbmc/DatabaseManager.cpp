@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 #include "DatabaseManager.h"
 #include "utils/log.h"
 #include "addons/AddonDatabase.h"
-#include "ViewDatabase.h"
+#include "view/ViewDatabase.h"
 #include "TextureDatabase.h"
 #include "music/MusicDatabase.h"
 #include "video/VideoDatabase.h"
@@ -54,6 +54,9 @@ void CDatabaseManager::Initialize(bool addonsOnly)
   if (addonsOnly)
     return;
   CLog::Log(LOGDEBUG, "%s, updating databases...", __FUNCTION__);
+
+  // NOTE: Order here is important. In particular, CTextureDatabase has to be updated
+  //       before CVideoDatabase.
   { CViewDatabase db; UpdateDatabase(db); }
   { CTextureDatabase db; UpdateDatabase(db); }
   { CMusicDatabase db; UpdateDatabase(db, &g_advancedSettings.m_databaseMusic); }

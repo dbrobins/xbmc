@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
  *
  */
 
+#include <string>
 #include "GUIDialogBoxBase.h"
 
 class CGUIDialogYesNo :
@@ -34,8 +35,9 @@ public:
   static bool ShowAndGetInput(int heading, int line0, int line1, int line2, int iNoLabel=-1, int iYesLabel=-1);
   static bool ShowAndGetInput(int heading, int line0, int line1, int line2, bool& bCanceled);
   static bool ShowAndGetInput(int heading, int line0, int line1, int line2, int iNoLabel, int iYesLabel, bool& bCanceled, unsigned int autoCloseTime = 0);
-  static bool ShowAndGetInput(const CStdString& heading, const CStdString& line0, const CStdString& line1, const CStdString& line2, const CStdString& noLabel="", const CStdString& yesLabel="");
-  static bool ShowAndGetInput(const CStdString& heading, const CStdString& line0, const CStdString& line1, const CStdString& line2, bool &bCanceled, const CStdString& noLabel="", const CStdString& yesLabel="");
+  static bool ShowAndGetInput(const std::string& heading, const std::string& line0, const std::string& line1, const std::string& line2, const std::string& noLabel="", const std::string& yesLabel="");
+  static bool ShowAndGetInput(const std::string& heading, const std::string& text, bool& bCanceled, const std::string& noLabel, const std::string& yesLabel);
+  static bool ShowAndGetInput(const std::string& heading, const std::string& line0, const std::string& line1, const std::string& line2, bool &bCanceled, const std::string& noLabel="", const std::string& yesLabel="");
 protected:
   virtual int GetDefaultLabelID(int controlId) const;
 

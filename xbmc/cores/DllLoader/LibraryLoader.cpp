@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,52 +23,36 @@
 #include <stdlib.h>
 #include "utils/log.h"
 
-LibraryLoader::LibraryLoader(const char* libraryFile)
+LibraryLoader::LibraryLoader(const std::string& libraryFile):
+  m_fileName(libraryFile)
 {
-  m_sFileName = strdup(libraryFile);
-
-  char* sPath = strrchr(m_sFileName, '\\');
-  if (!sPath) sPath = strrchr(m_sFileName, '/');
-  if (sPath)
-  {
-    sPath++;
-    m_sPath=(char*)malloc(sPath - m_sFileName+1);
-    strncpy(m_sPath, m_sFileName, sPath - m_sFileName);
-    m_sPath[sPath - m_sFileName] = 0;
-  }
-  else
-    m_sPath=NULL;
+  size_t pos = m_fileName.find_last_of("\\/");
+  if (pos != std::string::npos)
+    m_path = m_fileName.substr(0, pos);
 
   m_iRefCount = 1;
 }
 
 LibraryLoader::~LibraryLoader()
 {
-  free(m_sFileName);
-  free(m_sPath);
 }
 
-char* LibraryLoader::GetName()
+const char *LibraryLoader::GetName() const
 {
-  if (m_sFileName)
-  {
-    char* sName = strrchr(m_sFileName, '/');
-    if (sName) return sName + 1;
-    else return m_sFileName;
-  }
-  return (char*)"";
+  size_t pos = m_fileName.find_last_of('/');
+  if (pos != std::string::npos)
+    return &m_fileName.at(pos);
+  return "";
 }
 
-char* LibraryLoader::GetFileName()
+const char *LibraryLoader::GetFileName() const
 {
-  if (m_sFileName) return m_sFileName;
-  return (char*)"";
+  return m_fileName.c_str();
 }
 
-char* LibraryLoader::GetPath()
+const char *LibraryLoader::GetPath() const
 {
-  if (m_sPath) return m_sPath;
-  return (char*)"";
+  return m_path.c_str();
 }
 
 int LibraryLoader::IncrRef()

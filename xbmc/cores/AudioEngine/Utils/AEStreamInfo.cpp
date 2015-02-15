@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2010-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2010-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,8 @@
  */
 
 #include "AEStreamInfo.h"
+#include "utils/log.h"
+#include <algorithm>
 
 #define IEC61937_PREAMBLE1 0xF872
 #define IEC61937_PREAMBLE2 0x4E1F
@@ -78,19 +80,18 @@ CAEStreamInfo::CAEStreamInfo() :
   m_dtsBlocks     (0),
   m_dtsPeriod     (0),
   m_fsize         (0),
+  m_fsizeMain     (0),
   m_repeat        (0),
   m_substreams    (0),
   m_dataType      (STREAM_TYPE_NULL),
   m_dataIsLE      (false),
   m_packFunc      (NULL)
 {
-  m_dllAvUtil.Load();
-  m_dllAvUtil.av_crc_init(m_crcTrueHD, 0, 16, 0x2D, sizeof(m_crcTrueHD));
+  av_crc_init(m_crcTrueHD, 0, 16, 0x2D, sizeof(m_crcTrueHD));
 }
 
 CAEStreamInfo::~CAEStreamInfo()
 {
-  m_dllAvUtil.Unload();
 }
 
 int CAEStreamInfo::AddData(uint8_t *data, unsigned int size, uint8_t **buffer/* = NULL */, unsigned int *bufferSize/* = 0 */)
@@ -102,7 +103,6 @@ int CAEStreamInfo::AddData(uint8_t *data, unsigned int size, uint8_t **buffer/* 
     return 0;
   }
 
-  unsigned int consumed = 0;
   if (m_skipBytes)
   {
     unsigned int canSkip = std::min(size, m_skipBytes);
@@ -125,6 +125,7 @@ int CAEStreamInfo::AddData(uint8_t *data, unsigned int size, uint8_t **buffer/* 
   }
   else
   {
+    unsigned int consumed = 0;
     unsigned int offset = 0;
     unsigned int room = sizeof(m_buffer) - m_bufferSize;
     while(1)
@@ -287,6 +288,12 @@ unsigned int CAEStreamInfo::SyncAC3(uint8_t *data, unsigned int size)
 {
   unsigned int skip = 0;
 
+  // handle substreams
+  if (m_fsizeMain)
+  {
+    data += m_fsizeMain;
+  }
+
   for (; size - skip > 7; ++skip, ++data)
   {
     /* search for an ac3 sync word */
@@ -335,7 +342,14 @@ unsigned int CAEStreamInfo::SyncAC3(uint8_t *data, unsigned int size)
       m_sampleRate = AC3FSCod[fscod];
 
       /* dont do extensive testing if we have not lost sync */
-      if (m_dataType == STREAM_TYPE_AC3 && skip == 0)
+      /* this may be the main stream of EAC3 */
+      if (m_dataType == STREAM_TYPE_EAC3 && skip == 0)
+      {
+        m_fsizeMain = m_fsize;
+        m_fsize = 0;
+        return 0;
+      }
+      else if (m_dataType == STREAM_TYPE_AC3 && skip == 0)
         return 0;
 
       unsigned int crc_size;
@@ -346,7 +360,7 @@ unsigned int CAEStreamInfo::SyncAC3(uint8_t *data, unsigned int size)
         crc_size = (framesize >> 1) + (framesize >> 3) - 1;
 
       if (crc_size <= size - skip)
-        if (m_dllAvUtil.av_crc(m_dllAvUtil.av_crc_get_table(AV_CRC_16_ANSI), 0, &data[2], crc_size * 2))
+        if (av_crc(av_crc_get_table(AV_CRC_16_ANSI), 0, &data[2], crc_size * 2))
           continue;
 
       /* if we get here, we can sync */
@@ -390,24 +404,31 @@ unsigned int CAEStreamInfo::SyncAC3(uint8_t *data, unsigned int size)
       }
 
       m_fsize        = framesize << 1;
+
+      // concatenate substream to independent stream
+      if (strmtyp == 1 && m_fsizeMain)
+      {
+        m_fsize += m_fsizeMain;
+      }
+      m_fsizeMain = 0;
+
       m_repeat       = MAX_EAC3_BLOCKS / blocks;
 
-      if (m_sampleRate == 48000 || m_sampleRate == 96000 || m_sampleRate == 192000)
-        m_outputRate = 192000;
-      else
-        m_outputRate = 176400;
+      // E-AC-3 rate is 4 times bitstream sample rate as per IEC 61937.
+      m_outputRate = 4 * m_sampleRate;
 
       if (m_dataType == STREAM_TYPE_EAC3 && m_hasSync && skip == 0)
         return 0;
 
       /* if we get here, we can sync */
       m_hasSync        = true;
-      m_outputChannels = 8;
-      m_channelMap     = CAEChannelInfo(OutputMaps[1]);
+      m_outputChannels = 2;
+      m_channelMap     = CAEChannelInfo(OutputMaps[0]);
       m_channels       = 8; /* FIXME: this should be read out of the stream */
       m_syncFunc       = &CAEStreamInfo::SyncAC3;
       m_dataType       = STREAM_TYPE_EAC3;
       m_packFunc       = &CAEPackIEC61937::PackEAC3;
+      m_fsizeMain      = 0;
 
       CLog::Log(LOGINFO, "CAEStreamInfo::SyncAC3 - E-AC3 stream detected (%d channels, %dHz)", m_channels, m_sampleRate);
       return skip;
@@ -417,6 +438,7 @@ unsigned int CAEStreamInfo::SyncAC3(uint8_t *data, unsigned int size)
   /* if we get here, the entire packet is invalid and we have lost sync */
   CLog::Log(LOGINFO, "CAEStreamInfo::SyncAC3 - AC3 sync lost");
   m_hasSync = false;
+  m_fsizeMain = 0;
   return skip;
 }
 
@@ -451,7 +473,7 @@ unsigned int CAEStreamInfo::SyncDTS(uint8_t *data, unsigned int size)
           break;
         }
         dtsBlocks = (((data[5] & 0x7) << 4) | ((data[6] & 0x3C) >> 2)) + 1;
-        m_fsize     = ((((data[6] & 0x3 << 8) | data[7]) << 4) | ((data[8] & 0x3C) >> 2)) + 1;
+        m_fsize     = (((((data[6] & 0x3) << 8) | data[7]) << 4) | ((data[8] & 0x3C) >> 2)) + 1;
         amode       = ((data[8] & 0x3) << 4) | ((data[9] & 0xF0) >> 4);
         sfreq       = data[9] & 0xF;
         lfe         = (data[12] & 0x18) >> 3;
@@ -467,7 +489,7 @@ unsigned int CAEStreamInfo::SyncDTS(uint8_t *data, unsigned int size)
           break;
         }
         dtsBlocks = (((data[4] & 0x7) << 4) | ((data[7] & 0x3C) >> 2)) + 1;
-        m_fsize     = ((((data[7] & 0x3 << 8) | data[6]) << 4) | ((data[9] & 0x3C) >> 2)) + 1;
+        m_fsize     = (((((data[7] & 0x3) << 8) | data[6]) << 4) | ((data[9] & 0x3C) >> 2)) + 1;
         amode       = ((data[9] & 0x3) << 4) | ((data[8] & 0xF0) >> 4);
         sfreq       = data[8] & 0xF;
         lfe         = (data[13] & 0x18) >> 3;
@@ -645,10 +667,21 @@ unsigned int CAEStreamInfo::SyncTrueHD(uint8_t *data, unsigned int size)
       if (rate == 0xF)
         continue;
 
+      unsigned int major_sync_size = 28;
+      if (data[29] & 1)
+      {
+        /* extension(s) present, look up count */
+        int extension_count = data[30] >> 4;
+        major_sync_size += 2 + extension_count * 2;
+      }
+
+      if (left < 4 + major_sync_size)
+        return skip;
+
       /* verify the crc of the audio unit */
-      uint16_t crc = m_dllAvUtil.av_crc(m_crcTrueHD, 0, data + 4, 24);
-      crc ^= (data[29] << 8) | data[28];
-      if (((data[31] << 8) | data[30]) != crc)
+      uint16_t crc = av_crc(m_crcTrueHD, 0, data + 4, major_sync_size - 4);
+      crc ^= (data[4 + major_sync_size - 3] << 8) | data[4 + major_sync_size - 4];
+      if (((data[4 + major_sync_size - 1] << 8) | data[4 + major_sync_size - 2]) != crc)
         continue;
 
       /* get the sample rate and substreams, we have a valid master audio unit */

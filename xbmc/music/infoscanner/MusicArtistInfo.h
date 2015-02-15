@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ class CMusicArtistInfo
 {
 public:
   CMusicArtistInfo() : m_bLoaded(false) {}
-  CMusicArtistInfo(const CStdString& strArtist, const CScraperUrl& strArtistURL);
+  CMusicArtistInfo(const std::string& strArtist, const CScraperUrl& strArtistURL);
   virtual ~CMusicArtistInfo() {}
   bool Loaded() const { return m_bLoaded; }
   void SetLoaded() { m_bLoaded = true; }
@@ -42,7 +42,7 @@ public:
   CArtist& GetArtist() { return m_artist; }
   const CScraperUrl& GetArtistURL() const { return m_artistURL; }
   bool Load(XFILE::CCurlFile& http, const ADDON::ScraperPtr& scraper,
-    const CStdString &strSearch);
+    const std::string &strSearch);
 
 protected:
   CArtist m_artist;

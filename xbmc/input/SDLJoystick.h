@@ -1,29 +1,32 @@
 /*
-*      Copyright (C) 2007-2012 Team XBMC
-*      http://www.xbmc.org
-*
-*  This Program is free software; you can redistribute it and/or modify
-*  it under the terms of the GNU General Public License as published by
-*  the Free Software Foundation; either version 2, or (at your option)
-*  any later version.
-*
-*  This Program is distributed in the hope that it will be useful,
-*  but WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-*  GNU General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with XBMC; see the file COPYING.  If not, see
-*  <http://www.gnu.org/licenses/>.
-*
-*/
+ *      Copyright (C) 2007-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 
 #ifndef SDL_JOYSTICK_H
 #define SDL_JOYSTICK_H
 
 #include "system.h" // for HAS_SDL_JOYSTICK
+#include "settings/lib/ISettingCallback.h"
 #include <vector>
 #include <string>
+#include <map>
+#include <memory>
 
 #define JACTIVE_BUTTON 0x00000001
 #define JACTIVE_AXIS   0x00000002
@@ -34,66 +37,89 @@
 #define JACTIVE_HAT_DOWN  0x04
 #define JACTIVE_HAT_LEFT  0x08
 
+#if defined(HAS_SDL_JOYSTICK) || defined(HAS_EVENT_SERVER)
+struct AxisConfig {
+  int axis;
+  bool isTrigger;
+  int rest;
+  AxisConfig(int axis, bool isTrigger, int rest) : axis(axis), isTrigger(isTrigger), rest(rest) { }
+};
+typedef std::vector<AxisConfig> AxesConfig; // [<axis, isTrigger, rest state value>]
+#endif
+
 #ifdef HAS_SDL_JOYSTICK
 
-#include <SDL/SDL_joystick.h>
-#include <SDL/SDL_events.h>
+#include <SDL2/SDL_joystick.h>
+#include <SDL2/SDL_events.h>
 
-#define MAX_AXES 64
 #define MAX_AXISAMOUNT 32768
 
+struct AxisState {
+  int val;
+  int rest;
+  bool trigger;
+  AxisState() : val(0), rest(0), trigger(false) { }
+  void reset() { val = rest; }
+};
+
+class CRegExp;
 
 // Class to manage all connected joysticks
-
-class CJoystick
+// Note: 'index' always refers to indices specific to this class,
+//       whereas 'ids' always refer to SDL instance id's
+class CJoystick : public ISettingCallback
 {
 public:
   CJoystick();
 
+  virtual void OnSettingChanged(const CSetting *setting);
+
   void Initialize();
-  void Reset(bool axis=false);
-  void ResetAxis(int axisId) { m_Amount[axisId] = 0; }
+  void Reset();
   void Update();
-  void Update(SDL_Event& event);
-  bool GetButton (int& id, bool consider_repeat=true);
-  bool GetAxis (int &id);
-  bool GetHat (int &id, int &position, bool consider_repeat=true);
-  std::string GetJoystick() { return (m_JoyId>-1)?m_JoystickNames[m_JoyId]:""; }
-  int GetAxisWithMaxAmount();
-  float GetAmount(int axis);
-  float GetAmount() { return GetAmount(m_AxisId); }
+  void Update(SDL_Event& joyEvent);
+  bool GetAxis(std::string &joyName, int &id) const;
+  bool GetButton(std::string &joyName, int &id, bool consider_repeat = true);
+  bool GetHat(std::string &joyName, int &id, int &position, bool consider_repeat = true);
+  float GetAmount(std::string &joyName, int axisNum) const;
   bool IsEnabled() const { return m_joystickEnabled; }
   void SetEnabled(bool enabled = true);
   float SetDeadzone(float val);
   bool Reinitialize();
+  typedef std::vector<AxisConfig> AxesConfig; // [<axis, isTrigger, rest state value>]
+  void ApplyAxesConfigs();
 
 private:
-  void SetAxisActive(bool active=true) { m_ActiveFlags = active?(m_ActiveFlags|JACTIVE_AXIS):(m_ActiveFlags&(~JACTIVE_AXIS)); }
-  void SetButtonActive(bool active=true) { m_ActiveFlags = active?(m_ActiveFlags|JACTIVE_BUTTON):(m_ActiveFlags&(~JACTIVE_BUTTON)); }
-  void SetHatActive(bool active=true) { m_ActiveFlags = active?(m_ActiveFlags|JACTIVE_HAT):(m_ActiveFlags&(~JACTIVE_HAT)); }
-  bool IsButtonActive() { return (m_ActiveFlags & JACTIVE_BUTTON) == JACTIVE_BUTTON; }
-  bool IsAxisActive() { return (m_ActiveFlags & JACTIVE_AXIS) == JACTIVE_AXIS; }
-  bool IsHatActive() { return (m_ActiveFlags & JACTIVE_HAT) == JACTIVE_HAT; }
+  bool IsButtonActive() const { return m_ButtonIdx != -1; }
+  bool IsAxisActive() const { return m_AxisIdx != -1; }
+  bool IsHatActive() const { return m_HatIdx != -1; }
 
+  void AddJoystick(int joyIndex);
+  void RemoveJoystick(int id);
   bool ReleaseJoysticks();
 
-  int m_Amount[MAX_AXES];
-  int m_AxisId;
-  int m_ButtonId;
-  uint8_t m_HatState;
-  int m_HatId; 
-  int m_JoyId;
-  int m_NumAxes;
+  int GetAxisWithMaxAmount() const;
+  int JoystickIndex(const std::string &joyName) const;
+  int JoystickIndex(SDL_Joystick *joy) const;
+  int MapAxis(SDL_Joystick *joy, int axisNum) const ; // <joy, axis> --> axisIdx
+  void MapAxis(int axisIdx, SDL_Joystick *&joy, int &axisNum) const; // axisIdx --> <joy, axis>
+  int MapButton(SDL_Joystick *joy, int buttonNum) const; // <joy, button> --> buttonIdx
+  void MapButton(int buttonIdx, SDL_Joystick *&joy, int &buttonNum) const; // buttonIdx --> <joy, button>
+  int MapHat(SDL_Joystick *joy, int hatNum) const; // <joy, hat> --> hatIdx
+  void MapHat(int hatIdx, SDL_Joystick *&joy, int &hatNum) const; // hatIdx --> <joy, hat>
+
+  std::vector<AxisState> m_Axes;
+  int m_AxisIdx; // active axis
+  int m_ButtonIdx; // active button
+  uint8_t m_HatState; // state of active hat
+  int m_HatIdx; // active hat
+
   int m_DeadzoneRange;
   bool m_joystickEnabled;
   uint32_t m_pressTicksButton;
   uint32_t m_pressTicksHat;
-  uint8_t m_ActiveFlags;
-  std::vector<SDL_Joystick*> m_Joysticks;
-  std::vector<std::string> m_JoystickNames;
+  std::map<int, SDL_Joystick*> m_Joysticks;
 };
-
-extern CJoystick g_Joystick;
 
 #endif
 

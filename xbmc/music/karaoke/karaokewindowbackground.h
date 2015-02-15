@@ -2,8 +2,8 @@
 #define KARAOKEWINDOWBACKGROUND_H
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,12 +23,12 @@
 
 // C++ Interface: karaokewindowbackground
 
-#include "cores/IPlayer.h"
+#include "cores/IPlayerCallback.h"
 
 class CGUIWindow;
 class CGUIImage;
 class CGUIVisualisationControl;
-class CDVDPlayer;
+class KaraokeVideoBackground;
 
 class CKaraokeWindowBackground : public IPlayerCallback
 {
@@ -45,10 +45,10 @@ public:
   virtual void StartVisualisation();
 
   // Start with song-specific still image background
-  virtual void StartImage( const CStdString& path );
+  virtual void StartImage( const std::string& path );
 
   // Start with song-specific video background
-  virtual void StartVideo( const CStdString& path, int64_t offset = 0 );
+  virtual void StartVideo( const std::string& path = "" );
 
   // Start with default (setting-specific) background
   virtual void StartDefault();
@@ -58,9 +58,6 @@ public:
 
   // Stop any kind of background
   virtual void Stop();
-
-  // Switch to next video, or restart current one
-  virtual void NextVideo();
 
   // Function forwarders
   virtual bool OnAction(const CAction &action);
@@ -85,10 +82,6 @@ private:
   // This critical section protects all variables except m_videoEnded
   CCriticalSection          m_CritSectionShared;
 
-  // This critical section protects m_videoEnded, since it could be changed from a different thread
-  // while the section above is locked
-  CCriticalSection          m_CritSectionVideoEnded;
-
   // for visualization background
   CGUIVisualisationControl * m_VisControl;
   CGUIImage                * m_ImgControl;
@@ -99,14 +92,11 @@ private:
   CGUIWindow               * m_parentWindow;
 
   // Video player pointer
-  CDVDPlayer               * m_videoPlayer;
-  bool                       m_videoEnded;
+  KaraokeVideoBackground   * m_videoPlayer;
 
   // For default visualisation mode
   BackgroundMode             m_defaultMode;
-  CStdString                 m_path; // image or video
-  int64_t                    m_videoLastTime; // video only
-  bool                       m_playingDefaultVideo; // whether to store the time
+  std::string                 m_path; // image
 };
 
 #endif

@@ -73,20 +73,21 @@ PLT_MediaConnect::~PLT_MediaConnect()
 NPT_Result
 PLT_MediaConnect::SetupServices()
 {
-	PLT_Service *service = new PLT_Service(
+	NPT_Reference<PLT_Service> service(new PLT_Service(
         this,
         "urn:microsoft.com:service:X_MS_MediaReceiverRegistrar:1", 
         "urn:microsoft.com:serviceId:X_MS_MediaReceiverRegistrar",
-        "X_MS_MediaReceiverRegistrar");
+        "X_MS_MediaReceiverRegistrar"));
 
     NPT_CHECK_FATAL(service->SetSCPDXML((const char*) X_MS_MediaReceiverRegistrarSCPD));
-    NPT_CHECK_FATAL(AddService(service));
+    NPT_CHECK_FATAL(AddService(service.AsPointer()));
 
     service->SetStateVariable("AuthorizationGrantedUpdateID", "1");
     service->SetStateVariable("AuthorizationDeniedUpdateID", "1");
     service->SetStateVariable("ValidationSucceededUpdateID", "0");
     service->SetStateVariable("ValidationRevokedUpdateID", "0");
 
+    service.Detach();
     return PLT_MediaServer::SetupServices();
 }
 
@@ -117,14 +118,15 @@ PLT_MediaConnect::ProcessGetDescription(NPT_HttpRequest&              request,
     PLT_DeviceSignature signature = PLT_HttpHelper::GetDeviceSignature(request);
 
     if (signature == PLT_DEVICE_XBOX /*|| signature == PLT_SONOS*/) {
-        // XBox needs to see something behind a ':'
+        // XBox needs to see something behind a ':' to even show it
         if (m_AddHostname && hostname.GetLength() > 0) {
             m_FriendlyName += ": " + hostname;
         } else if (m_FriendlyName.Find(":") == -1) {
             m_FriendlyName += ": 1";
         }
-    } else if (m_AddHostname && hostname.GetLength() > 0) {
-        m_FriendlyName += " (" + hostname + ")";
+    }
+    else if (m_AddHostname && hostname.GetLength() > 0) {
+      m_FriendlyName += " (" + hostname + ")";
     }
 
     // change some things based on device signature from request
@@ -147,7 +149,7 @@ PLT_MediaConnect::ProcessGetDescription(NPT_HttpRequest&              request,
         m_ModelNumber = "3.0";
     } else if (signature == PLT_DEVICE_PS3) {
        m_DlnaDoc = "DMS-1.50";
-       m_DlnaCap = "";//"av-upload,image-upload,audio-upload";
+       m_DlnaCap = "";
        m_AggregationFlags = "10";
     }
 
@@ -222,7 +224,7 @@ PLT_MediaConnect::OnAction(PLT_ActionReference&          action,
 NPT_Result
 PLT_MediaConnect::OnIsAuthorized(PLT_ActionReference&  action)
 {
-    action->SetArgumentValue("Result", "1");
+    NPT_CHECK_WARNING(action->SetArgumentValue("Result", "1"));
     return NPT_SUCCESS;
 }
 
@@ -233,10 +235,10 @@ NPT_Result
 PLT_MediaConnect::OnRegisterDevice(PLT_ActionReference&  action)
 {
     NPT_String reqMsgBase64;
-    action->GetArgumentValue("RegistrationReqMsg", reqMsgBase64);
+    NPT_CHECK_WARNING(action->GetArgumentValue("RegistrationReqMsg", reqMsgBase64));
 
     NPT_String respMsgBase64;
-    action->SetArgumentValue("RegistrationRespMsg", respMsgBase64);
+    NPT_CHECK_WARNING(action->SetArgumentValue("RegistrationRespMsg", respMsgBase64));
     return NPT_SUCCESS;
 }
 
@@ -246,7 +248,7 @@ PLT_MediaConnect::OnRegisterDevice(PLT_ActionReference&  action)
 NPT_Result
 PLT_MediaConnect::OnIsValidated(PLT_ActionReference&  action)
 {
-    action->SetArgumentValue("Result", "1");
+    NPT_CHECK_WARNING(action->SetArgumentValue("Result", "1"));
     return NPT_SUCCESS;
 }
 

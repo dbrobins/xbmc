@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  */
 
 #include "guilib/GUIDialog.h"
-#include "GUIViewControl.h"
+#include "view/GUIViewControl.h"
 #include "utils/Stopwatch.h"
 
 class CFileItemList;
@@ -43,8 +43,9 @@ public:
 protected:
   virtual void OnInitWindow();
   virtual void OnWindowLoaded();
+  virtual void OnWindowUnload();
   void Update();
-  void SetLabel(int iControl, const CStdString& strLabel);
+  void SetLabel(int iControl, const std::string& strLabel);
 
   bool OnPopupMenu(int iItem);
   CGUIViewControl m_viewControl;

@@ -1,22 +1,22 @@
 /*
-*      Copyright (C) 2005-2012 Team XBMC
-*      http://www.xbmc.org
-*
-*  This Program is free software; you can redistribute it and/or modify
-*  it under the terms of the GNU General Public License as published by
-*  the Free Software Foundation; either version 2, or (at your option)
-*  any later version.
-*
-*  This Program is distributed in the hope that it will be useful,
-*  but WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-*  GNU General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with XBMC; see the file COPYING.  If not, see
-*  <http://www.gnu.org/licenses/>.
-*
-*/
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 
 #include "system.h"
 #include "D3DResource.h"
@@ -226,7 +226,7 @@ CD3DEffect::~CD3DEffect()
   Release();
 }
 
-bool CD3DEffect::Create(const CStdString &effectString, DefinesMap* defines)
+bool CD3DEffect::Create(const std::string &effectString, DefinesMap* defines)
 {
   Release();
   m_effectString = effectString;
@@ -324,7 +324,7 @@ bool CD3DEffect::CreateEffect()
 	{
 		D3DXMACRO m;
 		m.Name = it->first.c_str();
-    if (it->second.IsEmpty())
+    if (it->second.empty())
       m.Definition = NULL;
     else
 		  m.Definition = it->second.c_str();
@@ -335,15 +335,17 @@ bool CD3DEffect::CreateEffect()
 	definemacros.back().Name = 0;
 	definemacros.back().Definition = 0;
 
-  hr = D3DXCreateEffect(g_Windowing.Get3DDevice(),  m_effectString, m_effectString.length(), &definemacros[0], NULL, 0, NULL, &m_effect, &pError );
+  hr = D3DXCreateEffect(g_Windowing.Get3DDevice(),  m_effectString.c_str(), m_effectString.length(), &definemacros[0], NULL, 0, NULL, &m_effect, &pError );
   if(hr == S_OK)
     return true;
   else if(pError)
   {
-    CStdString error;
+    std::string error;
     error.assign((const char*)pError->GetBufferPointer(), pError->GetBufferSize());
-    CLog::Log(LOGERROR, "%s", error.c_str());
+    CLog::Log(LOGERROR, "CD3DEffect::CreateEffect(): %s", error.c_str());
   }
+  else
+    CLog::Log(LOGERROR, "CD3DEffect::CreateEffect(): call to D3DXCreateEffect() failed with %" PRId32, hr);
   return false;
 }
 

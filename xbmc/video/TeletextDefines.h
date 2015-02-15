@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
  *
  */
 
-#include "utils/StdString.h"
+#include <string>
 
 #define FLOFSIZE 4
 #define SUBTITLE_CACHESIZE 50
@@ -431,7 +431,7 @@ typedef struct TextCacheStruct_t
   short           pop, gpop, drcs, gdrcs;
   unsigned short *ColorTable;
 
-  CStdString      line30;
+  std::string      line30;
 } TextCacheStruct_t;
 
 /* struct for all Information needed for Page Rendering */

@@ -2,8 +2,8 @@
 #define DLL_PATHS_H_
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,9 +21,9 @@
  *
  */
 
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
 #include "DllPaths_win32.h"
-#elif defined (__ANDROID__)
+#elif defined (TARGET_ANDROID)
 #include "DllPaths_generated_android.h"
 #else
 #include "DllPaths_generated.h"

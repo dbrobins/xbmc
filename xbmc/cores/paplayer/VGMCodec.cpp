@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 VGMCodec::VGMCodec()
 {
-  m_CodecName = "VGM";
+  m_CodecName = "vgm";
   m_vgm = 0;
   m_iDataPos = -1;
   m_DataFormat = AE_FMT_INVALID;
@@ -35,18 +35,18 @@ VGMCodec::~VGMCodec()
   DeInit();
 }
 
-bool VGMCodec::Init(const CStdString &strFile, unsigned int filecache)
+bool VGMCodec::Init(const std::string &strFile, unsigned int filecache)
 {
   if (!m_dll.Load())
     return false; // error logged previously
 
   m_dll.Init();
 
-  //CStdString strFileToLoad = "filereader://"+strFile;
-  XFILE::CFile::Cache(strFile,"special://temp/"+URIUtils::GetFileName(strFile));
+  //std::string strFileToLoad = "filereader://"+strFile;
+  std::string strFileToLoad = "special://temp/" + URIUtils::GetFileName(strFile);
+  XFILE::CFile::Copy(strFile, strFileToLoad);
 
-  //m_vgm = m_dll.LoadVGM(strFileToLoad.c_str(),&m_SampleRate,&m_BitsPerSample,&m_Channels);
-  m_vgm = m_dll.LoadVGM("special://temp/"+URIUtils::GetFileName(strFile),&m_SampleRate,&m_BitsPerSample,&m_Channels);
+  m_vgm = m_dll.LoadVGM(strFileToLoad.c_str(), &m_SampleRate, &m_BitsPerSample, &m_Channels);
   if (!m_vgm)
   {
     CLog::Log(LOGERROR,"%s: error opening file %s!",__FUNCTION__,strFile.c_str());
@@ -106,7 +106,7 @@ bool VGMCodec::CanInit()
   return m_dll.CanLoad();
 }
 
-bool VGMCodec::IsSupportedFormat(const CStdString& strExt)
+bool VGMCodec::IsSupportedFormat(const std::string& strExt)
 {
   if (strExt == "aax" ||
       strExt == "acm" ||
@@ -201,7 +201,6 @@ bool VGMCodec::IsSupportedFormat(const CStdString& strExt)
       strExt == "rwsd" ||
       strExt == "rwav" ||
       strExt == "rws" ||
-      strExt == "rwsd" ||
       strExt == "rwx" ||
       strExt == "rxw" ||
       strExt == "sad" ||

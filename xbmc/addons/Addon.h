@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include "utils/XBMCTinyXML.h"
 #include "guilib/LocalizeStrings.h"
 #include "utils/ISerializable.h"
+#include <vector>
 
 class TiXmlElement;
 class CAddonCallbacksAddon;
@@ -37,16 +38,14 @@ namespace ADDON
   typedef std::vector<AddonPtr>::iterator IVECADDONS;
 
 // utils
-const CStdString    TranslateType(const TYPE &type, bool pretty=false);
-const CStdString    GetIcon(const TYPE &type);
-      TYPE          TranslateType(const CStdString &string);
-const CStdString    UpdateVideoScraper(const CStdString &scraper);
-const CStdString    UpdateMusicScraper(const CStdString &scraper);
+const std::string   TranslateType(const TYPE &type, bool pretty=false);
+const std::string   GetIcon(const TYPE &type);
+      TYPE          TranslateType(const std::string &string);
 
 class AddonProps : public ISerializable
 {
 public:
-  AddonProps(const CStdString &id, TYPE type, const CStdString &versionstr, const CStdString &minversionstr)
+  AddonProps(const std::string &id, TYPE type, const std::string &versionstr, const std::string &minversionstr)
     : id(id)
     , type(type)
     , version(versionstr)
@@ -54,6 +53,8 @@ public:
     , stars(0)
   {
   }
+
+  virtual ~AddonProps() {}
 
   AddonProps(const cp_extension_t *ext);
   AddonProps(const cp_plugin_info_t *plugin);
@@ -67,25 +68,24 @@ public:
   
   void Serialize(CVariant &variant) const;
 
-  CStdString id;
+  std::string id;
   TYPE type;
   AddonVersion version;
   AddonVersion minversion;
-  CStdString name;
-  CStdString parent;
-  CStdString license;
-  CStdString summary;
-  CStdString description;
-  CStdString path;
-  CStdString libname;
-  CStdString author;
-  CStdString source;
-  CStdString icon;
-  CStdString disclaimer;
-  CStdString changelog;
-  CStdString fanart;
+  std::string name;
+  std::string license;
+  std::string summary;
+  std::string description;
+  std::string path;
+  std::string libname;
+  std::string author;
+  std::string source;
+  std::string icon;
+  std::string disclaimer;
+  std::string changelog;
+  std::string fanart;
   ADDONDEPS dependencies;
-  CStdString broken;
+  std::string broken;
   InfoMap    extrainfo;
   int        stars;
 private:
@@ -101,7 +101,7 @@ public:
   CAddon(const cp_extension_t *ext);
   CAddon(const cp_plugin_info_t *plugin);
   virtual ~CAddon() {}
-  virtual AddonPtr Clone(const AddonPtr& parent) const;
+  virtual AddonPtr Clone() const;
 
   /*! \brief Check whether the this addon can be configured or not
    \return true if the addon has settings, false otherwise
@@ -125,7 +125,7 @@ public:
    \param value the value that the setting should take
    \sa LoadSettings, LoadUserSettings, SaveSettings, HasSettings, HasUserSettings, GetSetting
    */
-  void UpdateSetting(const CStdString& key, const CStdString& value);
+  void UpdateSetting(const std::string& key, const std::string& value);
 
   /*! \brief Retrieve a particular settings value
    If a previously configured user setting is available, we return it's value, else we return the default (if available)
@@ -133,35 +133,41 @@ public:
    \return the current value of the setting, or the default if the setting has yet to be configured.
    \sa LoadSettings, LoadUserSettings, SaveSettings, HasSettings, HasUserSettings, UpdateSetting
    */
-  virtual CStdString GetSetting(const CStdString& key);
+  virtual std::string GetSetting(const std::string& key);
 
   TiXmlElement* GetSettingsXML();
-  virtual CStdString GetString(uint32_t id);
+  virtual std::string GetString(uint32_t id);
 
   // properties
   TYPE Type() const { return m_props.type; }
   bool IsType(TYPE type) const { return type == m_props.type; }
   AddonProps Props() const { return m_props; }
   AddonProps& Props() { return m_props; }
-  const CStdString ID() const { return m_props.id; }
-  const CStdString Name() const { return m_props.name; }
+  const std::string ID() const { return m_props.id; }
+  const std::string Name() const { return m_props.name; }
   bool Enabled() const { return m_enabled; }
   virtual bool IsInUse() const { return false; };
   const AddonVersion Version() const { return m_props.version; }
   const AddonVersion MinVersion() const { return m_props.minversion; }
-  const CStdString Summary() const { return m_props.summary; }
-  const CStdString Description() const { return m_props.description; }
-  const CStdString Path() const { return m_props.path; }
-  const CStdString Profile() const { return m_profile; }
-  const CStdString LibPath() const;
-  const CStdString Author() const { return m_props.author; }
-  const CStdString ChangeLog() const { return m_props.changelog; }
-  const CStdString FanArt() const { return m_props.fanart; }
-  const CStdString Icon() const;
+  const std::string Summary() const { return m_props.summary; }
+  const std::string Description() const { return m_props.description; }
+  const std::string Path() const { return m_props.path; }
+  const std::string Profile() const { return m_profile; }
+  const std::string LibPath() const;
+  const std::string Author() const { return m_props.author; }
+  const std::string ChangeLog() const { return m_props.changelog; }
+  const std::string FanArt() const { return m_props.fanart; }
+  const std::string Icon() const;
   int Stars() const { return m_props.stars; }
-  const CStdString Disclaimer() const { return m_props.disclaimer; }
+  const std::string Disclaimer() const { return m_props.disclaimer; }
   const InfoMap &ExtraInfo() const { return m_props.extrainfo; }
   const ADDONDEPS &GetDeps() const { return m_props.dependencies; }
+
+  /*! \brief get the required version of a dependency.
+   \param dependencyID the addon ID of the dependency.
+   \return the version this addon requires.
+   */
+  AddonVersion GetDependencyVersion(const std::string &dependencyID) const;
 
   /*! \brief return whether or not this addon satisfies the given version requirements
    \param version the version to meet.
@@ -172,12 +178,30 @@ public:
 
   void MarkAsDisabled() { m_enabled = false; }
 
+  /*! \brief callback for when this add-on is disabled.
+   Use to perform any needed actions (e.g. stop a service)
+   */
+  virtual void OnDisabled() {};
+
+  /*! \brief callback for when this add-on is enabled.
+   Use to perform any needed actions (e.g. start a service)
+   */
+  virtual void OnEnabled() {};
+
+  /*! \brief retrieve the running instance of an add-on if it persists while running.
+   */
+  virtual AddonPtr GetRunningInstance() const { return AddonPtr(); }
+
+  /*! \brief callbacks for special install/uninstall behaviour */
+  virtual bool OnPreInstall() { return false; };
+  virtual void OnPostInstall(bool restart, bool update) {};
+  virtual void OnPreUnInstall() {};
+  virtual void OnPostUnInstall() {};
+  virtual bool CanInstall(const std::string& referer) { return true; }
 protected:
   friend class CAddonCallbacksAddon;
 
-  CAddon(const CAddon&); // protected as all copying is handled by Clone()
-  CAddon(const CAddon&, const AddonPtr&);
-  const AddonPtr Parent() const { return m_parent; }
+  CAddon(const CAddon &rhs); // protected as all copying is handled by Clone()
   virtual void BuildLibName(const cp_extension_t *ext = NULL);
 
   /*! \brief Load the default settings and override these with any previously configured user settings
@@ -208,15 +232,14 @@ protected:
   void SettingsToXML(CXBMCTinyXML &doc) const;
 
   CXBMCTinyXML      m_addonXmlDoc;
-  CStdString        m_strLibName;
+  std::string       m_strLibName;
   bool              m_settingsLoaded;
   bool              m_userSettingsLoaded;
 
 private:
   friend class CAddonMgr;
   AddonProps m_props;
-  const AddonPtr    m_parent;
-  CStdString        m_userSettingsPath;
+  std::string        m_userSettingsPath;
   void BuildProfilePath();
 
   virtual bool IsAddonLibrary() { return false; }
@@ -230,10 +253,10 @@ private:
   bool m_checkedStrings;
   bool m_hasSettings;
 
-  CStdString  m_profile;
+  std::string m_profile;
   bool        m_enabled;
   CLocalizeStrings  m_strings;
-  std::map<CStdString, CStdString> m_settings;
+  std::map<std::string, std::string> m_settings;
 };
 
 class CAddonLibrary : public CAddon
@@ -241,6 +264,8 @@ class CAddonLibrary : public CAddon
 public:
   CAddonLibrary(const AddonProps &props);
   CAddonLibrary(const cp_extension_t *ext);
+
+  virtual AddonPtr Clone() const;
 
 private:
   virtual bool IsAddonLibrary() { return true; }

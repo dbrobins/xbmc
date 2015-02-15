@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2007-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2007-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -46,12 +46,17 @@ private:
 class CWinShader
 {
 protected:
-  CWinShader() {}
+  CWinShader() :
+    m_vbsize(0),
+    m_FVF(0),
+    m_vertsize(0),
+    m_primitivesCount(0)
+  {}
   virtual ~CWinShader();
   virtual bool CreateVertexBuffer(DWORD FVF, unsigned int vertCount, unsigned int vertSize, unsigned int primitivesCount);
   virtual bool LockVertexBuffer(void **data);
   virtual bool UnlockVertexBuffer();
-  virtual bool LoadEffect(CStdString filename, DefinesMap* defines);
+  virtual bool LoadEffect(const std::string& filename, DefinesMap* defines);
   virtual bool Execute(std::vector<LPDIRECT3DSURFACE9> *vecRT, unsigned int vertexIndexStep);
 
   CD3DEffect   m_effect;
@@ -74,6 +79,13 @@ public:
                       float brightness,
                       unsigned int flags,
                       YUVBuffer* YUVbuf);
+  CYUV2RGBShader() : 
+    m_sourceWidth (0),
+    m_sourceHeight(0),
+    m_format      (RENDER_FMT_NONE)    
+    {
+      memset(&m_texSteps,0,sizeof(m_texSteps));
+    }
   virtual ~CYUV2RGBShader();
 
 protected:
@@ -138,6 +150,7 @@ public:
                                unsigned int destWidth, unsigned int destHeight,
                                CRect sourceRect,
                                CRect destRect);
+    CConvolutionShader1Pass() : m_sourceWidth (0), m_sourceHeight(0) {}
 
 protected:
   virtual void PrepareParameters(unsigned int sourceWidth, unsigned int sourceHeight,

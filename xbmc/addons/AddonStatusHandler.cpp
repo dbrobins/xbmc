@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,8 +26,9 @@
 #include "dialogs/GUIDialogYesNo.h"
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogKaiToast.h"
-#include "settings/GUISettings.h"
+#include "settings/Settings.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 
 namespace ADDON
 {
@@ -42,8 +43,8 @@ namespace ADDON
 
 CCriticalSection CAddonStatusHandler::m_critSection;
 
-CAddonStatusHandler::CAddonStatusHandler(const CStdString &addonID, ADDON_STATUS status, CStdString message, bool sameThread)
-  : CThread("CAddonStatusHandler:" + addonID)
+CAddonStatusHandler::CAddonStatusHandler(const std::string &addonID, ADDON_STATUS status, std::string message, bool sameThread)
+  : CThread(("AddonStatus " + addonID).c_str())
 {
   if (!CAddonMgr::Get().GetAddon(addonID, m_addon))
     return;
@@ -60,7 +61,6 @@ CAddonStatusHandler::CAddonStatusHandler(const CStdString &addonID, ADDON_STATUS
   else
   {
     Create(true, THREAD_MINSTACKSIZE);
-    SetPriority(-15);
   }
 }
 
@@ -71,6 +71,7 @@ CAddonStatusHandler::~CAddonStatusHandler()
 
 void CAddonStatusHandler::OnStartup()
 {
+  SetPriority(GetMinPriority());
 }
 
 void CAddonStatusHandler::OnExit()
@@ -81,15 +82,14 @@ void CAddonStatusHandler::Process()
 {
   CSingleLock lock(m_critSection);
 
-  CStdString heading;
-  heading.Format("%s: %s", TranslateType(m_addon->Type(), true).c_str(), m_addon->Name().c_str());
+  std::string heading = StringUtils::Format("%s: %s", TranslateType(m_addon->Type(), true).c_str(), m_addon->Name().c_str());
 
   /* AddOn lost connection to his backend (for ones that use Network) */
   if (m_status == ADDON_STATUS_LOST_CONNECTION)
   {
     if (m_addon->Type() == ADDON_PVRDLL)
     {
-      if (!g_guiSettings.GetBool("pvrmanager.hideconnectionlostwarning"))
+      if (!CSettings::Get().GetBool("pvrmanager.hideconnectionlostwarning"))
         CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Info, m_addon->Name().c_str(), g_localizeStrings.Get(36030)); // connection lost
       // TODO handle disconnects after the add-on's been initialised
     }

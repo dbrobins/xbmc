@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "VTPSession.h"
 #include "URL.h"
 #include "utils/URIUtils.h"
+#include "utils/StringUtils.h"
 #include "FileItem.h"
 
 
@@ -38,22 +39,21 @@ CVTPDirectory::~CVTPDirectory()
   delete m_session;
 }
 
-bool CVTPDirectory::GetChannels(const CStdString& base, CFileItemList &items)
+bool CVTPDirectory::GetChannels(const std::string& base, CFileItemList &items)
 {
   vector<CVTPSession::Channel> channels;
   if(!m_session->GetChannels(channels))
     return false;
 
   vector<CVTPSession::Channel>::iterator it;
-  for(it = channels.begin(); it != channels.end(); it++)
+  for(it = channels.begin(); it != channels.end(); ++it)
   {
-    CStdString buffer;
     CFileItemPtr item(new CFileItem("", false));
 
-    buffer.Format("%s/%d.ts", base.c_str(), it->index);
+    std::string buffer = StringUtils::Format("%s/%d.ts", base.c_str(), it->index);
     item->SetPath(buffer);
     item->m_strTitle = it->name;
-    buffer.Format("%d - %s", it->index, it->name);
+    buffer = StringUtils::Format("%d - %s", it->index, it->name.c_str());
     item->SetLabel(buffer);
 
     items.Add(item);
@@ -61,14 +61,14 @@ bool CVTPDirectory::GetChannels(const CStdString& base, CFileItemList &items)
   return true;
 }
 
-bool CVTPDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
+bool CVTPDirectory::GetDirectory(const CURL& url2, CFileItemList &items)
 {
-  CURL url(strPath);
+  CURL url(url2);
 
   if(url.GetHostName() == "")
     url.SetHostName("localhost");
 
-  CStdString base = url.Get();
+  std::string base = url.Get();
   URIUtils::RemoveSlashAtEnd(base);
 
   // add port after, it changes the structure
@@ -79,7 +79,7 @@ bool CVTPDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
   if(!m_session->Open(url.GetHostName(), url.GetPort()))
     return false;
 
-  if(url.GetFileName().IsEmpty())
+  if(url.GetFileName().empty())
   {
     CFileItemPtr item;
 

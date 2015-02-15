@@ -11,8 +11,6 @@
 
 #define FIX_16BPP_DARKIMG // + VK: if uncomment, dark 16bpp images are fixed
 
-#include "../tiff/tiffio.h"
-
 #define CVT(x)			(((x) * 255L) / ((1L<<16)-1))
 #define	SCALE(x)		(((x)*((1L<<16)-1))/255)
 #define CalculateLine(width,bitdepth)	(((width * bitdepth) + 7) / 8)
@@ -318,6 +316,7 @@ bool CxImageTIF::Decode(CxFile * hFile)
 
 			if (info.nEscape){ // <vho> - cancel decoding
 				free(bits);
+				free(row_shifts);
 				cx_throw("Cancelled");
 			}
 
@@ -334,6 +333,7 @@ bool CxImageTIF::Decode(CxFile * hFile)
 					if (TIFFReadTile(m_tif, tilebuf, col, ys, 0, 0) < 0){
 						free(tilebuf);
 						free(bits);
+						free(row_shifts);
 						cx_throw("Corrupted tiled TIFF file!");
 					}
 

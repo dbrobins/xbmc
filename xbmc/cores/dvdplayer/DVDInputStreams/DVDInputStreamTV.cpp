@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -96,16 +96,20 @@ void CDVDInputStreamTV::Close()
   m_eof = true;
 }
 
-int CDVDInputStreamTV::Read(BYTE* buf, int buf_size)
+int CDVDInputStreamTV::Read(uint8_t* buf, int buf_size)
 {
   if(!m_pFile) return -1;
 
-  unsigned int ret = m_pFile->Read(buf, buf_size);
+  ssize_t ret = m_pFile->Read(buf, buf_size);
+
+  if (ret < 0)
+    return -1; // player will retry read in case of error until playback is stopped
 
   /* we currently don't support non completing reads */
-  if( ret <= 0 ) m_eof = true;
+  if (ret == 0)
+    m_eof = true;
 
-  return (int)(ret & 0xFFFFFFFF);
+  return (int)ret;
 }
 
 int64_t CDVDInputStreamTV::Seek(int64_t offset, int whence)

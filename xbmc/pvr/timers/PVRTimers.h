@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -68,6 +68,12 @@ namespace PVR
     std::vector<CFileItemPtr> GetActiveTimers(void) const;
 
     /*!
+     * Get all timers
+     * @param items The list to add the timers to
+     */
+    void GetAll(CFileItemList& items) const;
+
+    /*!
      * @return True when there is at least one timer that is active (states scheduled or recording), false otherwise.
      */
     bool HasActiveTimers(void) const;
@@ -105,7 +111,7 @@ namespace PVR
      * @param items The results.
      * @return True when the path was valid, false otherwise.
      */
-    bool GetDirectory(const CStdString& strPath, CFileItemList &items) const;
+    bool GetDirectory(const std::string& strPath, CFileItemList &items) const;
 
     /*!
      * @brief Delete all timers on a channel.
@@ -144,7 +150,7 @@ namespace PVR
      * @brief Rename a timer on the client. Doesn't update the timer in the container. The backend will do this.
      * @return True if it was sent correctly, false if not.
      */
-    static bool RenameTimer(CFileItem &item, const CStdString &strNewName);
+    static bool RenameTimer(CFileItem &item, const std::string &strNewName);
 
     /**
      * @brief Update the timer on the client. Doesn't update the timer in the container. The backend will do this.
@@ -166,14 +172,25 @@ namespace PVR
 
     void Notify(const Observable &obs, const ObservableMessage msg);
 
+    /*!
+     * Get a timer tag given it's unique ID
+     * @param iTimerId The ID to find
+     * @return The tag, or an empty one when not found
+     */
+    CPVRTimerInfoTagPtr GetById(unsigned int iTimerId) const;
+
   private:
+    typedef std::map<CDateTime, std::vector<CPVRTimerInfoTagPtr>* > MapTags;
+    typedef std::vector<CPVRTimerInfoTagPtr> VecTimerInfoTag;
+
     void Unload(void);
     void UpdateEpgEvent(CPVRTimerInfoTagPtr timer);
     bool UpdateEntries(const CPVRTimers &timers);
     CPVRTimerInfoTagPtr GetByClient(int iClientId, int iClientTimerId) const;
 
-    CCriticalSection                                        m_critSection;
-    bool                                                    m_bIsUpdating;
-    std::map<CDateTime, std::vector<CPVRTimerInfoTagPtr>* > m_tags;
+    CCriticalSection  m_critSection;
+    bool              m_bIsUpdating;
+    MapTags           m_tags;
+    unsigned int      m_iLastId;
   };
 }

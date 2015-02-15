@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,8 +20,11 @@
  *
  */
 
+#include <vector>
+
 #include "guilib/GUIDialog.h"
 #include "utils/Variant.h"
+#include "threads/CriticalSection.h"
 
 #define DIALOG_MAX_LINES 3
 #define DIALOG_MAX_CHOICES 2
@@ -30,30 +33,34 @@ class CGUIDialogBoxBase :
       public CGUIDialog
 {
 public:
-  CGUIDialogBoxBase(int id, const CStdString &xmlFile);
+  CGUIDialogBoxBase(int id, const std::string &xmlFile);
   virtual ~CGUIDialogBoxBase(void);
   virtual bool OnMessage(CGUIMessage& message);
   bool IsConfirmed() const;
-  void SetLine(int iLine, const CVariant &line);
+  void SetLine(unsigned int iLine, const CVariant &line);
+  void SetText(const CVariant &text);
   void SetHeading(const CVariant &heading);
   void SetChoice(int iButton, const CVariant &choice);
 protected:
-  CStdString GetDefaultLabel(int controlId) const;
+  std::string GetDefaultLabel(int controlId) const;
   virtual int GetDefaultLabelID(int controlId) const;
   /*! \brief Get a localized string from a variant
    If the varaint is already a string we return directly, else if it's an integer we return the corresponding
    localized string.
    \param var the variant to localize.
    */
-  CStdString GetLocalized(const CVariant &var) const;
+  std::string GetLocalized(const CVariant &var) const;
 
+  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
   virtual void OnInitWindow();
   virtual void OnDeinitWindow(int nextWindowID);
 
   bool m_bConfirmed;
+  bool m_hasTextbox;
 
   // actual strings
+  CCriticalSection m_section;
   std::string m_strHeading;
-  std::string m_strLines[DIALOG_MAX_LINES];
+  std::string m_text;
   std::string m_strChoices[DIALOG_MAX_CHOICES];
 };

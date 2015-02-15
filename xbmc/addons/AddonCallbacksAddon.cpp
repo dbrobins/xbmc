@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,11 @@
 #include "filesystem/Directory.h"
 #include "utils/URIUtils.h"
 #include "FileItem.h"
+#include "network/Network.h"
+#include "utils/CharsetConverter.h"
+#include "utils/StringUtils.h"
+#include "utils/XMLUtils.h"
+#include "cores/dvdplayer/DVDCodecs/DVDCodecs.h"
 
 using namespace XFILE;
 
@@ -42,10 +47,12 @@ CAddonCallbacksAddon::CAddonCallbacksAddon(CAddon* addon)
   /* write XBMC addon-on specific add-on function addresses to the callback table */
   m_callbacks->Log                = AddOnLog;
   m_callbacks->QueueNotification  = QueueNotification;
+  m_callbacks->WakeOnLan          = WakeOnLan;
   m_callbacks->GetSetting         = GetAddonSetting;
   m_callbacks->UnknownToUTF8      = UnknownToUTF8;
   m_callbacks->GetLocalizedString = GetLocalizedString;
   m_callbacks->GetDVDMenuLanguage = GetDVDMenuLanguage;
+  m_callbacks->FreeString         = FreeString;
 
   m_callbacks->OpenFile           = OpenFile;
   m_callbacks->OpenFileForWrite   = OpenFileForWrite;
@@ -106,8 +113,7 @@ void CAddonCallbacksAddon::AddOnLog(void *addonData, const addon_log_t addonLogL
         break;
     }
 
-    CStdString strXbmcMessage;
-    strXbmcMessage.Format("AddOnLog: %s: %s", addonHelper->m_addon->Name().c_str(), strMessage);
+    std::string strXbmcMessage = StringUtils::Format("AddOnLog: %s: %s", addonHelper->m_addon->Name().c_str(), strMessage);
     CLog::Log(xbmcLogLevel, "%s", strXbmcMessage.c_str());
   }
   catch (std::exception &e)
@@ -156,6 +162,11 @@ void CAddonCallbacksAddon::QueueNotification(void *addonData, const queue_msg_t 
   }
 }
 
+bool CAddonCallbacksAddon::WakeOnLan(const char *mac)
+{
+  return g_application.getNetwork().WakeOnLan(mac);
+}
+
 bool CAddonCallbacksAddon::GetAddonSetting(void *addonData, const char *strSettingName, void *settingValue)
 {
   CAddonCallbacks* addon = (CAddonCallbacks*) addonData;
@@ -186,30 +197,44 @@ bool CAddonCallbacksAddon::GetAddonSetting(void *addonData, const char *strSetti
       const TiXmlElement *setting = category->FirstChildElement("setting");
       while (setting)
       {
-        const char *id = setting->Attribute("id");
-        const char *type = setting->Attribute("type");
+        const std::string   id = XMLUtils::GetAttribute(setting, "id");
+        const std::string type = XMLUtils::GetAttribute(setting, "type");
 
-        if (strcmpi(id, strSettingName) == 0 && type)
+        if (id == strSettingName && !type.empty())
         {
-          if (strcmpi(type, "text")   == 0 || strcmpi(type, "ipaddress") == 0 ||
-              strcmpi(type, "folder") == 0 || strcmpi(type, "action")    == 0 ||
-              strcmpi(type, "music")  == 0 || strcmpi(type, "pictures")  == 0 ||
-              strcmpi(type, "folder") == 0 || strcmpi(type, "programs")  == 0 ||
-              strcmpi(type, "file")  == 0 || strcmpi(type, "fileenum")  == 0)
+          if (type == "text"     || type == "ipaddress" ||
+              type == "folder"   || type == "action"    ||
+              type == "music"    || type == "pictures"  ||
+              type == "programs" || type == "fileenum"  ||
+              type == "file")
           {
             strcpy((char*) settingValue, addonHelper->m_addon->GetSetting(id).c_str());
             return true;
           }
-          else if (strcmpi(type, "number") == 0 || strcmpi(type, "enum") == 0 ||
-                   strcmpi(type, "labelenum") == 0)
+          else if (type == "number" || type == "enum" ||
+                   type == "labelenum")
           {
-            *(int*) settingValue = (int) atoi(addonHelper->m_addon->GetSetting(id));
+            *(int*) settingValue = (int) atoi(addonHelper->m_addon->GetSetting(id).c_str());
             return true;
           }
-          else if (strcmpi(type, "bool") == 0)
+          else if (type == "bool")
           {
             *(bool*) settingValue = (bool) (addonHelper->m_addon->GetSetting(id) == "true" ? true : false);
             return true;
+          }
+          else if (type == "slider")
+          {
+            const char *option = setting->Attribute("option");
+            if (option && strcmpi(option, "int") == 0)
+            {
+              *(int*) settingValue = (int) atoi(addonHelper->m_addon->GetSetting(id).c_str());
+              return true;
+            }
+            else
+            {
+              *(float*) settingValue = (float) atof(addonHelper->m_addon->GetSetting(id).c_str());
+              return true;
+            }
           }
         }
         setting = setting->NextSiblingElement("setting");
@@ -229,17 +254,16 @@ bool CAddonCallbacksAddon::GetAddonSetting(void *addonData, const char *strSetti
 
 char* CAddonCallbacksAddon::UnknownToUTF8(const char *strSource)
 {
-  CStdString string;
+  std::string string;
   if (strSource != NULL)
     g_charsetConverter.unknownToUTF8(strSource, string);
   else
     string = "";
-  char *buffer = (char*) malloc (string.length()+1);
-  strcpy(buffer, string.c_str());
+  char* buffer = strdup(string.c_str());
   return buffer;
 }
 
-const char* CAddonCallbacksAddon::GetLocalizedString(const void* addonData, long dwCode)
+char* CAddonCallbacksAddon::GetLocalizedString(const void* addonData, long dwCode)
 {
   CAddonCallbacks* helper = (CAddonCallbacks*) addonData;
   if (!helper || g_application.m_bStop)
@@ -247,7 +271,7 @@ const char* CAddonCallbacksAddon::GetLocalizedString(const void* addonData, long
 
   CAddonCallbacksAddon* addonHelper = helper->GetHelperAddon();
 
-  CStdString string;
+  std::string string;
   if (dwCode >= 30000 && dwCode <= 30999)
     string = addonHelper->m_addon->GetString(dwCode).c_str();
   else if (dwCode >= 32000 && dwCode <= 32999)
@@ -255,22 +279,25 @@ const char* CAddonCallbacksAddon::GetLocalizedString(const void* addonData, long
   else
     string = g_localizeStrings.Get(dwCode).c_str();
 
-  char *buffer = (char*) malloc (string.length()+1);
-  strcpy(buffer, string.c_str());
+  char* buffer = strdup(string.c_str());
   return buffer;
 }
 
-const char* CAddonCallbacksAddon::GetDVDMenuLanguage(const void* addonData)
+char* CAddonCallbacksAddon::GetDVDMenuLanguage(const void* addonData)
 {
   CAddonCallbacks* helper = (CAddonCallbacks*) addonData;
   if (!helper)
     return NULL;
 
-  CStdString string = g_langInfo.GetDVDMenuLanguage();
+  std::string string = g_langInfo.GetDVDMenuLanguage();
 
-  char *buffer = (char*) malloc (string.length()+1);
-  strcpy(buffer, string.c_str());
+  char* buffer = strdup(string.c_str());
   return buffer;
+}
+
+void CAddonCallbacksAddon::FreeString(const void* addonData, char* str)
+{
+  delete[] str;
 }
 
 void* CAddonCallbacksAddon::OpenFile(const void* addonData, const char* strFileName, unsigned int flags)
@@ -301,7 +328,7 @@ void* CAddonCallbacksAddon::OpenFileForWrite(const void* addonData, const char* 
   return NULL;
 }
 
-unsigned int CAddonCallbacksAddon::ReadFile(const void* addonData, void* file, void* lpBuf, int64_t uiBufSize)
+ssize_t CAddonCallbacksAddon::ReadFile(const void* addonData, void* file, void* lpBuf, size_t uiBufSize)
 {
   CAddonCallbacks* helper = (CAddonCallbacks*) addonData;
   if (!helper)
@@ -327,7 +354,7 @@ bool CAddonCallbacksAddon::ReadFileString(const void* addonData, void* file, cha
   return cfile->ReadString(szLine, iLineLength);
 }
 
-int CAddonCallbacksAddon::WriteFile(const void* addonData, void* file, const void* lpBuf, int64_t uiBufSize)
+ssize_t CAddonCallbacksAddon::WriteFile(const void* addonData, void* file, const void* lpBuf, size_t uiBufSize)
 {
   CAddonCallbacks* helper = (CAddonCallbacks*) addonData;
   if (!helper)

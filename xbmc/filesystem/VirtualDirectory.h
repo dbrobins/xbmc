@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,16 +34,16 @@ namespace XFILE
   public:
     CVirtualDirectory(void);
     virtual ~CVirtualDirectory(void);
-    virtual bool GetDirectory(const CStdString& strPath, CFileItemList &items);
-    virtual bool GetDirectory(const CStdString& strPath, CFileItemList &items, bool bUseFileDirectories);
+    virtual bool GetDirectory(const CURL& url, CFileItemList &items);
+    bool GetDirectory(const CURL& url, CFileItemList &items, bool bUseFileDirectories);
     void SetSources(const VECSOURCES& vecSources);
     inline unsigned int GetNumberOfSources() 
     {
       return m_vecSources.size();
     }
 
-    bool IsSource(const CStdString& strPath, VECSOURCES *sources = NULL, CStdString *name = NULL) const;
-    bool IsInSource(const CStdString& strPath) const;
+    bool IsSource(const std::string& strPath, VECSOURCES *sources = NULL, std::string *name = NULL) const;
+    bool IsInSource(const std::string& strPath) const;
 
     inline const CMediaSource& operator [](const int index) const
     {

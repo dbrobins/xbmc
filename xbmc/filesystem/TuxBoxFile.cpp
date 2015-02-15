@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -47,9 +47,9 @@ bool CTuxBoxFile::Open(const CURL& url)
   return true;
 }
 
-unsigned int CTuxBoxFile::Read(void* lpBuf, int64_t uiBufSize)
+ssize_t CTuxBoxFile::Read(void* lpBuf, size_t uiBufSize)
 {
-  return 0;
+  return -1;
 }
 
 int64_t CTuxBoxFile::Seek(int64_t iFilePosition, int iWhence)

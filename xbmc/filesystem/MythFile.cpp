@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,9 @@
 #include "DirectoryCache.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 #include "utils/TimeUtils.h"
+#include "utils/StringUtils.h"
 
 extern "C" {
 #include "cmyth/include/cmyth/cmyth.h"
@@ -119,9 +121,9 @@ bool CMythFile::SetupConnection(const CURL& url, bool control, bool event, bool 
 
 bool CMythFile::SetupRecording(const CURL& url)
 {
-  if (url.GetFileName().Left(11) != "recordings/" &&
-      url.GetFileName().Left(7)  != "movies/" &&
-      url.GetFileName().Left(8)  != "tvshows/")
+  if (!StringUtils::StartsWith(url.GetFileName(), "recordings/") &&
+      !StringUtils::StartsWith(url.GetFileName(), "movies/") &&
+      !StringUtils::StartsWith(url.GetFileName(), "tvshows/"))
     return false;
 
   if(!SetupConnection(url, true, false, false))
@@ -187,14 +189,14 @@ bool CMythFile::SetupRecording(const CURL& url)
 
 bool CMythFile::SetupLiveTV(const CURL& url)
 {
-  if (url.GetFileName().Left(9) != "channels/")
+  if (!StringUtils::StartsWith(url.GetFileName(), "channels/"))
     return false;
 
   if(!SetupConnection(url, true, true, true))
     return false;
 
-  CStdString channel = url.GetFileNameWithoutPath();
-  if(!URIUtils::GetExtension(channel).Equals(".ts"))
+  std::string channel = url.GetFileNameWithoutPath();
+  if(!URIUtils::HasExtension(channel, ".ts"))
   {
     CLog::Log(LOGERROR, "%s - invalid channel url %s", __FUNCTION__, channel.c_str());
     return false;
@@ -270,13 +272,13 @@ bool CMythFile::SetupLiveTV(const CURL& url)
 
 bool CMythFile::SetupFile(const CURL& url)
 {
-  if (url.GetFileName().Left(6) != "files/")
+  if (!StringUtils::StartsWith(url.GetFileName(), "files/"))
     return false;
 
   if(!SetupConnection(url, true, false, false))
     return false;
 
-  m_filename = url.GetFileName().Mid(6);
+  m_filename = url.GetFileName().substr(6);
 
   m_file = m_dll->conn_connect_path((char*)m_filename.c_str(), m_control, 16*1024, 4096);
   if(!m_file)
@@ -298,18 +300,18 @@ bool CMythFile::Open(const CURL& url)
 {
   Close();
 
-  CStdString path(url.GetFileName());
+  std::string path(url.GetFileName());
 
-  if (path.Left(11) == "recordings/" ||
-      path.Left(7)  == "movies/" ||
-      path.Left(8)  == "tvshows/")
+  if (StringUtils::StartsWith(path, "recordings/") ||
+      StringUtils::StartsWith(path, "movies/") ||
+      StringUtils::StartsWith(path, "tvshows/"))
   {
     if(!SetupRecording(url))
       return false;
 
-    CLog::Log(LOGDEBUG, "%s - file: size %"PRIu64", start %"PRIu64", ", __FUNCTION__,  (int64_t)m_dll->file_length(m_file), (int64_t)m_dll->file_start(m_file));
+    CLog::Log(LOGDEBUG, "%s - file: size %" PRIu64", start %" PRIu64", ", __FUNCTION__,  (int64_t)m_dll->file_length(m_file), (int64_t)m_dll->file_start(m_file));
   }
-  else if (path.Left(9) == "channels/")
+  else if (StringUtils::StartsWith(path, "channels/"))
   {
 
     if(!SetupLiveTV(url))
@@ -317,12 +319,12 @@ bool CMythFile::Open(const CURL& url)
 
     CLog::Log(LOGDEBUG, "%s - recorder has started on filename %s", __FUNCTION__, m_filename.c_str());
   }
-  else if (path.Left(6) == "files/")
+  else if (StringUtils::StartsWith(path, "files/"))
   {
     if(!SetupFile(url))
       return false;
 
-    CLog::Log(LOGDEBUG, "%s - file: size %"PRId64", start %"PRId64", ", __FUNCTION__,  (int64_t)m_dll->file_length(m_file), (int64_t)m_dll->file_start(m_file));
+    CLog::Log(LOGDEBUG, "%s - file: size %" PRId64", start %" PRId64", ", __FUNCTION__,  (int64_t)m_dll->file_length(m_file), (int64_t)m_dll->file_start(m_file));
   }
   else
   {
@@ -386,18 +388,17 @@ CMythFile::~CMythFile()
 
 bool CMythFile::Exists(const CURL& url)
 {
-  CStdString path(url.GetFileName());
+  std::string path(url.GetFileName());
 
   /*
    * mythbackend provides access to the .mpg or .nuv recordings. The associated thumbnails
    * (*.mpg.png or *.nuv.png) and channel icons, which are an arbitrary image format, are requested
    * through the files/ path.
    */
-  if ((path.Left(11) == "recordings/"
-    || path.Left(7)  == "movies/"
-    || path.Left(8)  == "tvshows/")
-    && (URIUtils::GetExtension(path).Equals(".mpg")
-    ||  URIUtils::GetExtension(path).Equals(".nuv")))
+  if ((StringUtils::StartsWith(path, "recordings/")
+    || StringUtils::StartsWith(path, "movies/")
+    || StringUtils::StartsWith(path, "tvshows/"))
+    && (URIUtils::HasExtension(path, ".mpg|.nuv")))
   {
     if(!SetupConnection(url, true, false, false))
       return false;
@@ -411,7 +412,7 @@ bool CMythFile::Exists(const CURL& url)
     }
     return true;
   }
-  else if(path.Left(6) == "files/")
+  else if(StringUtils::StartsWith(path, "files/"))
     return true;
 
   return false;
@@ -419,11 +420,11 @@ bool CMythFile::Exists(const CURL& url)
 
 bool CMythFile::Delete(const CURL& url)
 {
-  CStdString path(url.GetFileName());
+  std::string path(url.GetFileName());
 
-  if (path.Left(11) == "recordings/" ||
-      path.Left(7)  == "movies/" ||
-      path.Left(8)  == "tvshows/")
+  if (StringUtils::StartsWith(path, "recordings/") ||
+      StringUtils::StartsWith(path, "movies/") ||
+      StringUtils::StartsWith(path, "tvshows/"))
   {
     /* this will setup all interal variables */
     if(!Exists(url))
@@ -437,7 +438,7 @@ bool CMythFile::Delete(const CURL& url)
       return false;
     }
 
-    if (path.Left(8) == "tvshows/")
+    if (StringUtils::StartsWith(path, "tvshows/"))
     {
       /*
        * Clear the directory cache for the TV Shows folder so the listing is accurate if this was
@@ -460,7 +461,7 @@ bool CMythFile::Delete(const CURL& url)
 
 int64_t CMythFile::Seek(int64_t pos, int whence)
 {
-  CLog::Log(LOGDEBUG, "%s - seek to pos %"PRId64", whence %d", __FUNCTION__, pos, whence);
+  CLog::Log(LOGDEBUG, "%s - seek to pos %" PRId64", whence %d", __FUNCTION__, pos, whence);
 
   if(m_recorder) // Live TV
     return -1; // Seeking not possible. Eventually will use m_dll->livetv_seek(m_recorder, pos, whence);
@@ -491,14 +492,17 @@ int64_t CMythFile::GetLength()
   return -1;
 }
 
-unsigned int CMythFile::Read(void* buffer, int64_t size)
+ssize_t CMythFile::Read(void* buffer, size_t size)
 {
   /* check for any events */
   HandleEvents();
 
   /* file might have gotten closed */
   if(!m_recorder && !m_file)
-    return 0;
+    return -1;
+
+  if (size > SSIZE_MAX)
+    size = SSIZE_MAX;
 
   int ret;
   if(m_recorder)
@@ -507,10 +511,8 @@ unsigned int CMythFile::Read(void* buffer, int64_t size)
     ret = m_dll->file_read(m_file, (char*)buffer, (unsigned long)size);
 
   if(ret < 0)
-  {
     CLog::Log(LOGERROR, "%s - cmyth read returned error %d", __FUNCTION__, ret);
-    return 0;
-  }
+
   return ret;
 }
 
@@ -538,7 +540,7 @@ bool CMythFile::UpdateItem(CFileItem& item)
   if (!m_program || !m_session)
     return false;
 
-  CStdString title = item.m_strTitle;
+  std::string title = item.m_strTitle;
   m_session->SetFileItemMetaData(item, m_program);
   return title != item.m_strTitle;
 }
@@ -578,7 +580,7 @@ int CMythFile::GetStartTime()
   return 0;
 }
 
-bool CMythFile::ChangeChannel(int direction, const CStdString &channel)
+bool CMythFile::ChangeChannel(int direction, const std::string &channel)
 {
   CLog::Log(LOGDEBUG, "%s - channel change started", __FUNCTION__);
 
@@ -639,7 +641,7 @@ bool CMythFile::PrevChannel(bool preview)
 
 bool CMythFile::SelectChannel(unsigned int channel)
 {
-  return ChangeChannel(CHANNEL_DIRECTION_SAME,""+channel);
+  return ChangeChannel(CHANNEL_DIRECTION_SAME, StringUtils::Format("%d", channel));
 }
 
 bool CMythFile::CanRecord()

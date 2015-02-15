@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,8 +25,6 @@
 #include "cores/AudioEngine/Utils/AEUtil.h"
 #include "music/tags/TagLoaderTagLib.h"
 
-using namespace MUSIC_INFO;
-
 OGGCodec::OGGCodec() : m_callback(m_file)
 {
   m_SampleRate = 0;
@@ -34,7 +32,7 @@ OGGCodec::OGGCodec() : m_callback(m_file)
   m_BitsPerSample = 0;
   m_DataFormat = AE_FMT_INVALID;
   m_Bitrate = 0;
-  m_CodecName = "OGG";
+  m_CodecName = "ogg";
   m_TimeOffset = 0.0;
   m_CurrentStream=0;
   m_TotalTime = 0;
@@ -47,31 +45,27 @@ OGGCodec::~OGGCodec()
   DeInit();
 }
 
-bool OGGCodec::Init(const CStdString &strFile1, unsigned int filecache)
+bool OGGCodec::Init(const std::string &strFile1, unsigned int filecache)
 {
   if (m_inited)
     return true;
-  CStdString strFile=strFile1;
+  std::string strFile=strFile1;
   if (!m_dll.Load())
     return false;
 
   m_CurrentStream=0;
 
-  CStdString strExtension;
-  URIUtils::GetExtension(strFile, strExtension);
-
   //  A bitstream inside a ogg file?
-  if (strExtension==".oggstream")
+  if (URIUtils::HasExtension(strFile, ".oggstream"))
   {
     //  Extract the bitstream to play
-    CStdString strFileName=URIUtils::GetFileName(strFile);
-    int iStart=strFileName.ReverseFind('-')+1;
+    std::string strFileName=URIUtils::GetFileName(strFile);
+    size_t iStart = strFileName.rfind('-') + 1;
     m_CurrentStream = atoi(strFileName.substr(iStart, strFileName.size()-iStart-10).c_str())-1;
     //  The directory we are in, is the file
     //  that contains the bitstream to play,
     //  so extract it
-    CStdString strPath=strFile;
-    URIUtils::GetDirectory(strPath, strFile);
+    strFile = URIUtils::GetDirectory(strFile);
     URIUtils::RemoveSlashAtEnd(strFile); // we want the filename
   }
 
@@ -98,7 +92,10 @@ bool OGGCodec::Init(const CStdString &strFile1, unsigned int filecache)
   if (iStreams>1)
   {
     if (m_CurrentStream > iStreams)
+    {
+      DeInit();
       return false;
+    }
   }
 
   //  Calculate the offset in secs where the bitstream starts
@@ -110,6 +107,7 @@ bool OGGCodec::Init(const CStdString &strFile1, unsigned int filecache)
   if (!pInfo)
   {
     CLog::Log(LOGERROR, "OGGCodec: Can't get stream info from %s", strFile1.c_str());
+    DeInit();
     return false;
   }
 
@@ -127,7 +125,8 @@ bool OGGCodec::Init(const CStdString &strFile1, unsigned int filecache)
 
   if (m_SampleRate==0 || m_Channels==0 || m_BitsPerSample==0 || m_TotalTime==0)
   {
-    CLog::Log(LOGERROR, "OGGCodec: incomplete stream info from %s, SampleRate=%i, Channels=%i, BitsPerSample=%i, TotalTime=%"PRIu64, strFile1.c_str(), m_SampleRate, m_Channels, m_BitsPerSample, m_TotalTime);
+    CLog::Log(LOGERROR, "OGGCodec: incomplete stream info from %s, SampleRate=%i, Channels=%i, BitsPerSample=%i, TotalTime=%" PRIu64, strFile1.c_str(), m_SampleRate, m_Channels, m_BitsPerSample, m_TotalTime);
+    DeInit();
     return false;
   }
 
@@ -136,7 +135,7 @@ bool OGGCodec::Init(const CStdString &strFile1, unsigned int filecache)
   if (pComments)
   {
     CTagLoaderTagLib tagLoaderTagLib;
-    tagLoaderTagLib.Load(strFile, m_tag);
+    tagLoaderTagLib.Load(strFile, m_tag, "oga");
   }
 
   //  Seek to the logical bitstream to play
@@ -145,9 +144,12 @@ bool OGGCodec::Init(const CStdString &strFile1, unsigned int filecache)
     if (m_dll.ov_time_seek(&m_VorbisFile, m_TimeOffset)!=0)
     {
       CLog::Log(LOGERROR, "OGGCodec: Can't seek to the bitstream start time (%s)", strFile1.c_str());
+      DeInit();
       return false;
     }
   }
+
+  m_inited = true;
 
   return true;
 }

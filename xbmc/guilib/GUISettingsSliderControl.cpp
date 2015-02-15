@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@ CGUISettingsSliderControl::CGUISettingsSliderControl(int parentID, int controlID
     , m_buttonControl(parentID, controlID, posX, posY, width, height, textureFocus, textureNoFocus, labelInfo)
     , m_label(posX, posY, width, height, labelInfo)
 {
-  m_label.SetAlign(XBFONT_CENTER_Y | XBFONT_RIGHT);  
+  m_label.SetAlign((labelInfo.align & XBFONT_CENTER_Y) | XBFONT_RIGHT);  
   ControlType = GUICONTROL_SETTINGS_SLIDER;
 }
 
@@ -60,7 +60,7 @@ void CGUISettingsSliderControl::ProcessText()
 {
   bool changed = false;
 
-  changed |= m_label.SetMaxRect(m_buttonControl.GetXPosition(), m_posY, m_posX - m_buttonControl.GetXPosition(), m_height);
+  changed |= m_label.SetMaxRect(m_buttonControl.GetXPosition(), m_buttonControl.GetYPosition(), m_posX - m_buttonControl.GetXPosition(), m_buttonControl.GetHeight());
   changed |= m_label.SetText(CGUISliderControl::GetDescription());
   if (IsDisabled())
     changed |= m_label.SetColor(CGUILabel::COLOR_DISABLED);
@@ -126,7 +126,7 @@ void CGUISettingsSliderControl::SetEnabled(bool bEnable)
   m_buttonControl.SetEnabled(bEnable);
 }
 
-CStdString CGUISettingsSliderControl::GetDescription() const
+std::string CGUISettingsSliderControl::GetDescription() const
 {
   return m_buttonControl.GetDescription() + " " + CGUISliderControl::GetDescription();
 }

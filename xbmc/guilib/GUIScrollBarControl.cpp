@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 
 #include "GUIScrollBarControl.h"
 #include "Key.h"
+#include "utils/StringUtils.h"
 
 #define MIN_NIB_SIZE 4.0f
 
@@ -143,7 +144,7 @@ bool CGUIScrollBar::Move(int numSteps)
 {
   if (numSteps < 0 && m_offset == 0) // we are at the beginning - can't scroll up/left anymore
     return false;
-  if (numSteps > 0 && m_offset == m_numItems - m_pageSize) // we are at the end - we can't scroll down/right anymore
+  if (numSteps > 0 && m_offset == std::max(m_numItems - m_pageSize, 0)) // we are at the end - we can't scroll down/right anymore
     return false;
 
   m_offset += numSteps * m_pageSize;
@@ -285,13 +286,13 @@ void CGUIScrollBar::SetFromPosition(const CPoint &point)
 {
   float fPercent;
   if (m_orientation == VERTICAL)
-    fPercent = (point.y - m_guiBackground.GetYPosition() - 0.5f*m_guiBarFocus.GetHeight()) / m_guiBackground.GetHeight();
+    fPercent = (point.y - m_guiBackground.GetYPosition() - 0.5f*m_guiBarFocus.GetHeight()) / (m_guiBackground.GetHeight() - m_guiBarFocus.GetHeight());
   else
-    fPercent = (point.x - m_guiBackground.GetXPosition() - 0.5f*m_guiBarFocus.GetWidth()) / m_guiBackground.GetWidth();
+    fPercent = (point.x - m_guiBackground.GetXPosition() - 0.5f*m_guiBarFocus.GetWidth()) / (m_guiBackground.GetWidth() - m_guiBarFocus.GetWidth());
   if (fPercent < 0) fPercent = 0;
   if (fPercent > 1) fPercent = 1;
 
-  int offset = (int)(floor(fPercent * m_numItems + 0.5f));
+  int offset = (int)(floor(fPercent * (m_numItems - m_pageSize) + 0.5f));
 
   if (m_offset != offset)
   {
@@ -359,11 +360,9 @@ EVENT_RESULT CGUIScrollBar::OnMouseEvent(const CPoint &point, const CMouseEvent 
   return EVENT_RESULT_UNHANDLED;
 }
 
-CStdString CGUIScrollBar::GetDescription() const
+std::string CGUIScrollBar::GetDescription() const
 {
-  CStdString description;
-  description.Format("%i/%i", m_offset, m_numItems);
-  return description;
+  return StringUtils::Format("%i/%i", m_offset, m_numItems);
 }
 
 bool CGUIScrollBar::UpdateColors()

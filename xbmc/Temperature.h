@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,8 @@
  *
  */
 
-#include "utils/Archive.h"
+#include <string>
+#include "utils/IArchivable.h"
 
 class CTemperature : public IArchivable
 {
@@ -95,7 +96,7 @@ public:
   double ToNewton() const;
 
   double ToLocale() const;
-  CStdString ToString() const;
+  std::string ToString() const;
 
 protected:
   CTemperature(double value);

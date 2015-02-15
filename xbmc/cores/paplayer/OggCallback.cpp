@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@ COggCallback::COggCallback(XFILE::CFile& file) : m_file(file)
 {
 }
 
-ov_callbacks COggCallback::Get(const CStdString& strFile)
+ov_callbacks COggCallback::Get(const std::string& strFile)
 {
   // libvorbis requires that a non-seekable stream would always return -1 from seek actions.
   // so for network streams - tweak the seek method to a static one that always return -1.
@@ -46,7 +46,10 @@ size_t COggCallback::ReadCallback(void *ptr, size_t size, size_t nmemb, void *da
   if (!pCallback)
     return 0;
 
-  return pCallback->m_file.Read(ptr, size*nmemb);
+  const ssize_t res = pCallback->m_file.Read(ptr, size*nmemb);
+  if (res < 0)
+    return 0;
+  return res;
 }
 
 int COggCallback::SeekCallback(void *datasource, ogg_int64_t offset, int whence)

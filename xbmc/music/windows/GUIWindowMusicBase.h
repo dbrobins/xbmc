@@ -2,12 +2,10 @@
 \file GUIWindowMusicBase.h
 \brief
 */
-
 #pragma once
-
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,6 +29,7 @@
 #include "music/infoscanner/MusicInfoScraper.h"
 #include "PlayListPlayer.h"
 #include "music/MusicInfoLoader.h"
+#include "music/MusicThumbLoader.h"
 
 /*!
  \ingroup windows
@@ -42,9 +41,10 @@
 class CGUIWindowMusicBase : public CGUIMediaWindow
 {
 public:
-  CGUIWindowMusicBase(int id, const CStdString &xmlFile);
+  CGUIWindowMusicBase(int id, const std::string &xmlFile);
   virtual ~CGUIWindowMusicBase(void);
   virtual bool OnMessage(CGUIMessage& message);
+  virtual bool OnAction(const CAction &action);
   virtual bool OnBack(int actionID);
 
   void OnInfo(CFileItem *pItem, bool bShowInfo = false);
@@ -63,13 +63,15 @@ protected:
   */
   virtual void UpdateButtons();
 
-  virtual bool GetDirectory(const CStdString &strDirectory, CFileItemList &items);
+  virtual bool GetDirectory(const std::string &strDirectory, CFileItemList &items);
   virtual void OnRetrieveMusicInfo(CFileItemList& items);
   void AddItemToPlayList(const CFileItemPtr &pItem, CFileItemList &queuedItems);
   virtual void OnScan(int iItem) {};
   void OnRipCD();
-  virtual void OnPrepareFileItems(CFileItemList &items);
-  virtual CStdString GetStartFolder(const CStdString &dir);
+  virtual std::string GetStartFolder(const std::string &dir);
+
+  virtual bool CheckFilterAdvanced(CFileItemList &items) const;
+  virtual bool CanContainFilter(const std::string &strDirectory) const;
 
   // new methods
   virtual void PlayItem(int iItem);
@@ -80,23 +82,22 @@ protected:
   void OnInfoAll(int iItem, bool bCurrent=false, bool refresh=false);
   virtual void OnQueueItem(int iItem);
   enum ALLOW_SELECTION { SELECTION_ALLOWED = 0, SELECTION_AUTO, SELECTION_FORCED };
-  bool FindAlbumInfo(const CStdString& strAlbum, const CStdString& strArtist, MUSIC_GRABBER::CMusicAlbumInfo& album, ALLOW_SELECTION allowSelection);
-  bool FindArtistInfo(const CStdString& strArtist, MUSIC_GRABBER::CMusicArtistInfo& artist, ALLOW_SELECTION allowSelection);
+  bool FindAlbumInfo(const CFileItem* album, MUSIC_GRABBER::CMusicAlbumInfo& albumInfo, ALLOW_SELECTION allowSelection);
+  bool FindArtistInfo(const CFileItem* artist, MUSIC_GRABBER::CMusicArtistInfo& artistInfo, ALLOW_SELECTION allowSelection);
 
-  void ShowAlbumInfo(const CAlbum &album, const CStdString &strPath, bool bRefresh, bool bShowInfo = true);
-  void ShowArtistInfo(const CArtist &artist, const CStdString &strPath, bool bRefresh, bool bShowInfo = true);
+  bool ShowAlbumInfo(const CFileItem *pItem, bool bShowInfo = true);
+  void ShowArtistInfo(const CFileItem *pItem, bool bShowInfo = true);
   void ShowSongInfo(CFileItem* pItem);
-  void UpdateThumb(const CAlbum &album, const CStdString &path);
+  void UpdateThumb(const CAlbum &album, const std::string &path);
 
-  void OnManualAlbumInfo();
   void OnRipTrack(int iItem);
   void OnSearch();
-  virtual void LoadPlayList(const CStdString& strPlayList);
+  virtual void LoadPlayList(const std::string& strPlayList);
 
   typedef std::vector <CFileItem*>::iterator ivecItems; ///< CFileItem* vector Iterator
   CGUIDialogProgress* m_dlgProgress; ///< Progress dialog
 
-  // member variables to save frequently used g_guiSettings (which is slow)
+  // member variables to save frequently used CSettings (which is slow)
   bool m_hideExtensions;
   CMusicDatabase m_musicdatabase;
   MUSIC_INFO::CMusicInfoLoader m_musicInfoLoader;

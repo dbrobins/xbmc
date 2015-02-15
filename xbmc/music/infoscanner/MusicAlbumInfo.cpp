@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,16 +27,16 @@
 using namespace std;
 using namespace MUSIC_GRABBER;
 
-CMusicAlbumInfo::CMusicAlbumInfo(const CStdString& strAlbumInfo, const CScraperUrl& strAlbumURL)
+CMusicAlbumInfo::CMusicAlbumInfo(const std::string& strAlbumInfo, const CScraperUrl& strAlbumURL):
+  m_strTitle2(strAlbumInfo)
 {
-  m_strTitle2 = strAlbumInfo;
   m_albumURL = strAlbumURL;
   m_relevance = -1;
   m_bLoaded = false;
 }
 
-CMusicAlbumInfo::CMusicAlbumInfo(const CStdString& strAlbum, const CStdString& strArtist,
-  const CStdString& strAlbumInfo, const CScraperUrl& strAlbumURL)
+CMusicAlbumInfo::CMusicAlbumInfo(const std::string& strAlbum, const std::string& strArtist,
+  const std::string& strAlbumInfo, const CScraperUrl& strAlbumURL)
 {
   m_album.strAlbum = strAlbum;
   m_album.artist = StringUtils::Split(strArtist, g_advancedSettings.m_musicItemSeparator);
@@ -49,7 +49,7 @@ CMusicAlbumInfo::CMusicAlbumInfo(const CStdString& strAlbum, const CStdString& s
 void CMusicAlbumInfo::SetAlbum(CAlbum& album)
 {
   m_album = album;
-  m_album.m_strDateOfRelease.Format("%i", album.iYear);
+  m_album.m_strDateOfRelease = StringUtils::Format("%i", album.iYear);
   m_strTitle2 = "";
   m_bLoaded = true;
 }

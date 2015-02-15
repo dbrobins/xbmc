@@ -1,7 +1,7 @@
 #pragma once
 /*
-*      Copyright (C) 2005-2012 Team XBMC
-*      http://www.xbmc.org
+*      Copyright (C) 2005-2013 Team XBMC
+*      http://xbmc.org
 *
 *  This Program is free software; you can redistribute it and/or modify
 *  it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@ public:
   virtual unsigned int GetSettings(ADDON_StructSetting*** sSet)=0;
   virtual void FreeSettings()=0;
   virtual ADDON_STATUS SetSetting(const char *settingName, const void *settingValue) =0;
+  virtual void Announce(const char *flag, const char *sender, const char *message, const void *data) =0;
 };
 
 template <typename TheStruct, typename Props>
@@ -52,6 +53,7 @@ public:
   DEFINE_METHOD0(void, FreeSettings)
   DEFINE_METHOD2(ADDON_STATUS, SetSetting, (const char *p1, const void *p2))
   DEFINE_METHOD1(void, GetAddon, (TheStruct* p1))
+  DEFINE_METHOD4(void, Announce, (const char *p1, const char *p2, const char *p3, const void *p4))
   BEGIN_METHOD_RESOLVE()
     RESOLVE_METHOD_RENAME(get_addon,GetAddon)
     RESOLVE_METHOD_RENAME(ADDON_Create, Create)
@@ -62,6 +64,7 @@ public:
     RESOLVE_METHOD_RENAME(ADDON_SetSetting, SetSetting)
     RESOLVE_METHOD_RENAME(ADDON_GetSettings, GetSettings)
     RESOLVE_METHOD_RENAME(ADDON_FreeSettings, FreeSettings)
+    RESOLVE_METHOD_RENAME(ADDON_Announce, Announce)
   END_METHOD_RESOLVE()
 };
 

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 #include "MusicInfoTagLoaderCDDA.h"
 #include "network/cddb.h"
 #include "MusicInfoTag.h"
-#include "settings/Settings.h"
+#include "profiles/ProfilesManager.h"
 #include "storage/MediaManager.h"
 #include "utils/log.h"
 
@@ -47,7 +47,7 @@ CMusicInfoTagLoaderCDDA::~CMusicInfoTagLoaderCDDA()
 {
 }
 
-bool CMusicInfoTagLoaderCDDA::Load(const CStdString& strFileName, CMusicInfoTag& tag, EmbeddedArt *art)
+bool CMusicInfoTagLoaderCDDA::Load(const std::string& strFileName, CMusicInfoTag& tag, EmbeddedArt *art)
 {
 #ifdef HAS_DVD_DRIVE
   try
@@ -62,7 +62,7 @@ bool CMusicInfoTagLoaderCDDA::Load(const CStdString& strFileName, CMusicInfoTag&
 
     // Prepare cddb
     Xcddb cddb;
-    cddb.setCacheDir(g_settings.GetCDDBFolder());
+    cddb.setCacheDir(CProfilesManager::Get().GetCDDBFolder());
 
     int iTrack = atoi(strFileName.substr(13, strFileName.size() - 13 - 5).c_str());
 
@@ -77,7 +77,7 @@ bool CMusicInfoTagLoaderCDDA::Load(const CStdString& strFileName, CMusicInfoTag&
       if (cddb.queryCDinfo(pCdInfo))
       {
         // Fill the fileitems music tag with cddb information, if available
-        CStdString strTitle = cddb.getTrackTitle(iTrack);
+        std::string strTitle = cddb.getTrackTitle(iTrack);
         if (strTitle.size() > 0)
         {
           // Tracknumber
@@ -87,18 +87,18 @@ bool CMusicInfoTagLoaderCDDA::Load(const CStdString& strFileName, CMusicInfoTag&
           tag.SetTitle(strTitle);
 
           // Artist: Use track artist or disc artist
-          CStdString strArtist = cddb.getTrackArtist(iTrack);
-          if (strArtist.IsEmpty())
+          std::string strArtist = cddb.getTrackArtist(iTrack);
+          if (strArtist.empty())
             cddb.getDiskArtist(strArtist);
           tag.SetArtist(strArtist);
 
           // Album
-          CStdString strAlbum;
+          std::string strAlbum;
           cddb.getDiskTitle( strAlbum );
           tag.SetAlbum(strAlbum);
 
           // Album Artist
-          CStdString strAlbumArtist;
+          std::string strAlbumArtist;
           cddb.getDiskArtist(strAlbumArtist);
           tag.SetAlbumArtist(strAlbumArtist);
 
@@ -121,7 +121,7 @@ bool CMusicInfoTagLoaderCDDA::Load(const CStdString& strFileName, CMusicInfoTag&
       trackinfo ti = pCdInfo->GetTrackInformation(iTrack);
 
       // Fill the fileitems music tag with CD-Text information, if available
-      CStdString strTitle = ti.cdtext[CDTEXT_TITLE];
+      std::string strTitle = ti.cdtext[CDTEXT_TITLE];
       if (strTitle.size() > 0)
       {
         // Tracknumber
@@ -134,19 +134,19 @@ bool CMusicInfoTagLoaderCDDA::Load(const CStdString& strFileName, CMusicInfoTag&
         xbmc_cdtext_t discCDText = pCdInfo->GetDiscCDTextInformation();
 
         // Artist: Use track artist or disc artist
-        CStdString strArtist = ti.cdtext[CDTEXT_PERFORMER];
-        if (strArtist.IsEmpty())
+        std::string strArtist = ti.cdtext[CDTEXT_PERFORMER];
+        if (strArtist.empty())
           strArtist = discCDText[CDTEXT_PERFORMER];
         tag.SetArtist(strArtist);
 
         // Album
-        CStdString strAlbum;
+        std::string strAlbum;
         strAlbum = discCDText[CDTEXT_TITLE];
         tag.SetAlbum(strAlbum);
 
         // Genre: use track or disc genre
-        CStdString strGenre = ti.cdtext[CDTEXT_GENRE];
-        if (strGenre.IsEmpty())
+        std::string strGenre = ti.cdtext[CDTEXT_GENRE];
+        if (strGenre.empty())
           strGenre = discCDText[CDTEXT_GENRE];
         tag.SetGenre( strGenre );
 

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 #include "QueryParams.h"
 #include "DirectoryNodeRoot.h"
 #include "DirectoryNodeOverview.h"
-#include "DirectoryNodeGenre.h"
+#include "DirectoryNodeGrouped.h"
 #include "DirectoryNodeArtist.h"
 #include "DirectoryNodeAlbum.h"
 #include "DirectoryNodeSong.h"
@@ -37,7 +37,6 @@
 #include "DirectoryNodeAlbumTop100Song.h"
 #include "DirectoryNodeAlbumCompilations.h"
 #include "DirectoryNodeAlbumCompilationsSongs.h"
-#include "DirectoryNodeYear.h"
 #include "DirectoryNodeYearAlbum.h"
 #include "DirectoryNodeYearSong.h"
 #include "DirectoryNodeSingles.h"
@@ -52,7 +51,7 @@ using namespace std;
 using namespace XFILE::MUSICDATABASEDIRECTORY;
 
 //  Constructor is protected use ParseURL()
-CDirectoryNode::CDirectoryNode(NODE_TYPE Type, const CStdString& strName, CDirectoryNode* pParent)
+CDirectoryNode::CDirectoryNode(NODE_TYPE Type, const std::string& strName, CDirectoryNode* pParent)
 {
   m_Type=Type;
   m_strName=strName;
@@ -65,17 +64,15 @@ CDirectoryNode::~CDirectoryNode()
 }
 
 //  Parses a given path and returns the current node of the path
-CDirectoryNode* CDirectoryNode::ParseURL(const CStdString& strPath)
+CDirectoryNode* CDirectoryNode::ParseURL(const std::string& strPath)
 {
   CURL url(strPath);
 
-  CStdString strDirectory=url.GetFileName();
+  std::string strDirectory=url.GetFileName();
   URIUtils::RemoveSlashAtEnd(strDirectory);
 
-  CStdStringArray Path;
-  StringUtils::SplitString(strDirectory, "/", Path);
-  if (!strDirectory.IsEmpty())
-    Path.insert(Path.begin(), "");
+  vector<string> Path = StringUtils::Split(strDirectory, '/');
+  Path.insert(Path.begin(), "");
 
   CDirectoryNode* pNode=NULL;
   CDirectoryNode* pParent=NULL;
@@ -96,9 +93,9 @@ CDirectoryNode* CDirectoryNode::ParseURL(const CStdString& strPath)
 }
 
 //  returns the database ids of the path,
-void CDirectoryNode::GetDatabaseInfo(const CStdString& strPath, CQueryParams& params)
+void CDirectoryNode::GetDatabaseInfo(const std::string& strPath, CQueryParams& params)
 {
-  auto_ptr<CDirectoryNode> pNode(CDirectoryNode::ParseURL(strPath));
+  unique_ptr<CDirectoryNode> pNode(CDirectoryNode::ParseURL(strPath));
 
   if (!pNode.get())
     return;
@@ -107,7 +104,7 @@ void CDirectoryNode::GetDatabaseInfo(const CStdString& strPath, CQueryParams& pa
 }
 
 //  Create a node object
-CDirectoryNode* CDirectoryNode::CreateNode(NODE_TYPE Type, const CStdString& strName, CDirectoryNode* pParent)
+CDirectoryNode* CDirectoryNode::CreateNode(NODE_TYPE Type, const std::string& strName, CDirectoryNode* pParent)
 {
   switch (Type)
   {
@@ -116,7 +113,8 @@ CDirectoryNode* CDirectoryNode::CreateNode(NODE_TYPE Type, const CStdString& str
   case NODE_TYPE_OVERVIEW:
     return new CDirectoryNodeOverview(strName, pParent);
   case NODE_TYPE_GENRE:
-    return new CDirectoryNodeGenre(strName, pParent);
+  case NODE_TYPE_YEAR:
+    return new CDirectoryNodeGrouped(Type, strName, pParent);
   case NODE_TYPE_ARTIST:
     return new CDirectoryNodeArtist(strName, pParent);
   case NODE_TYPE_ALBUM:
@@ -145,8 +143,6 @@ CDirectoryNode* CDirectoryNode::CreateNode(NODE_TYPE Type, const CStdString& str
     return new CDirectoryNodeAlbumCompilations(strName, pParent);
   case NODE_TYPE_ALBUM_COMPILATIONS_SONGS:
     return new CDirectoryNodeAlbumCompilationsSongs(strName, pParent);
-  case NODE_TYPE_YEAR:
-    return new CDirectoryNodeYear(strName, pParent);
   case NODE_TYPE_YEAR_ALBUM:
     return new CDirectoryNodeYearAlbum(strName, pParent);
   case NODE_TYPE_YEAR_SONG:
@@ -159,7 +155,7 @@ CDirectoryNode* CDirectoryNode::CreateNode(NODE_TYPE Type, const CStdString& str
 }
 
 //  Current node name
-const CStdString& CDirectoryNode::GetName() const
+const std::string& CDirectoryNode::GetName() const
 {
   return m_strName;
 }
@@ -169,7 +165,7 @@ int CDirectoryNode::GetID() const
   return atoi(m_strName.c_str());
 }
 
-CStdString CDirectoryNode::GetLocalizedName() const
+std::string CDirectoryNode::GetLocalizedName() const
 {
   return "";
 }
@@ -200,24 +196,24 @@ bool CDirectoryNode::GetContent(CFileItemList& items) const
 }
 
 //  Creates a musicdb url
-CStdString CDirectoryNode::BuildPath() const
+std::string CDirectoryNode::BuildPath() const
 {
-  CStdStringArray array;
+  vector<string> array;
 
-  if (!m_strName.IsEmpty())
+  if (!m_strName.empty())
     array.insert(array.begin(), m_strName);
 
   CDirectoryNode* pParent=m_pParent;
   while (pParent!=NULL)
   {
-    const CStdString& strNodeName=pParent->GetName();
-    if (!strNodeName.IsEmpty())
+    const std::string& strNodeName=pParent->GetName();
+    if (!strNodeName.empty())
       array.insert(array.begin(), strNodeName);
 
     pParent=pParent->GetParent();
   }
 
-  CStdString strPath="musicdb://";
+  std::string strPath="musicdb://";
   for (int i=0; i<(int)array.size(); ++i)
     strPath+=array[i]+"/";
 
@@ -228,7 +224,7 @@ CStdString CDirectoryNode::BuildPath() const
   return strPath;
 }
 
-void CDirectoryNode::AddOptions(const CStdString &options)
+void CDirectoryNode::AddOptions(const std::string &options)
 {
   if (options.empty())
     return;
@@ -264,7 +260,7 @@ bool CDirectoryNode::GetChilds(CFileItemList& items)
   if (CanCache() && items.Load())
     return true;
 
-  auto_ptr<CDirectoryNode> pNode(CDirectoryNode::CreateNode(GetChildType(), "", this));
+  unique_ptr<CDirectoryNode> pNode(CDirectoryNode::CreateNode(GetChildType(), "", this));
 
   bool bSuccess=false;
   if (pNode.get())

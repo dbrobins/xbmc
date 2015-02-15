@@ -2,8 +2,8 @@
 #define __PLATFORM_DEFS_H__
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,19 +21,25 @@
  *
  */
 
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
 
 #define LINE_ENDING "\r\n"
 
 #define __STDC_FORMAT_MACROS
-#include "inttypes.h"
+#include <inttypes.h>
 
 typedef __int64       off64_t;
 typedef __int64       fpos64_t;
 typedef __int64       __off64_t;
 typedef long          __off_t;
 
-#define ssize_t int
+#if !defined(_SSIZE_T_DEFINED) && !defined(HAVE_SSIZE_T)
+typedef intptr_t      ssize_t;
+#define _SSIZE_T_DEFINED
+#endif // !_SSIZE_T_DEFINED
+#ifndef SSIZE_MAX
+#define SSIZE_MAX INTPTR_MAX
+#endif // !SSIZE_MAX
 
 #define snprintf _snprintf
 #define ftello64 _ftelli64
@@ -74,17 +80,22 @@ typedef long          __off_t;
 #define va_copy(dst, src) ((dst) = (src))
 #endif
 
+#if _MSC_VER < 1800
 #define lrint(x) ((x) >= 0 ? ((int)((x) + 0.5)) : ((int)((x) - 0.5)))
 #define llrint(x) ((x) >= 0 ? ((__int64)((x) + 0.5)) : ((__int64)((x) - 0.5)))
+#endif
 
 #define strtoll(p, e, b) _strtoi64(p, e, b)
 
 extern "C" char * strptime(const char *buf, const char *fmt, struct tm *tm);
 extern "C" int strverscmp (const char *s1, const char *s2);
 extern "C" char * strcasestr(const char* haystack, const char* needle);
-extern int pgwin32_putenv(const char *envval);
 
-#endif // _WIN32
+#if _MSC_VER >= 1800
+#define PRIdS       "Id"
+#define PRIuS       "Iu"
+#endif
+#endif // TARGET_WINDOWS
 
 #endif //__PLATFORM_DEFS_H__
 

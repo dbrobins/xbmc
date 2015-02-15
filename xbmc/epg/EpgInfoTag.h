@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,11 +22,13 @@
 
 #include "addons/include/xbmc_pvr_types.h"
 #include "XBDateTime.h"
-#include "utils/StringUtils.h"
+#include "utils/ISerializable.h"
 #include "pvr/channels/PVRChannel.h"
 #include "pvr/timers/PVRTimerInfoTag.h"
+#include "pvr/recordings/PVRRecording.h"
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
+#include <string>
 
 #define EPG_DEBUGGING 0
 
@@ -36,21 +38,29 @@ namespace EPG
   class CEpg;
 
   class CEpgInfoTag;
-  typedef boost::shared_ptr<EPG::CEpgInfoTag> CEpgInfoTagPtr;
+  typedef std::shared_ptr<EPG::CEpgInfoTag> CEpgInfoTagPtr;
 
-  class CEpgInfoTag
+  class CEpgInfoTag : public ISerializable
   {
     friend class CEpg;
     friend class CEpgDatabase;
-    friend class PVR::CPVRTimerInfoTag;
 
   public:
+    /*!
+     * @brief Create a new empty event .
+     */
+    static CEpgInfoTagPtr CreateDefaultTag();
+
+  private:
+    /*!
+     * @brief Create a new empty event.
+     */
     CEpgInfoTag(void);
 
     /*!
      * @brief Create a new empty event without a unique ID.
      */
-    CEpgInfoTag(CEpg *epg, PVR::CPVRChannelPtr pvrChannel, const CStdString &strTableName = StringUtils::EmptyString, const CStdString &strIconPath = StringUtils::EmptyString);
+    CEpgInfoTag(CEpg *epg, PVR::CPVRChannelPtr pvrChannel, const std::string &strTableName = "", const std::string &strIconPath = "");
 
     /*!
      * @brief Create a new EPG infotag with 'data' as content.
@@ -58,16 +68,25 @@ namespace EPG
      */
     CEpgInfoTag(const EPG_TAG &data);
 
-    /*!
-     * @brief Create a new EPG infotag with 'tag' as content.
-     * @param tag The tag's content.
-     */
+    // Prevent copy construction, even for CEpgInfoTag instances and friends.
+    // Note: Only declared, but intentionally not implemented
+    //       to prevent compiler generated copy ctor and to force 
+    //       a linker error in case somebody tries to call it.
     CEpgInfoTag(const CEpgInfoTag &tag);
+
+    // Prevent copy by assignment, even for CEpgInfoTag instances and friends.
+    // Note: Only declared, but intentionally not implemented
+    //       to prevent compiler generated assignment operator and to force 
+    //       a linker error in case somebody tries to call it.
+    CEpgInfoTag &operator =(const CEpgInfoTag &other);
+
+  public:
     virtual ~CEpgInfoTag();
 
     bool operator ==(const CEpgInfoTag& right) const;
     bool operator !=(const CEpgInfoTag& right) const;
-    CEpgInfoTag &operator =(const CEpgInfoTag &other);
+
+    virtual void Serialize(CVariant &value) const;
 
     /*!
      * @brief Check whether this tag has changed and unsaved values.
@@ -95,6 +114,11 @@ namespace EPG
      * @return The current progress of this tag.
      */
     float ProgressPercentage(void) const;
+
+    /*!
+     * @return The current progress of this tag in seconds.
+     */
+    int Progress(void) const;
 
     /*!
      * @brief Get a pointer to the next event. Set by CEpg in a call to Sort()
@@ -178,40 +202,40 @@ namespace EPG
      * @brief Change the title of this event.
      * @param strTitle The new title.
      */
-    void SetTitle(const CStdString &strTitle);
+    void SetTitle(const std::string &strTitle);
 
     /*!
      * @brief Get the title of this event.
      * @param bOverrideParental True to override parental control, false check it.
      * @return The title.
      */
-    CStdString Title(bool bOverrideParental = false) const;
+    std::string Title(bool bOverrideParental = false) const;
 
     /*!
      * @brief Change the plot outline of this event.
      * @param strPlotOutline The new plot outline.
      */
-    void SetPlotOutline(const CStdString &strPlotOutline);
+    void SetPlotOutline(const std::string &strPlotOutline);
 
     /*!
      * @brief Get the plot outline of this event.
      * @param bOverrideParental True to override parental control, false check it.
      * @return The plot outline.
      */
-    CStdString PlotOutline(bool bOverrideParental = false) const;
+    std::string PlotOutline(bool bOverrideParental = false) const;
 
     /*!
      * @brief Change the plot of this event.
      * @param strPlot The new plot.
      */
-    void SetPlot(const CStdString &strPlot);
+    void SetPlot(const std::string &strPlot);
 
     /*!
      * @brief Get the plot of this event.
      * @param bOverrideParental True to override parental control, false check it.
      * @return The plot.
      */
-    CStdString Plot(bool bOverrideParental = false) const;
+    std::string Plot(bool bOverrideParental = false) const;
 
     /*!
      * @brief Change the genre of this event.
@@ -328,37 +352,55 @@ namespace EPG
      * @brief Change the episode name of this event.
      * @param strEpisodeName The new episode name.
      */
-    void SetEpisodeName(const CStdString &strEpisodeName);
+    void SetEpisodeName(const std::string &strEpisodeName);
 
     /*!
      * @brief The episode name of this event.
      * @return The episode name.
      */
-    CStdString EpisodeName(void) const;
+    std::string EpisodeName(void) const;
 
     /*!
      * @brief Change the path to the icon for this event.
      * @param strIconPath The new path.
      */
-    void SetIcon(const CStdString &strIconPath);
+    void SetIcon(const std::string &strIconPath);
 
     /*!
      * @brief Get the path to the icon for this event.
      * @return The path to the icon
      */
-    CStdString Icon(void) const;
+    std::string Icon(void) const;
 
     /*!
      * @brief Change the path to this event.
      * @param strFileNameAndPath The new path.
      */
-    void SetPath(const CStdString &strFileNameAndPath);
+    void SetPath(const std::string &strFileNameAndPath);
 
     /*!
      * @brief The path to this event.
      * @return The path.
      */
-    CStdString Path(void) const;
+    std::string Path(void) const;
+
+    /*!
+     * @brief Change the recording ID to this event.
+     * @param strRecordingId The new recording ID.
+     */
+    void SetRecordingId(const std::string &strRecordingId);
+
+    /*!
+     * @brief The recording ID to this event.
+     * @return The recording ID.
+     */
+    const std::string& RecordingId(void) const;
+
+    /*!
+     * @brief Check whether this event has a recording ID.
+     * @return True if it has a recording ID, false if not.
+     */
+    bool HasRecordingId(void) const;
 
     /*!
      * @brief Set a timer for this event or NULL to clear it.
@@ -380,6 +422,29 @@ namespace EPG
     PVR::CPVRTimerInfoTagPtr Timer(void) const;
 
     /*!
+     * @brief Set a recording for this event or NULL to clear it.
+     * @param recording The recording value.
+     */
+    void SetRecording(PVR::CPVRRecordingPtr recording);
+
+    /*!
+     * @brief Clear a recording for this event.
+     */
+    void ClearRecording(void);
+
+    /*!
+     * @brief Check whether this event has a recording tag.
+     * @return True if it has a recording tag, false if not.
+     */
+    bool HasRecording(void) const;
+
+    /*!
+     * @brief Get a pointer to the recording for event or NULL if there is none.
+     * @return A pointer to the recording for event or NULL if there is none.
+     */
+    PVR::CPVRRecordingPtr Recording(void) const;
+
+    /*!
      * @brief Change the channel tag of this epg tag
      * @param channel The new channel
      */
@@ -392,7 +457,7 @@ namespace EPG
 
     int PVRChannelNumber(void) const;
 
-    CStdString PVRChannelName(void) const;
+    std::string PVRChannelName(void) const;
 
     /*!
      * @brief Get the channel that plays this event.
@@ -410,21 +475,21 @@ namespace EPG
     /*!
      * @brief Update the information in this tag with the info in the given tag.
      * @param tag The new info.
-     */
-    void Update(const EPG_TAG &tag);
-
-    /*!
-     * @brief Update the information in this tag with the info in the given tag.
-     * @param tag The new info.
      * @param bUpdateBroadcastId If set to false, the tag BroadcastId (locally unique) will not be chacked/updated
      * @return True if something changed, false otherwise.
      */
     bool Update(const CEpgInfoTag &tag, bool bUpdateBroadcastId = true);
-  protected:
+
+  private:
     /*!
      * @brief Hook that is called when the start date changed.
      */
     void UpdatePath(void);
+
+    /*!
+     * @brief Get current time, taking timeshifting into account.
+     */
+    CDateTime GetCurrentPlayingTime(void) const;
 
     bool                     m_bNotify;            /*!< notify on start */
     bool                     m_bChanged;           /*!< keep track of changes to this entry */
@@ -438,18 +503,21 @@ namespace EPG
     int                      m_iEpisodeNumber;     /*!< episode number */
     int                      m_iEpisodePart;       /*!< episode part number */
     int                      m_iUniqueBroadcastID; /*!< unique broadcast ID */
-    CStdString               m_strTitle;           /*!< title */
-    CStdString               m_strPlotOutline;     /*!< plot outline */
-    CStdString               m_strPlot;            /*!< plot */
-    std::vector<std::string> m_genre;            /*!< genre */
-    CStdString               m_strEpisodeName;     /*!< episode name */
-    CStdString               m_strIconPath;        /*!< the path to the icon */
-    CStdString               m_strFileNameAndPath; /*!< the filename and path */
+    std::string              m_strTitle;           /*!< title */
+    std::string              m_strPlotOutline;     /*!< plot outline */
+    std::string              m_strPlot;            /*!< plot */
+    std::vector<std::string> m_genre;              /*!< genre */
+    std::string              m_strEpisodeName;     /*!< episode name */
+    std::string              m_strIconPath;        /*!< the path to the icon */
+    std::string              m_strFileNameAndPath; /*!< the filename and path */
     CDateTime                m_startTime;          /*!< event start time */
     CDateTime                m_endTime;            /*!< event end time */
     CDateTime                m_firstAired;         /*!< first airdate */
+    std::string              m_strRecordingId;     /*!< linked recording ID */
 
     PVR::CPVRTimerInfoTagPtr m_timer;
+    PVR::CPVRRecordingPtr    m_recording;
+
     CEpg *                   m_epg;                /*!< the schedule that this event belongs to */
 
     PVR::CPVRChannelPtr    m_pvrChannel;

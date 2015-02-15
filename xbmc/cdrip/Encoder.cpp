@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,13 +22,11 @@
 #include "filesystem/File.h"
 #include "utils/log.h"
 
-CEncoder::CEncoder()
+CEncoder::CEncoder(std::shared_ptr<IEncoder> encoder)
 {
   m_file = NULL;
   m_dwWriteBufferPointer = 0;
-  m_iInChannels = 0;
-  m_iInSampleRate = 0;
-  m_iInBitsPerSample = 0;
+  m_impl = encoder;
 }
 
 CEncoder::~CEncoder()
@@ -36,23 +34,48 @@ CEncoder::~CEncoder()
   FileClose();
 }
 
+int CEncoder::WriteCallback(void *opaque, uint8_t *data, int size)
+{
+  if (opaque)
+  {
+    CEncoder *encoder = static_cast<CEncoder *>(opaque);
+    return encoder->WriteStream(data, size);
+  }
+  return -1;
+}
+
+int64_t CEncoder::SeekCallback(void *opaque, int64_t position, int whence)
+{
+  if (opaque)
+  {
+    CEncoder *encoder = static_cast<CEncoder *>(opaque);
+    return encoder->FileSeek(position, whence);
+  }
+  return -1;
+}
+
 bool CEncoder::Init(const char* strFile, int iInChannels, int iInRate, int iInBits)
 {
   if (strFile == NULL) return false;
 
   m_dwWriteBufferPointer = 0;
-  m_strFile = strFile;
+  m_impl->m_strFile = strFile;
 
-  m_iInChannels = iInChannels;
-  m_iInSampleRate = iInRate;
-  m_iInBitsPerSample = iInBits;
+  m_impl->m_iInChannels = iInChannels;
+  m_impl->m_iInSampleRate = iInRate;
+  m_impl->m_iInBitsPerSample = iInBits;
 
   if (!FileCreate(strFile))
   {
     CLog::Log(LOGERROR, "Error: Cannot open file: %s", strFile);
     return false;
   }
-  return true;
+
+  audioenc_callbacks callbacks;
+  callbacks.opaque = this;
+  callbacks.write  = WriteCallback;
+  callbacks.seek   = SeekCallback;
+  return m_impl->Init(callbacks);
 }
 
 bool CEncoder::FileCreate(const char* filename)
@@ -82,11 +105,19 @@ int CEncoder::FileWrite(const void *pBuffer, uint32_t iBytes)
   if (!m_file)
     return -1;
 
-  uint32_t dwBytesWritten = m_file->Write(pBuffer, iBytes);
-  if (!dwBytesWritten)
+  ssize_t dwBytesWritten = m_file->Write(pBuffer, iBytes);
+  if (dwBytesWritten <= 0)
     return -1;
 
   return dwBytesWritten;
+}
+
+int64_t CEncoder::FileSeek(int64_t iFilePosition, int iWhence)
+{
+  if (!m_file)
+    return -1;
+  FlushStream();
+  return m_file->Seek(iFilePosition, iWhence);
 }
 
 // write the stream to our writebuffer, and write the buffer to disk if it's full
@@ -142,4 +173,27 @@ int CEncoder::FlushStream()
   m_dwWriteBufferPointer = 0;
 
   return iResult;
+}
+
+int CEncoder::Encode(int nNumBytesRead, uint8_t* pbtStream)
+{
+  int iBytes = m_impl->Encode(nNumBytesRead, pbtStream);
+
+  if (iBytes < 0)
+  {
+    CLog::Log(LOGERROR, "Internal encoder error: %i", iBytes);
+    return 0;
+  }
+  return 1;
+}
+
+bool CEncoder::CloseEncode()
+{
+  if (!m_impl->Close())
+    return false;
+
+  FlushStream();
+  FileClose();
+
+  return true;
 }

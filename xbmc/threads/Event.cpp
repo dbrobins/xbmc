@@ -1,22 +1,24 @@
 /*
-* XBMC Media Center
-* Copyright (c) 2002 Frodo
-* Portions Copyright (c) by the authors of ffmpeg and xvid
-*
-* This program is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program; if not, write to the Free Software
-* Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-*/
+ *      Copyright (c) 2002 Frodo
+ *      Portions Copyright (c) by the authors of ffmpeg and xvid
+ *      Copyright (C) 2002-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 
 #include <stdarg.h>
 #include <limits>
@@ -37,7 +39,7 @@ void CEvent::removeGroup(XbmcThreads::CEventGroup* group)
   CSingleLock lock(groupListMutex);
   if (groups)
   {
-    for (std::vector<XbmcThreads::CEventGroup*>::iterator iter = groups->begin(); iter != groups->end(); iter++)
+    for (std::vector<XbmcThreads::CEventGroup*>::iterator iter = groups->begin(); iter != groups->end(); ++iter)
     {
       if ((*iter) == group)
       {
@@ -74,7 +76,7 @@ void CEvent::Set()
   if (groups)
   {
     for (std::vector<XbmcThreads::CEventGroup*>::iterator iter = groups->begin(); 
-         iter != groups->end(); iter++)
+         iter != groups->end(); ++iter)
       (*iter)->Set(this);
   }
 }
@@ -115,7 +117,7 @@ namespace XbmcThreads
     // ==================================================
     signaled = NULL;
     for (std::vector<CEvent*>::iterator iter = events.begin();
-         signaled == NULL && iter != events.end(); iter++)
+         signaled == NULL && iter != events.end(); ++iter)
     {
       CEvent* cur = *iter;
       if (cur->signaled) 
@@ -151,16 +153,21 @@ namespace XbmcThreads
     va_list ap;
 
     va_start(ap, v1);
-    events.push_back(v1);
+    if (v1)
+      events.push_back(v1);
     num--; // account for v1
-    for (;num > 0; num--)
-      events.push_back(va_arg(ap,CEvent*));
+    for (; num > 0; num--)
+    {
+      CEvent* const cur = va_arg(ap, CEvent*);
+      if (cur)
+        events.push_back(cur);
+    }
     va_end(ap);
 
     // we preping for a wait, so we need to set the group value on
     // all of the CEvents. 
     for (std::vector<CEvent*>::iterator iter = events.begin();
-         iter != events.end(); iter++)
+         iter != events.end(); ++iter)
       (*iter)->addGroup(this);
   }
 
@@ -169,7 +176,8 @@ namespace XbmcThreads
     va_list ap;
 
     va_start(ap, v1);
-    events.push_back(v1);
+    if (v1)
+      events.push_back(v1);
     bool done = false;
     while(!done)
     {
@@ -184,14 +192,14 @@ namespace XbmcThreads
     // we preping for a wait, so we need to set the group value on
     // all of the CEvents. 
     for (std::vector<CEvent*>::iterator iter = events.begin();
-         iter != events.end(); iter++)
+         iter != events.end(); ++iter)
       (*iter)->addGroup(this);
   }
 
   CEventGroup::~CEventGroup()
   {
     for (std::vector<CEvent*>::iterator iter = events.begin();
-         iter != events.end(); iter++)
+         iter != events.end(); ++iter)
       (*iter)->removeGroup(this);
   }
 }

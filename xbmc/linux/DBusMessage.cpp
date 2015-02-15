@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@ CDBusMessage::CDBusMessage(const char *destination, const char *object, const ch
   m_message = dbus_message_new_method_call (destination, object, interface, method);
   m_haveArgs = false;
 
-  if (g_advancedSettings.m_logLevel >= LOG_LEVEL_DEBUG_SAMBA)
+  if (g_advancedSettings.CanLogComponent(LOGDBUS))
     CLog::Log(LOGDEBUG, "DBus: Creating message to %s on %s with interface %s and method %s\n", destination, object, interface, method);
 }
 
@@ -47,6 +47,13 @@ bool CDBusMessage::AppendArgument(const char *string)
 {
   PrepareArgument();
   return dbus_message_iter_append_basic(&m_args, DBUS_TYPE_STRING, &string);
+}
+
+bool CDBusMessage::AppendArgument(const bool b)
+{
+  dbus_bool_t arg = (b == true);
+  PrepareArgument();
+  return dbus_message_iter_append_basic(&m_args, DBUS_TYPE_BOOLEAN, &arg);
 }
 
 bool CDBusMessage::AppendArgument(const char **arrayString, unsigned int length)

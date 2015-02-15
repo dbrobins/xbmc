@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ void CInfoLoader::OnJobComplete(unsigned int jobID, bool success, CJob *job)
   m_busy = false;
 }
 
-CStdString CInfoLoader::GetInfo(int info)
+std::string CInfoLoader::GetInfo(int info)
 {
   // Refresh if need be
   if (m_refreshTime < CTimeUtils::GetFrameTime() && !m_busy)
@@ -48,19 +48,19 @@ CStdString CInfoLoader::GetInfo(int info)
     m_busy = true;
     CJobManager::GetInstance().AddJob(GetJob(), this);
   }
-  if (m_busy)
+  if (m_busy && CTimeUtils::GetFrameTime() - m_refreshTime > 1000)
   {
     return BusyInfo(info);
   }
   return TranslateInfo(info);
 }
 
-CStdString CInfoLoader::BusyInfo(int info) const
+std::string CInfoLoader::BusyInfo(int info) const
 {
   return g_localizeStrings.Get(503);
 }
 
-CStdString CInfoLoader::TranslateInfo(int info) const
+std::string CInfoLoader::TranslateInfo(int info) const
 {
   return "";
 }

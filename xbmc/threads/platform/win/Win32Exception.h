@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,11 +36,13 @@ public:
     unsigned code() const { return mCode; };
     virtual void LogThrowMessage(const char *prefix) const;
     static bool write_minidump(EXCEPTION_POINTERS* pEp);
+    static bool write_stacktrace(EXCEPTION_POINTERS* pEp);
 protected:
     win32_exception(EXCEPTION_POINTERS*, const char* classname = NULL);
     static void translate(unsigned code, EXCEPTION_POINTERS* info);
 
     inline bool write_minidump() const { return write_minidump(mExceptionPointers); };
+    inline bool write_stacktrace() const { return write_stacktrace(mExceptionPointers); };
 private:
     const char* mWhat;
     Address mWhere;

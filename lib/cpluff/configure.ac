@@ -45,6 +45,7 @@ AC_SUBST([CP_CXX_LIB_VERSION])
 # Automake initialization
 # -----------------------
 AM_INIT_AUTOMAKE([foreign])
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AM_GNU_GETTEXT([external])
 AM_GNU_GETTEXT_VERSION([0.16.1])
 
@@ -108,7 +109,7 @@ if test "$enable_threads" != no; then
     AC_LINK_IFELSE(
 [AC_LANG_SOURCE([#include <pthread.h>
 
-int main(int argc, char *argv[]) {
+int main(int argc, char **argv) {
 	pthread_mutex_t mutex;
 	
 	pthread_mutex_init(&mutex, NULL);
@@ -125,7 +126,7 @@ cp_threads=Posix], AC_MSG_RESULT([no]))
     AC_LINK_IFELSE(
 [AC_LANG_SOURCE([#include <windows.h>
 
-int main(int argc, char *argv[]) {
+int main(int argc, char **argv) {
   CreateMutex(NULL, FALSE, NULL);
   return 0;
 }

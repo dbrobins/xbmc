@@ -2,8 +2,8 @@
 #define __TWEEN_H__
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -61,16 +61,13 @@ enum TweenerType
 class Tweener
 {
 public:
-  Tweener(TweenerType tweenerType = EASE_OUT) { m_tweenerType = tweenerType; _ref=1; }
+  Tweener(TweenerType tweenerType = EASE_OUT) { m_tweenerType = tweenerType; }
   virtual ~Tweener() {};
 
   void SetEasing(TweenerType type) { m_tweenerType = type; }
   virtual float Tween(float time, float start, float change, float duration)=0;
-  void Free() { _ref--; if (_ref==0) delete this; }
-  void IncRef() { _ref++; }
   virtual bool HasResumePoint() const { return m_tweenerType == EASE_INOUT; }
 protected:
-  int _ref;
   TweenerType m_tweenerType;
 };
 
@@ -270,7 +267,7 @@ public:
     return easeOut(time, start, change, duration);
   }
 protected:
-  float easeOut(float time, float start, float change, float duration)
+  static float easeOut(float time, float start, float change, float duration)
   {
     time /= duration;
     if (time < (1/2.75)) {
@@ -316,7 +313,7 @@ protected:
   float _a;
   float _p;
 
-  float easeIn(float time, float start, float change, float duration)
+  float easeIn(float time, float start, float change, float duration) const
   {
     float s=0;
     float a=_a;
@@ -342,7 +339,7 @@ protected:
     return -(a * pow(2.0f, 10*time) * sin((time * duration - s) * (2 * M_PI) / p )) + start;
   }
 
-  float easeOut(float time, float start, float change, float duration)
+  float easeOut(float time, float start, float change, float duration) const
   {
     float s=0;
     float a=_a;
@@ -367,7 +364,7 @@ protected:
     return (a * pow(2.0f, -10*time) * sin((time * duration - s) * (2 * M_PI) / p )) + change + start;
   }
 
-  float easeInOut(float time, float start, float change, float duration)
+  float easeInOut(float time, float start, float change, float duration) const
   {
     float s=0;
     float a=_a;

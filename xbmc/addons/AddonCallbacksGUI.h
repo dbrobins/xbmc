@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,12 +23,14 @@
 #include "AddonCallbacks.h"
 #include "windows/GUIMediaWindow.h"
 #include "threads/Event.h"
+#include "guilib/IRenderingCallback.h"
 
 class CGUISpinControlEx;
 class CGUIButtonControl;
 class CGUIRadioButtonControl;
 class CGUISettingsSliderControl;
 class CGUIEditControl;
+class CGUIRenderingControl;
 
 namespace ADDON
 {
@@ -79,7 +81,9 @@ public:
   static GUIHANDLE    Window_GetControl_RadioButton(void *addonData, GUIHANDLE handle, int controlId);
   static GUIHANDLE    Window_GetControl_Edit(void *addonData, GUIHANDLE handle, int controlId);
   static GUIHANDLE    Window_GetControl_Progress(void *addonData, GUIHANDLE handle, int controlId);
+  static GUIHANDLE    Window_GetControl_RenderAddon(void *addonData, GUIHANDLE handle, int controlId);
   static void         Window_SetControlLabel(void *addonData, GUIHANDLE handle, int controlId, const char *label);
+  static void         Window_MarkDirtyRegion(void *addonData, GUIHANDLE handle);
   static void         Control_Spin_SetVisible(void *addonData, GUIHANDLE spinhandle, bool yesNo);
   static void         Control_Spin_SetText(void *addonData, GUIHANDLE spinhandle, const char *label);
   static void         Control_Spin_Clear(void *addonData, GUIHANDLE spinhandle);
@@ -106,6 +110,9 @@ public:
   static void         ListItem_SetProperty(void *addonData, GUIHANDLE handle, const char *key, const char *value);
   static const char * ListItem_GetProperty(void *addonData, GUIHANDLE handle, const char *key);
   static void         ListItem_SetPath(void *addonData, GUIHANDLE handle, const char *path);
+  static void         RenderAddon_SetCallbacks(void *addonData, GUIHANDLE handle, GUIHANDLE clienthandle, bool (*createCB)(GUIHANDLE,int,int,int,int,void*), void (*renderCB)(GUIHANDLE), void (*stopCB)(GUIHANDLE), bool (*dirtyCB)(GUIHANDLE));
+  static void         RenderAddon_Delete(void *addonData, GUIHANDLE handle);
+  static void         RenderAddon_MarkDirty(void *addonData, GUIHANDLE handle);
 
 private:
   CB_GUILib    *m_callbacks;
@@ -117,7 +124,7 @@ class CGUIAddonWindow : public CGUIMediaWindow
 friend class CAddonCallbacksGUI;
 
 public:
-  CGUIAddonWindow(int id, CStdString strXML, CAddon* addon);
+  CGUIAddonWindow(int id, const std::string& strXML, CAddon* addon);
   virtual ~CGUIAddonWindow(void);
 
   virtual bool      OnMessage(CGUIMessage& message);
@@ -139,7 +146,6 @@ public:
 protected:
   virtual void     Update();
   virtual void     GetContextButtons(int itemNumber, CContextButtons &buttons);
-  void             ClearAddonStrings();
   void             SetupShares();
 
   bool (*CBOnInit)(GUIHANDLE cbhdl);
@@ -156,13 +162,13 @@ protected:
 private:
   CEvent           m_actionEvent;
   CAddon          *m_addon;
-  CStdString       m_mediaDir;
+  std::string      m_mediaDir;
 };
 
 class CGUIAddonWindowDialog : public CGUIAddonWindow
 {
 public:
-  CGUIAddonWindowDialog(int id, CStdString strXML, CAddon* addon);
+  CGUIAddonWindowDialog(int id, const std::string& strXML, CAddon* addon);
   virtual ~CGUIAddonWindowDialog(void);
 
   void            Show(bool show = true);
@@ -176,6 +182,28 @@ public:
 
 private:
   bool             m_bRunning;
+};
+
+class CGUIAddonRenderingControl : public IRenderingCallback
+{
+friend class CAddonCallbacksGUI;
+public:
+  CGUIAddonRenderingControl(CGUIRenderingControl *pControl);
+  virtual ~CGUIAddonRenderingControl() {}
+  virtual bool Create(int x, int y, int w, int h, void *device);
+  virtual void Render();
+  virtual void Stop();
+  virtual bool IsDirty();
+  virtual void Delete();
+protected:
+  bool (*CBCreate) (GUIHANDLE cbhdl, int x, int y, int w, int h, void *device);
+  void (*CBRender)(GUIHANDLE cbhdl);
+  void (*CBStop)(GUIHANDLE cbhdl);
+  bool (*CBDirty)(GUIHANDLE cbhdl);
+
+  GUIHANDLE m_clientHandle;
+  CGUIRenderingControl *m_pControl;
+  int m_refCount;
 };
 
 }; /* namespace ADDON */

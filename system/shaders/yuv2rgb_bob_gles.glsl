@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2010 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2010-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,13 +13,12 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
-precision mediump float;
+precision highp float;
 uniform sampler2D m_sampY;
 uniform sampler2D m_sampU;
 uniform sampler2D m_sampV;
@@ -39,18 +38,37 @@ void main()
   vec2 offsetY;
   vec2 offsetU;
   vec2 offsetV;
-  float temp1 = mod(m_cordY.y, 2*m_stepY);
+  float temp1 = mod(m_cordY.y, 2.0*m_stepY);
 
   offsetY  = m_cordY;
   offsetU  = m_cordU;
   offsetV  = m_cordV;
 
-  offsetY.y -= (temp1 - m_stepY/2 + float(m_field)*m_stepY);
-  offsetU.y -= (temp1 - m_stepY/2 + float(m_field)*m_stepY)/2;
-  offsetV.y -= (temp1 - m_stepY/2 + float(m_field)*m_stepY)/2;
+  offsetY.y -= (temp1 - m_stepY/2.0 + float(m_field)*m_stepY);
+  offsetU.y -= (temp1 - m_stepY/2.0 + float(m_field)*m_stepY)/2.0;
+  offsetV.y -= (temp1 - m_stepY/2.0 + float(m_field)*m_stepY)/2.0;
 
-  yuv.rgba = vec4(texture2D(m_sampY, offsetY).r, texture2D(m_sampU, offsetU).r, texture2D(m_sampV, offsetV).r, 1.0);
+  float bstep = step(m_stepY, temp1);
+
+  // Blend missing line
+  vec2 belowY, belowU, belowV;
+
+  belowY.x = offsetY.x;
+  belowY.y = offsetY.y + (2.0*m_stepY*bstep);
+  belowU.x = offsetU.x;
+  belowU.y = offsetU.y + (m_stepY*bstep);
+  belowV.x = offsetV.x;
+  belowV.y = offsetV.y + (m_stepY*bstep);
+
+  vec4 yuvBelow, rgbBelow;
+
+  yuv.rgba = vec4(texture2D(m_sampY, offsetY).r, texture2D(m_sampU, offsetU).g, texture2D(m_sampV, offsetV).a, 1.0);
   rgb   = m_yuvmat * yuv;
   rgb.a = m_alpha;
-  gl_FragColor = rgb;
+
+  yuvBelow.rgba = vec4(texture2D(m_sampY, belowY).r, texture2D(m_sampU, belowU).g, texture2D(m_sampV, belowV).a, 1.0);
+  rgbBelow   = m_yuvmat * yuvBelow;
+  rgbBelow.a = m_alpha;
+
+  gl_FragColor.rgba = mix(rgb, rgbBelow, 0.5);
 }

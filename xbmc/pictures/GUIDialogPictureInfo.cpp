@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "GUIInfoManager.h"
 #include "guilib/GUIWindowManager.h"
 #include "FileItem.h"
+#include "guilib/Key.h"
 #include "guilib/LocalizeStrings.h"
 #include "PictureInfoTag.h"
 
@@ -48,8 +49,8 @@ void CGUIDialogPictureInfo::SetPicture(CFileItem *item)
 
 void CGUIDialogPictureInfo::OnInitWindow()
 {
-  CGUIDialog::OnInitWindow();
   UpdatePictureInfo();
+  CGUIDialog::OnInitWindow();
 }
 
 bool CGUIDialogPictureInfo::OnAction(const CAction& action)
@@ -67,6 +68,10 @@ bool CGUIDialogPictureInfo::OnAction(const CAction& action)
         return pWindow->OnAction(action);
       }
       break;
+
+    case ACTION_SHOW_INFO:
+      Close();
+      return true;
   };
   return CGUIDialog::OnAction(action);
 }
@@ -89,13 +94,13 @@ void CGUIDialogPictureInfo::UpdatePictureInfo()
   m_pictureInfo->Clear();
   for (int info = SLIDE_INFO_START; info <= SLIDE_INFO_END; ++info)
   {
-    // we don't need want to add both SLIDE_EXIF_DATE_TIME and SLIDE_EXIF_DATE
-    // so we skip one without time
-    if (info == SLIDE_EXIF_DATE)
+    // we only want to add SLIDE_EXIF_DATE_TIME
+    // so we skip the other date formats
+    if (info == SLIDE_EXIF_DATE || info == SLIDE_EXIF_LONG_DATE || info == SLIDE_EXIF_LONG_DATE_TIME )
       continue;
 
-    CStdString picInfo = g_infoManager.GetLabel(info);
-    if (!picInfo.IsEmpty())
+    std::string picInfo = g_infoManager.GetLabel(info);
+    if (!picInfo.empty())
     {
       CFileItemPtr item(new CFileItem(g_localizeStrings.Get(SLIDE_STRING_BASE + info)));
       item->SetLabel2(picInfo);
@@ -112,5 +117,5 @@ void CGUIDialogPictureInfo::OnDeinitWindow(int nextWindowID)
   CGUIMessage msgReset(GUI_MSG_LABEL_RESET, GetID(), CONTROL_PICTURE_INFO);
   OnMessage(msgReset);
   m_pictureInfo->Clear();
-  m_currentPicture.Empty();
+  m_currentPicture.clear();
 }

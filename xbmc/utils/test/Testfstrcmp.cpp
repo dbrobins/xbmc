@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,28 +19,28 @@
  */
 
 #include "utils/fstrcmp.h"
-#include "utils/StdString.h"
+#include "utils/StringUtils.h"
 
 #include "gtest/gtest.h"
 
 TEST(Testfstrcmp, General)
 {
-  CStdString refstr, varstr, refresult, varresult;
+  std::string refstr, varstr, refresult, varresult;
   refstr = "Testfstrcmp test string";
   varstr = refstr;
 
   /* NOTE: Third parameter is not used at all in fstrcmp. */
   refresult = "1.000000";
-  varresult.Format("%.6f", fstrcmp(refstr.c_str(), varstr.c_str(), 0.0));
+  varresult = StringUtils::Format("%.6f", fstrcmp(refstr.c_str(), varstr.c_str(), 0.0));
   EXPECT_STREQ(refresult.c_str(), varresult.c_str());
 
   varstr = "Testfstrcmp_test_string";
   refresult = "0.913043";
-  varresult.Format("%.6f", fstrcmp(refstr.c_str(), varstr.c_str(), 0.0));
+  varresult = StringUtils::Format("%.6f", fstrcmp(refstr.c_str(), varstr.c_str(), 0.0));
   EXPECT_STREQ(refresult.c_str(), varresult.c_str());
 
   varstr = "";
   refresult = "0.000000";
-  varresult.Format("%.6f", fstrcmp(refstr.c_str(), varstr.c_str(), 0.0));
+  varresult = StringUtils::Format("%.6f", fstrcmp(refstr.c_str(), varstr.c_str(), 0.0));
   EXPECT_STREQ(refresult.c_str(), varresult.c_str());
 }

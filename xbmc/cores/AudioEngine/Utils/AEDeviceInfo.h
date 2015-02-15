@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -22,7 +22,7 @@
 #include <string>
 #include <vector>
 #include "AEAudioFormat.h"
-#include "Utils/AEChannelInfo.h"
+#include "cores/AudioEngine/Utils/AEChannelInfo.h"
 
 typedef std::vector<unsigned int     > AESampleRateList;
 typedef std::vector<enum AEDataFormat> AEDataFormatList;

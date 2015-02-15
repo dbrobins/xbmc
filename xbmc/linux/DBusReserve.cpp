@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 
 #include <dbus/dbus.h>
 #include <climits>
+#include <algorithm>
 
 #include "utils/log.h"
 
@@ -48,7 +49,7 @@ CDBusReserve::~CDBusReserve()
 {
   while(m_devs.begin() != m_devs.end())
   {
-    CStdString buf = *m_devs.begin();
+    std::string buf = *m_devs.begin();
     ReleaseDevice(buf);
   }
 
@@ -56,7 +57,7 @@ CDBusReserve::~CDBusReserve()
     dbus_connection_unref(m_conn);
 }
 
-bool CDBusReserve::AcquireDevice(const CStdString& device)
+bool CDBusReserve::AcquireDevice(const std::string& device)
 {
   DBusMessage* msg, *reply;
   DBusMessageIter args;
@@ -68,8 +69,8 @@ bool CDBusReserve::AcquireDevice(const CStdString& device)
   // we don't implement the RequestRelease interface
   int prio = INT_MAX;
 
-  CStdString service = "org.freedesktop.ReserveDevice1." + device;
-  CStdString object  = "/org/freedesktop/ReserveDevice1/" + device;
+  std::string service = "org.freedesktop.ReserveDevice1." + device;
+  std::string object  = "/org/freedesktop/ReserveDevice1/" + device;
   const char * interface = "org.freedesktop.ReserveDevice1";
 
   if (!m_conn)
@@ -155,12 +156,12 @@ bool CDBusReserve::AcquireDevice(const CStdString& device)
 }
 
 
-bool CDBusReserve::ReleaseDevice(const CStdString& device)
+bool CDBusReserve::ReleaseDevice(const std::string& device)
 {
   DBusError error;
   dbus_error_init (&error);
 
-  vector<CStdString>::iterator it = find(m_devs.begin(), m_devs.end(), device);
+  vector<std::string>::iterator it = find(m_devs.begin(), m_devs.end(), device);
   if(it == m_devs.end())
   {
     CLog::Log(LOGDEBUG, "CDBusReserve::ReleaseDevice(%s): device wasn't aquired here", device.c_str());
@@ -168,7 +169,7 @@ bool CDBusReserve::ReleaseDevice(const CStdString& device)
   }
   m_devs.erase(it);
 
-  CStdString service = "org.freedesktop.ReserveDevice1." + device;
+  std::string service = "org.freedesktop.ReserveDevice1." + device;
 
   int res = dbus_bus_release_name(m_conn, service.c_str(), &error);
   if(res == DBUS_RELEASE_NAME_REPLY_RELEASED)

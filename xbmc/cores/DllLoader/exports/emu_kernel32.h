@@ -2,8 +2,8 @@
 #define _EMU_KERNEL32_H_
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,13 +21,13 @@
  *
  */
 
-#include "utils/StdString.h"
 #include "system.h"
+#include <stdarg.h>
 
 #define MAX_LEADBYTES             12
 #define MAX_DEFAULTCHAR           2
 
-#if defined (_LINUX)
+#if defined (TARGET_POSIX)
 typedef struct _STARTUPINFOA
 {
   DWORD cb;
@@ -90,7 +90,7 @@ SYSTEM_INFO, *LPSYSTEM_INFO;
 #endif
 
 typedef DWORD LCTYPE;
-#if defined (_LINUX)
+#if defined (TARGET_POSIX)
 typedef BOOL (*PHANDLER_ROUTINE)(DWORD);
 
 typedef struct _OSVERSIONINFO
@@ -100,7 +100,7 @@ typedef struct _OSVERSIONINFO
   DWORD dwMinorVersion;
   DWORD dwBuildNumber;
   DWORD dwPlatformId;
-  TCHAR szCSDVersion[128];
+  char szCSDVersion[128];
 }
 OSVERSIONINFO, *LPOSVERSIONINFO;
 
@@ -115,7 +115,7 @@ typedef struct _OSVERSIONINFOW
 }
 OSVERSIONINFOW, *LPOSVERSIONINFOW;
 
-#ifdef _LINUX
+#ifdef TARGET_POSIX
 #define EXCEPTION_MAXIMUM_PARAMETERS 15
 typedef struct _EXCEPTION_RECORD {
   DWORD ExceptionCode;
@@ -132,7 +132,7 @@ typedef struct _EXCEPTION_RECORD {
 
 #endif
 
-#ifdef _LINUX
+#ifdef TARGET_POSIX
 #define LANG_ENGLISH 0x09
 #define SUBLANG_ENGLISH_US 0x01
 #define MAKELCID(lgid, srtid)  ((DWORD)((((DWORD)((WORD  )(srtid))) << 16) | ((DWORD)((WORD  )(lgid)))))
@@ -175,7 +175,7 @@ typedef struct _EXCEPTION_RECORD {
 // LOCAL defines from mingw
 #define MAX_LEADBYTES 	12
 #define MAX_DEFAULTCHAR	2
-#if defined (_LINUX)
+#if defined (TARGET_POSIX)
 #define LOCALE_NOUSEROVERRIDE	0x80000000
 #define LOCALE_USE_CP_ACP	0x40000000
 #if (WINVER >= 0x0400)
@@ -608,9 +608,6 @@ extern "C" BOOL WINAPI dllFreeLibrary(HINSTANCE hLibModule);
 extern "C" FARPROC WINAPI dllGetProcAddress(HMODULE hModule, LPCSTR function);
 extern "C" HMODULE WINAPI dllGetModuleHandleA(LPCSTR lpModuleName);
 extern "C" DWORD WINAPI dllGetModuleFileNameA(HMODULE hModule, LPSTR lpFilename, DWORD nSize);
-
-//GetSystemInfo are hardcoded for Xbox only.
-extern "C" void WINAPI dllGetSystemInfo(LPSYSTEM_INFO lpSystemInfo);
 
 //Current just a dummy function
 extern "C" UINT WINAPI dllGetPrivateProfileIntA(LPCSTR lpAppName, LPCSTR lpKeyName,

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,12 +24,13 @@
     var i,
         script,
         debug = false, /* Set to true to disable cached javascript */
-        version = (debug ? Math.random() : '2.0.5'),
+        version = (debug ? Math.random() : '2.1.0'),
         scripts = [
-            "js/jquery-1.5.2.min.js",
-            "js/jquery.lazyload.js",
+            "js/jquery-1.8.2.min.js",
+            "js/json2.js",
             "js/iscroll-min.js",
-            "js/Core.js",
+            "js/xbmc.core.js",
+            "js/xbmc.rpc.js",
             "js/MediaLibrary.js",
             "js/NowPlayingManager.js",
             "js/xbmc.init.js"

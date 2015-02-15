@@ -2,8 +2,8 @@
 #define KARAOKELYRICSMANAGER_H
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@
  */
 
 // C++ Interface: karaokelyricsmanager
+//
+#include <string>
 
 class CKaraokeLyrics;
 class CGUIDialogKaraokeSongSelectorSmall;
@@ -37,7 +39,7 @@ class CKaraokeLyricsManager
     ~CKaraokeLyricsManager();
 
     //! A new song is started playing
-    bool Start( const CStdString& strSongPath );
+    bool Start( const std::string& strSongPath );
 
     //! Called when the current song is being paused or unpaused
     void SetPaused( bool now_paused );

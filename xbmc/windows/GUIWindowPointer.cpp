@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -42,12 +42,12 @@ void CGUIWindowPointer::SetPointer(int pointer)
 {
   if (m_pointer == pointer) return;
   // set the new pointer visible
-  CGUIControl *pControl = (CGUIControl *)GetControl(pointer);
+  CGUIControl *pControl = GetControl(pointer);
   if (pControl)
   {
     pControl->SetVisible(true);
     // disable the old pointer
-    pControl = (CGUIControl *)GetControl(m_pointer);
+    pControl = GetControl(m_pointer);
     if (pControl) pControl->SetVisible(false);
     // set pointer to the new one
     m_pointer = pointer;

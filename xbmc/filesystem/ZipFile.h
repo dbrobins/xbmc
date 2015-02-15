@@ -1,8 +1,8 @@
 #ifndef FILE_ZIP_H_
 #define FILE_ZIP_H_
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-
 
 #include "IFile.h"
 #include <zlib.h>
@@ -41,7 +40,7 @@ namespace XFILE
     virtual bool Exists(const CURL& url);
     virtual int Stat(struct __stat64* buffer);
     virtual int Stat(const CURL& url, struct __stat64* buffer);
-    virtual unsigned int Read(void* lpBuf, int64_t uiBufSize);
+    virtual ssize_t Read(void* lpBuf, size_t uiBufSize);
     //virtual bool ReadString(char *szLine, int iLineLength);
     virtual int64_t Seek(int64_t iFilePosition, int iWhence = SEEK_SET);
     virtual void Close();
@@ -60,7 +59,7 @@ namespace XFILE
     char m_szBuffer[65535];     // 64k buffer for compressed data
     char* m_szStringBuffer;
     char* m_szStartOfStringBuffer; // never allocated!
-    int m_iDataInStringBuffer;
+    size_t m_iDataInStringBuffer;
     int m_iRead;
     bool m_bFlush;
     bool m_bCached;

@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2010-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2010-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,21 @@
 #include <queue>
 #include <semaphore.h>
 #include <OMX_Core.h>
+
+
+// check for potentially undefined OpenMAX version numbers
+#ifndef OMX_VERSION_MAJOR
+#define OMX_VERSION_MAJOR 1
+#endif
+#ifndef OMX_VERSION_MINOR
+#define OMX_VERSION_MINOR 1
+#endif
+#ifndef OMX_VERSION_REVISION
+#define OMX_VERSION_REVISION 2
+#endif
+#ifndef OMX_VERSION_STEP
+#define OMX_VERSION_STEP 0
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 // debug spew defines
@@ -75,7 +90,7 @@ protected:
   };
 
   // initialize OpenMax and get decoder component
-  bool Initialize( const CStdString &decoder_name);
+  bool Initialize( const std::string &decoder_name);
   void Deinitialize();
 
   // OpenMax Decoder delegate callback routines.
@@ -105,8 +120,12 @@ protected:
   // OpenMax state tracking
   OMX_CLIENT_STATE  m_omx_client_state;
   volatile int      m_omx_decoder_state;
-  sem_t             *m_omx_decoder_state_change;
+  sem_t             m_omx_decoder_state_change;
   std::vector<omx_codec_capability> m_omx_decoder_capabilities;
+
+private:
+  COpenMax(const COpenMax& other);
+  COpenMax& operator=(const COpenMax&);
 };
 
 #endif

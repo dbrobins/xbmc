@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -19,12 +19,14 @@
  *
  */
 
+#include <algorithm>
 #include <map>
+#include <string>
 #include <stdio.h>
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
 #include "PlatformDefs.h"
 #endif
-#include "utils/StdString.h"
+#include "utils/StringUtils.h"
 
 class CSetting;
 
@@ -35,7 +37,8 @@ namespace PERIPHERALS
     PERIPHERAL_BUS_UNKNOWN = 0,
     PERIPHERAL_BUS_USB,
     PERIPHERAL_BUS_PCI,
-    PERIPHERAL_BUS_RPI
+    PERIPHERAL_BUS_RPI,
+    PERIPHERAL_BUS_CEC
   };
 
   enum PeripheralFeature
@@ -70,14 +73,20 @@ namespace PERIPHERALS
     int m_iProductId;
   };
 
+  struct PeripheralDeviceSetting
+  {
+    CSetting* m_setting;
+    int       m_order;
+  };
+
   struct PeripheralDeviceMapping
   {
-    std::vector<PeripheralID>        m_PeripheralID;
-    PeripheralBusType                m_busType;
-    PeripheralType                   m_class;
-    CStdString                       m_strDeviceName;
-    PeripheralType                   m_mappedTo;
-    std::map<CStdString, CSetting *> m_settings;
+    std::vector<PeripheralID>                     m_PeripheralID;
+    PeripheralBusType                             m_busType;
+    PeripheralType                                m_class;
+    std::string                                    m_strDeviceName;
+    PeripheralType                                m_mappedTo;
+    std::map<std::string, PeripheralDeviceSetting> m_settings;
   };
 
   class PeripheralTypeTranslator
@@ -108,26 +117,26 @@ namespace PERIPHERALS
       }
     };
 
-    static PeripheralType GetTypeFromString(const CStdString &strType)
+    static PeripheralType GetTypeFromString(const std::string &strType)
     {
-      CStdString strTypeLowerCase(strType);
-      strTypeLowerCase.ToLower();
+      std::string strTypeLowerCase(strType);
+      StringUtils::ToLower(strTypeLowerCase);
 
-      if (strTypeLowerCase.Equals("bluetooth"))
+      if (strTypeLowerCase == "bluetooth")
         return PERIPHERAL_BLUETOOTH;
-      else if (strTypeLowerCase.Equals("cec"))
+      else if (strTypeLowerCase == "cec")
         return PERIPHERAL_CEC;
-      else if (strTypeLowerCase.Equals("disk"))
+      else if (strTypeLowerCase == "disk")
           return PERIPHERAL_DISK;
-      else if (strTypeLowerCase.Equals("hid"))
+      else if (strTypeLowerCase == "hid")
         return PERIPHERAL_HID;
-      else if (strTypeLowerCase.Equals("nic"))
+      else if (strTypeLowerCase == "nic")
         return PERIPHERAL_NIC;
-      else if (strTypeLowerCase.Equals("nyxboard"))
+      else if (strTypeLowerCase == "nyxboard")
         return PERIPHERAL_NYXBOARD;
-      else if (strTypeLowerCase.Equals("tuner"))
+      else if (strTypeLowerCase == "tuner")
         return PERIPHERAL_TUNER;
-      else if (strTypeLowerCase.Equals("imon"))
+      else if (strTypeLowerCase == "imon")
         return PERIPHERAL_IMON;
 
       return PERIPHERAL_UNKNOWN;
@@ -143,22 +152,26 @@ namespace PERIPHERALS
         return "pci";
       case PERIPHERAL_BUS_RPI:
         return "rpi";
+      case PERIPHERAL_BUS_CEC:
+        return "cec";
       default:
         return "unknown";
       }
     };
 
-    static PeripheralBusType GetBusTypeFromString(const CStdString &strType)
+    static PeripheralBusType GetBusTypeFromString(const std::string &strType)
     {
-      CStdString strTypeLowerCase(strType);
-      strTypeLowerCase.ToLower();
+      std::string strTypeLowerCase(strType);
+      StringUtils::ToLower(strTypeLowerCase);
 
-      if (strTypeLowerCase.Equals("usb"))
+      if (strTypeLowerCase == "usb")
         return PERIPHERAL_BUS_USB;
-      else if (strTypeLowerCase.Equals("pci"))
+      else if (strTypeLowerCase == "pci")
         return PERIPHERAL_BUS_PCI;
-      else if (strTypeLowerCase.Equals("rpi"))
+      else if (strTypeLowerCase == "rpi")
         return PERIPHERAL_BUS_RPI;
+      else if (strTypeLowerCase == "cec")
+        return PERIPHERAL_BUS_CEC;
 
       return PERIPHERAL_BUS_UNKNOWN;
     };
@@ -170,14 +183,83 @@ namespace PERIPHERALS
       return iVal;
     };
 
-    static void FormatHexString(int iVal, CStdString &strHexString)
+    static void FormatHexString(int iVal, std::string &strHexString)
     {
       if (iVal < 0)
         iVal = 0;
       if (iVal > 65536)
         iVal = 65536;
 
-      strHexString.Format("%04X", iVal);
+      strHexString = StringUtils::Format("%04X", iVal);
     };
+  };
+
+  class PeripheralScanResult
+  {
+  public:
+    PeripheralScanResult(const PeripheralBusType busType) :
+      m_type(PERIPHERAL_UNKNOWN),
+      m_iVendorId(0),
+      m_iProductId(0),
+      m_mappedType(PERIPHERAL_UNKNOWN),
+      m_busType(busType),
+      m_mappedBusType(busType),
+      m_iSequence(0) {}
+
+    PeripheralScanResult(void) :
+      m_type(PERIPHERAL_UNKNOWN),
+      m_iVendorId(0),
+      m_iProductId(0),
+      m_mappedType(PERIPHERAL_UNKNOWN),
+      m_busType(PERIPHERAL_BUS_UNKNOWN),
+      m_mappedBusType(PERIPHERAL_BUS_UNKNOWN),
+      m_iSequence(0) {}
+
+    bool operator ==(const PeripheralScanResult& right) const
+    {
+      return m_iVendorId  == right.m_iVendorId &&
+             m_iProductId == right.m_iProductId &&
+             m_type       == right.m_type &&
+             m_busType    == right.m_busType &&
+             StringUtils::EqualsNoCase(m_strLocation, right.m_strLocation);
+    }
+
+    bool operator !=(const PeripheralScanResult& right) const
+    {
+      return !(*this == right);
+    }
+
+    PeripheralType    m_type;
+    std::string        m_strLocation;
+    int               m_iVendorId;
+    int               m_iProductId;
+    PeripheralType    m_mappedType;
+    std::string        m_strDeviceName;
+    PeripheralBusType m_busType;
+    PeripheralBusType m_mappedBusType;
+    unsigned int      m_iSequence; // when more than one adapter of the same type is found
+  };
+
+  struct PeripheralScanResults
+  {
+    bool GetDeviceOnLocation(const std::string& strLocation, PeripheralScanResult* result) const
+    {
+      for (std::vector<PeripheralScanResult>::const_iterator it = m_results.begin(); it != m_results.end(); it++)
+      {
+        if ((*it).m_strLocation == strLocation)
+        {
+          *result = *it;
+          return true;
+        }
+      }
+      return false;
+    }
+
+    bool ContainsResult(const PeripheralScanResult& result) const
+    {
+      return std::find(m_results.begin(), m_results.end(), result) != m_results.end();
+    }
+
+    std::vector<PeripheralScanResult> m_results;
   };
 }

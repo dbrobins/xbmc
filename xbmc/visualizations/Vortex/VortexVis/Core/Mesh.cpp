@@ -1,5 +1,5 @@
 /*
- *  Copyright © 2010-2012 Team XBMC
+ *  Copyright © 2010-2013 Team XBMC
  *  http://xbmc.org
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -20,6 +20,8 @@
 #include "Mesh.h"
 #include <new>
 #include <stdio.h>
+
+using namespace std;
 
 Mesh::Mesh()
 {

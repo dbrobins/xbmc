@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,25 +19,20 @@
  */
 
 #include "Atomics.h"
+#include "system.h"
 
-// the only safe way to be absolutly sure that
-// gcc intrinsics are present when using an unknown GCC
-#if defined(__GNUC__) && defined(__GNUC_MINOR__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 4))
-  #define HAS_GCC_INTRINSICS
-#elif defined(TARGET_DARWIN)
-  // safe under darwin gcc-4.2, llvm-gcc-4.2 and clang
-  #define HAS_GCC_INTRINSICS
-#elif defined(TARGET_FREEBSD)
-  // safe under freebsd gcc-4.2 and clang
-  #define HAS_GCC_INTRINSICS
+#if defined(__mips__)
+#include "MipsAtomics.h"
+pthread_mutex_t cmpxchg_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
+
 ///////////////////////////////////////////////////////////////////////////
 // 32-bit atomic compare-and-swap
 // Returns previous value of *pAddr
 ///////////////////////////////////////////////////////////////////////////
 long cas(volatile long *pAddr, long expectedVal, long swapVal)
 {
-#if defined(HAS_GCC_INTRINSICS)
+#if defined(HAS_BUILTIN_SYNC_VAL_COMPARE_AND_SWAP)
   return(__sync_val_compare_and_swap(pAddr, expectedVal, swapVal));
 #elif defined(__ppc__) || defined(__powerpc__) // PowerPC
   unsigned int prev;
@@ -74,12 +69,9 @@ long cas(volatile long *pAddr, long expectedVal, long swapVal)
   return prev;
 
 #elif defined(__mips__)
-// TODO:
-  unsigned int prev;
-  #error atomic cas undefined for mips
-  return prev;
+  return cmpxchg32(pAddr, expectedVal, swapVal);
 
-#elif defined(WIN32)
+#elif defined(TARGET_WINDOWS)
   long prev;
   __asm
   {
@@ -114,12 +106,15 @@ long cas(volatile long *pAddr, long expectedVal, long swapVal)
 ///////////////////////////////////////////////////////////////////////////
 long long cas2(volatile long long* pAddr, long long expectedVal, long long swapVal)
 {
-#if defined(__ppc__) || defined(__powerpc__) || defined(__arm__) || defined(__mips__) // PowerPC, ARM, and MIPS
+#if defined(__ppc__) || defined(__powerpc__) || defined(__arm__)// PowerPC and ARM
 // Not available/required
 // Hack to allow compilation
   throw "cas2 is not implemented";
 
-#elif defined(WIN32)
+#elif defined(__mips__)
+  return cmpxchg64(pAddr, expectedVal, swapVal);
+
+#elif defined(TARGET_WINDOWS)
   long long prev;
   __asm
   {
@@ -159,7 +154,7 @@ long long cas2(volatile long long* pAddr, long long expectedVal, long long swapV
 ///////////////////////////////////////////////////////////////////////////
 long AtomicIncrement(volatile long* pAddr)
 {
-#if defined(HAS_GCC_INTRINSICS)
+#if defined(HAS_BUILTIN_SYNC_ADD_AND_FETCH)
   return __sync_add_and_fetch(pAddr, 1);
 
 #elif defined(__ppc__) || defined(__powerpc__) // PowerPC
@@ -194,12 +189,9 @@ long AtomicIncrement(volatile long* pAddr)
   return val;
 
 #elif defined(__mips__)
-// TODO:
-  long val;
-  #error AtomicIncrement undefined for mips
-  return val;
+  return atomic_add(1, pAddr);
 
-#elif defined(WIN32)
+#elif defined(TARGET_WINDOWS)
   long val;
   __asm
   {
@@ -237,7 +229,7 @@ long AtomicIncrement(volatile long* pAddr)
 ///////////////////////////////////////////////////////////////////////////
 long AtomicAdd(volatile long* pAddr, long amount)
 {
-#if defined(HAS_GCC_INTRINSICS)
+#if defined(HAS_BUILTIN_SYNC_ADD_AND_FETCH)
   return __sync_add_and_fetch(pAddr, amount);
 
 #elif defined(__ppc__) || defined(__powerpc__) // PowerPC
@@ -272,12 +264,9 @@ long AtomicAdd(volatile long* pAddr, long amount)
   return val;
 
 #elif defined(__mips__)
-// TODO:
-  long val;
-  #error AtomicAdd undefined for mips
-  return val;
+  return atomic_add(amount, pAddr);
 
-#elif defined(WIN32)
+#elif defined(TARGET_WINDOWS)
   __asm
   {
     mov eax, amount;
@@ -315,7 +304,7 @@ long AtomicAdd(volatile long* pAddr, long amount)
 ///////////////////////////////////////////////////////////////////////////
 long AtomicDecrement(volatile long* pAddr)
 {
-#if defined(HAS_GCC_INTRINSICS)
+#if defined(HAS_BUILTIN_SYNC_SUB_AND_FETCH)
   return __sync_sub_and_fetch(pAddr, 1);
 
 #elif defined(__ppc__) || defined(__powerpc__) // PowerPC
@@ -350,12 +339,9 @@ long AtomicDecrement(volatile long* pAddr)
   return val;
 
 #elif defined(__mips__)
-// TODO:
-  long val;
-  #error AtomicDecrement undefined for mips
-  return val;
+  return atomic_sub(1, pAddr);
 
-#elif defined(WIN32)
+#elif defined(TARGET_WINDOWS)
   long val;
   __asm
   {
@@ -393,7 +379,7 @@ long AtomicDecrement(volatile long* pAddr)
 ///////////////////////////////////////////////////////////////////////////
 long AtomicSubtract(volatile long* pAddr, long amount)
 {
-#if defined(HAS_GCC_INTRINSICS)
+#if defined(HAS_BUILTIN_SYNC_SUB_AND_FETCH)
   return __sync_sub_and_fetch(pAddr, amount);
 
 #elif defined(__ppc__) || defined(__powerpc__) // PowerPC
@@ -429,11 +415,9 @@ long AtomicSubtract(volatile long* pAddr, long amount)
   return val;
 
 #elif defined(__mips__)
-// TODO:
-  #error AtomicSubtract undefined for mips
-  return val;
+  return atomic_sub(amount, pAddr);
 
-#elif defined(WIN32)
+#elif defined(TARGET_WINDOWS)
   amount *= -1;
   __asm
   {

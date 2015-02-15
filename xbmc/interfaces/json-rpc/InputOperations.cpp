@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,49 +28,19 @@
 #include "input/XBMC_keyboard.h"
 #include "input/XBMC_vkeys.h"
 #include "threads/SingleLock.h"
-#include "utils/CharsetConverter.h"
 
 using namespace JSONRPC;
-
-CCriticalSection CInputOperations::m_critSection;
-CKey CInputOperations::m_key(KEY_INVALID);
-
-CKey CInputOperations::GetKey()
-{
-  CSingleLock lock(m_critSection);
-  CKey currentKey = m_key;
-  m_key = CKey(KEY_INVALID);
-  return currentKey;
-}
 
 //TODO the breakage of the screensaver should be refactored
 //to one central super duper place for getting rid of
 //1 million dupes
 bool CInputOperations::handleScreenSaver()
 {
-  bool screenSaverBroken = false; //true if screensaver was active and we did reset him
-
   g_application.ResetScreenSaver();
-  
-  if(g_application.IsInScreenSaver())
-  {
-    g_application.WakeUpScreenSaverAndDPMS();
-    screenSaverBroken = true;
-  }
-  return screenSaverBroken;
-}
+  if (g_application.WakeUpScreenSaverAndDPMS())
+    return true;
 
-JSONRPC_STATUS CInputOperations::SendKey(uint32_t keyCode, bool unicode /* = false */)
-{
-  if (keyCode == KEY_INVALID)
-    return InternalError;
-
-  CSingleLock lock(m_critSection);
-  if (unicode)
-    m_key = CKey(0, (wchar_t)keyCode, 0, 0, 0);
-  else
-    m_key = CKey(keyCode | KEY_VKEY);
-  return ACK;
+  return false;
 }
 
 JSONRPC_STATUS CInputOperations::SendAction(int actionID, bool wakeScreensaver /* = true */, bool waitResult /* = false */)
@@ -87,29 +57,18 @@ JSONRPC_STATUS CInputOperations::SendAction(int actionID, bool wakeScreensaver /
 JSONRPC_STATUS CInputOperations::activateWindow(int windowID)
 {
   if(!handleScreenSaver())
-    CApplicationMessenger::Get().ActivateWindow(windowID, std::vector<CStdString>(), false);
+    CApplicationMessenger::Get().ActivateWindow(windowID, std::vector<std::string>(), false);
 
   return ACK;
 }
 
-JSONRPC_STATUS CInputOperations::SendText(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+JSONRPC_STATUS CInputOperations::SendText(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
-  std::string text = parameterObject["text"].asString();
-  if (text.empty())
-    return InvalidParams;
-
-  CGUIWindow *window = g_windowManager.GetWindow(g_windowManager.GetFocusedWindow());
-  if (!window)
-    return InternalError;
-
-  CGUIMessage msg(GUI_MSG_SET_TEXT, 0, 0);
-  msg.SetLabel(text);
-  msg.SetParam1(parameterObject["done"].asBoolean() ? 1 : 0);
-  CApplicationMessenger::Get().SendGUIMessage(msg, window->GetID());
+  CApplicationMessenger::Get().SendText(parameterObject["text"].asString(), parameterObject["done"].asBoolean());
   return ACK;
 }
 
-JSONRPC_STATUS CInputOperations::ExecuteAction(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+JSONRPC_STATUS CInputOperations::ExecuteAction(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
   int action;
   if (!CButtonTranslator::TranslateActionString(parameterObject["action"].asString().c_str(), action))
@@ -118,57 +77,57 @@ JSONRPC_STATUS CInputOperations::ExecuteAction(const CStdString &method, ITransp
   return SendAction(action);
 }
 
-JSONRPC_STATUS CInputOperations::Left(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+JSONRPC_STATUS CInputOperations::Left(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
-  return SendKey(XBMCVK_LEFT);
+  return SendAction(ACTION_MOVE_LEFT);
 }
 
-JSONRPC_STATUS CInputOperations::Right(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+JSONRPC_STATUS CInputOperations::Right(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
-  return SendKey(XBMCVK_RIGHT);
+  return SendAction(ACTION_MOVE_RIGHT);
 }
 
-JSONRPC_STATUS CInputOperations::Down(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+JSONRPC_STATUS CInputOperations::Down(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
-  return SendKey(XBMCVK_DOWN);
+  return SendAction(ACTION_MOVE_DOWN);
 }
 
-JSONRPC_STATUS CInputOperations::Up(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+JSONRPC_STATUS CInputOperations::Up(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
-  return SendKey(XBMCVK_UP);
+  return SendAction(ACTION_MOVE_UP);
 }
 
-JSONRPC_STATUS CInputOperations::Select(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+JSONRPC_STATUS CInputOperations::Select(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
-  return SendKey(XBMCVK_RETURN);
+  return SendAction(ACTION_SELECT_ITEM);
 }
 
-JSONRPC_STATUS CInputOperations::Back(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+JSONRPC_STATUS CInputOperations::Back(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
-  return SendKey(XBMCVK_BACK);
+  return SendAction(ACTION_NAV_BACK);
 }
 
-JSONRPC_STATUS CInputOperations::ContextMenu(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+JSONRPC_STATUS CInputOperations::ContextMenu(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
   return SendAction(ACTION_CONTEXT_MENU);
 }
 
-JSONRPC_STATUS CInputOperations::Info(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+JSONRPC_STATUS CInputOperations::Info(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
   return SendAction(ACTION_SHOW_INFO);
 }
 
-JSONRPC_STATUS CInputOperations::Home(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+JSONRPC_STATUS CInputOperations::Home(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
   return activateWindow(WINDOW_HOME);
 }
 
-JSONRPC_STATUS CInputOperations::ShowCodec(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+JSONRPC_STATUS CInputOperations::ShowCodec(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
   return SendAction(ACTION_SHOW_CODEC);
 }
 
-JSONRPC_STATUS CInputOperations::ShowOSD(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+JSONRPC_STATUS CInputOperations::ShowOSD(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
   return SendAction(ACTION_SHOW_OSD);
 }

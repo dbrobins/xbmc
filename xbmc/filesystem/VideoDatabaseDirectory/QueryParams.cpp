@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,8 @@
  */
 
 #include "QueryParams.h"
+#include "video/VideoDatabase.h"
+#include "utils/StringUtils.h"
 
 using namespace XFILE::VIDEODATABASEDIRECTORY;
 
@@ -41,14 +43,19 @@ CQueryParams::CQueryParams()
   m_idTag = -1;
 }
 
-void CQueryParams::SetQueryParam(NODE_TYPE NodeType, const CStdString& strNodeName)
+void CQueryParams::SetQueryParam(NODE_TYPE NodeType, const std::string& strNodeName)
 {
   long idDb=atol(strNodeName.c_str());
 
   switch (NodeType)
   {
   case NODE_TYPE_OVERVIEW:
-    m_idContent = idDb;
+    if (strNodeName == "tvshows")
+      m_idContent = VIDEODB_CONTENT_TVSHOWS;
+    else if (strNodeName == "musicvideos")
+      m_idContent = VIDEODB_CONTENT_MUSICVIDEOS;
+    else
+      m_idContent = VIDEODB_CONTENT_MOVIES;
     break;
   case NODE_TYPE_GENRE:
     m_idGenre = idDb;

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 
 #define BOOL XBMC_BOOL 
 #include "utils/log.h"
+#include "CompileInfo.h"
 #undef BOOL
 
 #import <Cocoa/Cocoa.h>
@@ -50,7 +51,7 @@ static CVDisplayLinkRef displayLink = NULL;
 
 CGDirectDisplayID Cocoa_GetDisplayIDFromScreen(NSScreen *screen);
 
-int Cocoa_GL_GetCurrentDisplayID(void)
+uint32_t Cocoa_GL_GetCurrentDisplayID(void)
 {
   // Find which display we are on from the current context (default to main display)
   CGDirectDisplayID display_id = kCGDirectMainDisplay;
@@ -74,7 +75,7 @@ int Cocoa_GL_GetCurrentDisplayID(void)
     }
   }
   
-  return((int)display_id);
+  return((uint32_t)display_id);
 }
 
 bool Cocoa_CVDisplayLinkCreate(void *displayLinkcallback, void *displayLinkContext)
@@ -151,8 +152,9 @@ double Cocoa_GetCVDisplayLinkRefreshPeriod(void)
   }
   else
   {
+    
     CGDisplayModeRef display_mode;
-    display_mode = (CGDisplayModeRef)Cocoa_GL_GetCurrentDisplayID();
+    display_mode = CGDisplayCopyDisplayMode((CGDirectDisplayID)Cocoa_GL_GetCurrentDisplayID());
     fps = CGDisplayModeGetRefreshRate(display_mode);
     CGDisplayModeRelease(display_mode);
     if (fps <= 0.0)
@@ -177,9 +179,19 @@ void Cocoa_DoAppleScript(const char* scriptSource)
 void Cocoa_DoAppleScriptFile(const char* filePath)
 {
   NSString* scriptFile = [NSString stringWithUTF8String:filePath];
-  NSString* userScriptsPath = [@"~/Library/Application Support/XBMC/scripts" stringByExpandingTildeInPath];
-  NSString* bundleScriptsPath = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:@"Contents/Resources/XBMC/scripts"];
-  NSString* bundleSysScriptsPath = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:@"Contents/Resources/XBMC/system/AppleScripts"];
+  NSString* appName = [NSString stringWithUTF8String:CCompileInfo::GetAppName()];
+  NSMutableString *tmpStr = [NSMutableString stringWithString:@"~/Library/Application Support/"];
+  [tmpStr appendString:appName];
+  [tmpStr appendString:@"/scripts"];
+  NSString* userScriptsPath = [tmpStr stringByExpandingTildeInPath];
+  [tmpStr setString:@"Contents/Resources/"];
+  [tmpStr appendString:appName];
+  [tmpStr appendString:@"/scripts"];
+  NSString* bundleScriptsPath = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:tmpStr];
+  [tmpStr setString:@"Contents/Resources/"];
+  [tmpStr appendString:appName];
+  [tmpStr appendString:@"/system/AppleScripts"];
+  NSString* bundleSysScriptsPath = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:tmpStr];
 
   // Check whether a script exists in the app bundle's AppleScripts folder
   if ([[NSFileManager defaultManager] fileExistsAtPath:[bundleSysScriptsPath stringByAppendingPathComponent:scriptFile]])
@@ -213,7 +225,11 @@ const char* Cocoa_GetIconFromBundle(const char *_bundlePath, const char* _iconNa
   if (![[NSFileManager defaultManager] fileExistsAtPath:iconPath]) return NULL;
 
   // Get the path to the target PNG icon
-  NSString* pngFile = [[NSString stringWithFormat:@"~/Library/Application Support/XBMC/userdata/Thumbnails/%@-%@.png",
+  NSString* appName = [NSString stringWithUTF8String:CCompileInfo::GetAppName()];
+  NSMutableString *tmpStr = [NSMutableString stringWithString:@"~/Library/Application Support/"];
+  [tmpStr appendString:appName];
+  [tmpStr appendString:@"/userdata/Thumbnails/%@-%@.png"];
+  NSString* pngFile = [[NSString stringWithFormat:tmpStr,
     bundleIdentifier, iconName] stringByExpandingTildeInPath];
 
   // If no PNG has been created, open the ICNS file & convert
@@ -256,17 +272,17 @@ char* Cocoa_MountPoint2DeviceName(char *path)
         break;
       }
     }
-    free(strDVDDevice);
   }
+  free(strDVDDevice);
   return path;
 }
 
-bool Cocoa_GetVolumeNameFromMountPoint(const char *mountPoint, CStdString &volumeName)
+bool Cocoa_GetVolumeNameFromMountPoint(const std::string &mountPoint, std::string &volumeName)
 {
   CCocoaAutoPool pool;
   unsigned i, count = 0;
   struct statfs *buf = NULL;
-  CStdString mountpoint, devicepath;
+  std::string mountpoint, devicepath;
 
   count = getmntinfo(&buf, 0);
   for (i=0; i<count; i++)
@@ -372,79 +388,7 @@ void Cocoa_ShowMouse()
   [NSCursor unhide];
 }
 
-void Cocoa_HideDock()
-{
-  // Find which display we are on
-  NSOpenGLContext* context = [NSOpenGLContext currentContext];
-  if (context)
-  {
-    NSView* view;
-
-    view = [context view];
-    if (view)
-    {
-      NSWindow* window;
-      window = [view window];
-      if (window)
-      {
-        NSDictionary* screenInfo = [[window screen] deviceDescription];
-        NSNumber* screenID = [screenInfo objectForKey:@"NSScreenNumber"];
-        if (kCGDirectMainDisplay == (CGDirectDisplayID)[screenID longValue])
-        {
-          CStdString tmp_str;
-
-          // keep the dock hidden using applescriptif on main screen with the dock.
-          tmp_str = "tell application \"System Events\" \n";
-          tmp_str += "keystroke \"d\" using {command down, option down} \n";
-          tmp_str += "end tell \n";
-          
-          Cocoa_DoAppleScript( tmp_str.c_str() );
-        }
-      }
-    }
-  }
-}
-
-static char strVersion[32];
-
-const char* Cocoa_GetAppVersion()
-{
-  // Get the main bundle for the app and return the version.
-  CFBundleRef mainBundle = CFBundleGetMainBundle();
-  CFStringRef versStr = (CFStringRef)CFBundleGetValueForInfoDictionaryKey(mainBundle, kCFBundleVersionKey);
-  
-  memset(strVersion,0,32);
-  
-  if (versStr != NULL && CFGetTypeID(versStr) == CFStringGetTypeID())
-  {
-    bool res = CFStringGetCString(versStr, strVersion, 32,kCFStringEncodingUTF8);
-    if (!res)
-    {
-      printf("Error converting version string\n");      
-      strcpy(strVersion, "SVN");
-    }
-  }
-  else
-    strcpy(strVersion, "SVN");
-  
-  return strVersion;
-}
-
-bool Cocoa_HasVDADecoder()
-{
-  static int result = -1;
-
-  if (result == -1)
-  {
-    if (Cocoa_GetOSVersion() >= 0x1063)
-      result = (access(DLL_PATH_LIBVDADECODER, 0) == 0) ? 1:0;
-    else
-      result = 0;
-  }
-
-  return (result == 1);
-}
-
+//---------------------------------------------------------------------------------
 bool Cocoa_GPUForDisplayIsNvidiaPureVideo3()
 {
   bool result = false;

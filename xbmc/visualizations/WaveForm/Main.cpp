@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2008-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2008-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -55,12 +55,12 @@ D3DVIEWPORT9  g_viewport;
 
 struct Vertex_t
 {
-  float x, y, z, w;
+  float x, y, z;
   D3DCOLOR  col;
 };
 
 #ifndef HAS_SDL_OPENGL
-#define VERTEX_FORMAT     (D3DFVF_XYZRHW | D3DFVF_DIFFUSE)
+#define VERTEX_FORMAT     (D3DFVF_XYZ | D3DFVF_DIFFUSE)
 #endif
 
 //-- Create -------------------------------------------------------------------
@@ -142,7 +142,6 @@ extern "C" void Render()
     verts[i].x = g_viewport.X + ((i / 255.0f) * g_viewport.Width);
     verts[i].y = g_viewport.Y + g_viewport.Height * 0.33f + (g_fWaveform[0][i] * g_viewport.Height * 0.15f);
     verts[i].z = 1.0;
-    verts[i].w = 1;    
 #ifdef HAS_SDL_OPENGL
     glVertex2f(verts[i].x, verts[i].y);
 #endif
@@ -167,7 +166,6 @@ extern "C" void Render()
     verts[i].x = g_viewport.X + ((i / 255.0f) * g_viewport.Width);
     verts[i].y = g_viewport.Y + g_viewport.Height * 0.66f + (g_fWaveform[1][i] * g_viewport.Height * 0.15f);
     verts[i].z = 1.0;
-    verts[i].w = 1;
 #ifdef HAS_SDL_OPENGL
     glVertex2f(verts[i].x, verts[i].y);
 #endif
@@ -297,3 +295,10 @@ extern "C" ADDON_STATUS ADDON_SetSetting(const char *strSetting, const void* val
   return ADDON_STATUS_OK;
 }
 
+//-- Announce -----------------------------------------------------------------
+// Receive announcements from XBMC
+// !!! Add-on master function !!!
+//-----------------------------------------------------------------------------
+extern "C" void ADDON_Announce(const char *flag, const char *sender, const char *message, const void *data)
+{
+}

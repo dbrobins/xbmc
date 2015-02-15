@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -67,7 +67,7 @@ void CMythSession::CheckIdle()
     }
     else
     {
-      it++;
+      ++it;
     }
   }
 }
@@ -77,7 +77,7 @@ CMythSession* CMythSession::AquireSession(const CURL& url)
   CSingleLock lock(m_section_session);
 
   vector<CMythSession*>::iterator it;
-  for (it = m_sessions.begin(); it != m_sessions.end(); it++)
+  for (it = m_sessions.begin(); it != m_sessions.end(); ++it)
   {
     CMythSession* session = *it;
     if (session->CanSupport(url))
@@ -120,14 +120,14 @@ CDateTime CMythSession::GetValue(cmyth_timestamp_t t)
   return result;
 }
 
-CStdString CMythSession::GetValue(char *str)
+std::string CMythSession::GetValue(char *str)
 {
-  CStdString result;
+  std::string result;
   if (str)
   {
     result = str;
     m_dll->ref_release(str);
-    result.Trim();
+    StringUtils::Trim(result);
   }
   return result;
 }
@@ -140,10 +140,10 @@ void CMythSession::SetFileItemMetaData(CFileItem &item, cmyth_proginfo_t program
   /*
    * Set the FileItem meta-data.
    */
-  CStdString title        = GetValue(m_dll->proginfo_title(program)); // e.g. Mythbusters
-  CStdString subtitle     = GetValue(m_dll->proginfo_subtitle(program)); // e.g. The Pirate Special
+  std::string title        = GetValue(m_dll->proginfo_title(program)); // e.g. Mythbusters
+  std::string subtitle     = GetValue(m_dll->proginfo_subtitle(program)); // e.g. The Pirate Special
   item.m_strTitle         = title;
-  if (!subtitle.IsEmpty())
+  if (!subtitle.empty())
     item.m_strTitle      += " - \"" + subtitle + "\""; // e.g. Mythbusters - "The Pirate Special"
   item.m_dateTime         = GetValue(m_dll->proginfo_rec_start(program));
   item.m_dwSize           = m_dll->proginfo_length(program); // size in bytes
@@ -162,12 +162,12 @@ void CMythSession::SetFileItemMetaData(CFileItem &item, cmyth_proginfo_t program
    * subtitle to the start of the plot if not already as it used to? Seems strange, should be
    * handled by skin?
    *
-  if (tag->m_strPlot.Left(tag->m_strPlotOutline.length()) != tag->m_strPlotOutline && !tag->m_strPlotOutline.IsEmpty())
+  if (tag->m_strPlot.Left(tag->m_strPlotOutline.length()) != tag->m_strPlotOutline && !tag->m_strPlotOutline.empty())
     tag->m_strPlot = tag->m_strPlotOutline + '\n' + tag->m_strPlot;
    */
   tag->m_genre            = StringUtils::Split(GetValue(m_dll->proginfo_category(program)), g_advancedSettings.m_videoItemSeparator); // e.g. Sports
   tag->m_strAlbum         = GetValue(m_dll->proginfo_chansign(program)); // e.g. TV3
-  tag->m_strRuntime       = StringUtils::SecondsToTimeString(m_dll->proginfo_length_sec(program));
+  tag->m_duration         = m_dll->proginfo_length_sec(program);
   
   SetSeasonAndEpisode(program, &tag->m_iSeason, &tag->m_iEpisode);
 
@@ -175,7 +175,7 @@ void CMythSession::SetFileItemMetaData(CFileItem &item, cmyth_proginfo_t program
    * Original air date is used by the VideoInfoScanner to scrape the TV Show information into the
    * Video Library. If the original air date is empty the date returned will be the epoch.
    */
-  CStdString originalairdate = GetValue(m_dll->proginfo_originalairdate(program)).GetAsDBDate();
+  std::string originalairdate = GetValue(m_dll->proginfo_originalairdate(program)).GetAsDBDate();
   if (originalairdate != "1970-01-01"
   &&  originalairdate != "1969-12-31")
   tag->m_firstAired.SetFromDateString(originalairdate);
@@ -193,13 +193,13 @@ void CMythSession::SetFileItemMetaData(CFileItem &item, cmyth_proginfo_t program
    * Set further FileItem and VideoInfoTag meta-data based on whether it is LiveTV or not.
    */
   CURL url(item.GetPath());
-  if (url.GetFileName().Left(9) == "channels/")
+  if (StringUtils::StartsWith(url.GetFileName(), "channels/"))
   {
     /*
      * Prepend the channel number onto the FileItem title for the listing so it's clear what is
      * playing on each channel without using up as much room as the channel name.
      */
-    CStdString number = GetValue(m_dll->proginfo_chanstr(program));
+    std::string number = GetValue(m_dll->proginfo_chanstr(program));
     item.m_strTitle = number + " - " + item.m_strTitle;
 
     /*
@@ -208,8 +208,8 @@ void CMythSession::SetFileItemMetaData(CFileItem &item, cmyth_proginfo_t program
      * to the end so sorting by title will work, and it's not really as important as the title
      * within the OSD.
      */
-    CStdString name = GetValue(m_dll->proginfo_chansign(program));
-    if (!name.IsEmpty())
+    std::string name = GetValue(m_dll->proginfo_chansign(program));
+    if (!name.empty())
       tag->m_strTitle += " - " + name;
 
     /*
@@ -226,16 +226,16 @@ void CMythSession::SetFileItemMetaData(CFileItem &item, cmyth_proginfo_t program
      * Update the path and channel icon for LiveTV in case the channel has changed through
      * NextChannel(), PreviousChannel() or SetChannel().
      */
-    if (!number.IsEmpty())
+    if (!number.empty())
     {
       url.SetFileName("channels/" + number + ".ts"); // e.g. channels/3.ts
       item.SetPath(url.Get());
     }
-    CStdString chanicon = GetValue(m_dll->proginfo_chanicon(program));
-    if (!chanicon.IsEmpty())
+    std::string chanicon = GetValue(m_dll->proginfo_chanicon(program));
+    if (!chanicon.empty())
     {
       url.SetFileName("files/channels/" + URIUtils::GetFileName(chanicon)); // e.g. files/channels/tv3.jpg
-      item.SetThumbnailImage(url.Get());
+      item.SetArt("thumb", url.Get());
     }
   }
   else
@@ -246,7 +246,7 @@ void CMythSession::SetFileItemMetaData(CFileItem &item, cmyth_proginfo_t program
     if (m_dll->proginfo_rec_status(program) == RS_RECORDED)
     {
       url.SetFileName("files/" + URIUtils::GetFileName(GetValue(m_dll->proginfo_pathname(program))) + ".png");
-      item.SetThumbnailImage(url.Get());
+      item.SetArt("thumb", url.Get());
     }
   }
 }
@@ -266,8 +266,8 @@ void CMythSession::SetSeasonAndEpisode(const cmyth_proginfo_t &program, int *sea
    * original air date though, so if we identify a SchedulesDirect programid, leave the season and
    * episode as 0. 
    */
-  CStdString programid = GetValue(m_dll->proginfo_programid(program));
-  CStdString seriesid = GetValue(m_dll->proginfo_seriesid(program));
+  std::string programid = GetValue(m_dll->proginfo_programid(program));
+  std::string seriesid = GetValue(m_dll->proginfo_seriesid(program));
 
   /*
    * Default the season and episode to 0 so XBMC treats the content as an episode and displays tag
@@ -277,21 +277,21 @@ void CMythSession::SetSeasonAndEpisode(const cmyth_proginfo_t &program, int *sea
   *season  = 0;
   *episode = 0;
   
-  if (programid.IsEmpty() // Can't do anything if the program ID is empty
-  ||  seriesid.IsEmpty()) // Can't figure out the end parsing if the series ID is empty  {
+  if (programid.empty() // Can't do anything if the program ID is empty
+  ||  seriesid.empty()) // Can't figure out the end parsing if the series ID is empty  {
     return;
   
-  CStdString category = programid.Left(2); // Valid for both XMLTV and SchedulesDirect sources
+  std::string category = programid.substr(0, 2); // Valid for both XMLTV and SchedulesDirect sources
   if (category != "MV"  // Movie
   &&  category != "EP"  // Series
   &&  category != "SH"  // TV Show
   &&  category != "SP") // Sports
     return;
   
-  if (programid.Mid(category.length(), seriesid.length()) != seriesid) // Series ID does not follow the category
+  if (programid.substr(category.length(), seriesid.length()) != seriesid) // Series ID does not follow the category
     return;
   
-  CStdString remainder = programid.Mid(category.length() + seriesid.length()); // Whatever is after series ID
+  std::string remainder = programid.substr(category.length() + seriesid.length()); // Whatever is after series ID
   
   /*
    * All SchedulesDirect remainders appear to be 4 characters and start with a 0. If the assumption
@@ -300,7 +300,7 @@ void CMythSession::SetSeasonAndEpisode(const cmyth_proginfo_t &program, int *sea
    * episode number for a series to be > 999.
    */
   if (remainder.length() == 4     // All SchedulesDirect codes seem to be 4 characters
-  &&  remainder.Left(0)  == "0")  // Padded with 0's for low number. No valid XMLTV remainder will start with 0.
+  &&  remainder[0] == '0')        // Padded with 0's for low number. No valid XMLTV remainder will start with 0.
     return;
   
   /*
@@ -309,15 +309,15 @@ void CMythSession::SetSeasonAndEpisode(const cmyth_proginfo_t &program, int *sea
    * cases where the number of parts for a single episode is > 9.
    */
   if (remainder.length() >= 5) // Must include optional part number and total number of parts
-    remainder = remainder.Left(remainder.length() - 2); // Assumes part number and total are both < 10
-  
+    remainder = remainder.substr(0, remainder.length() - 2); // Assumes part number and total are both < 10
+
   /*
    * Now for some heuristic black magic.
    */
   if (remainder.length() == 2)  // Single character season and episode.
   {
-    *season = atoi(remainder.Right(1)); // TODO: Fix for base 36 in Myth 0.24. Assume season < 10
-    *episode = atoi(remainder.Left(1));
+    *season = atoi(remainder.substr(1, 1).c_str()); // TODO: Fix for base 36 in Myth 0.24. Assume season < 10
+    *episode = atoi(remainder.substr(0, 1).c_str());
   }
   else if (remainder.length() == 3) // Ambiguous in Myth 0.23. Single character season in Myth 0.24
   {
@@ -325,47 +325,48 @@ void CMythSession::SetSeasonAndEpisode(const cmyth_proginfo_t &program, int *sea
      * Following heuristics are intended to work with largest possible number of cases. It won't be
      * perfect, but way better than just assuming the season is < 10.
      */
-    if (remainder.Right(1) == "0") // e.g. 610. Unlikely to have a season of 0 (specials) with more than 9 special episodes.
+    if (remainder[2] == '0') // e.g. 610. Unlikely to have a season of 0 (specials) with more than 9 special episodes.
     {
-      *season = atoi(remainder.Right(2));
-      *episode = atoi(remainder.Left(1));
+      *season = atoi(remainder.substr(1, 2).c_str());
+      *episode = atoi(remainder.substr(0, 1).c_str());
     }
-    else if (remainder.Mid(2, 1) == "0") // e.g. 203. Can't have a season start with 0. Must be end of episode.
+    else if (remainder[1] == '0') // e.g. 203. Can't have a season start with 0. Must be end of episode.
     {
-      *season = atoi(remainder.Right(1)); // TODO: Fix for base 36 in Myth 0.24. Assume season < 10
-      *episode = atoi(remainder.Left(2));
+      *season = atoi(remainder.substr(2, 1).c_str()); // TODO: Fix for base 36 in Myth 0.24. Assume season < 10
+      *episode = atoi(remainder.substr(0, 2).c_str());
     }
-    else if (atoi(remainder.Left(1)) > 3) // e.g. 412. Very unlikely to have more than 39 episodes per season if season > 9.
+    else if (atoi(remainder.substr(0, 1).c_str()) > 3) // e.g. 412. Very unlikely to have more than 39 episodes per season if season > 9.
     {
       /*
        * TODO: See if a check for > 2 is better, e.g. is it still unlike to have more than 29 episodes
        * per season if season > 9?
        */
-      *season = atoi(remainder.Right(2));
-      *episode = atoi(remainder.Left(1));
+      *season = atoi(remainder.substr(1, 2).c_str());
+      *episode = atoi(remainder.substr(0, 1).c_str());
     }
     else // e.g. 129. Assume season is < 10 or Myth 0.24 Base 36 season.
     {
-      *season = atoi(remainder.Right(1)); // TODO: Fix for base 36 in Myth 0.24. Assume season < 10
-      *episode = atoi(remainder.Left(2));
+      *season = atoi(remainder.substr(2, 1).c_str()); // TODO: Fix for base 36 in Myth 0.24. Assume season < 10
+      *episode = atoi(remainder.substr(0, 2).c_str());
     }
   }
   else if (remainder.length() == 4) // Double digit season and episode in Myth 0.23 OR TODO: has part number and total number of parts
   {
-    *season = atoi(remainder.Right(2));
-    *episode = atoi(remainder.Left(2));
+    *season = atoi(remainder.substr(2, 2).c_str());
+    *episode = atoi(remainder.substr(0, 2).c_str());
   }
   return;
 }
 
-CMythSession::CMythSession(const CURL& url) : CThread("CMythSession")
+CMythSession::CMythSession(const CURL& url) : CThread("MythSession"),
+  m_hostname(url.GetHostName()),
+  m_username(url.GetUserName() == "" ? MYTH_DEFAULT_USERNAME : url.GetUserName()),
+  m_password(url.GetPassWord() == "" ? MYTH_DEFAULT_PASSWORD : url.GetPassWord())
 {
   m_control   = NULL;
   m_event     = NULL;
   m_database  = NULL;
-  m_hostname  = url.GetHostName();
-  m_username  = url.GetUserName() == "" ? MYTH_DEFAULT_USERNAME : url.GetUserName();
-  m_password  = url.GetPassWord() == "" ? MYTH_DEFAULT_PASSWORD : url.GetPassWord();
+  m_listener  = NULL;
   m_port      = url.HasPort() ? url.GetPort() : MYTH_DEFAULT_PORT;
   m_timestamp = XbmcThreads::SystemClockMillis();
   m_dll = new DllLibCMyth;
@@ -373,7 +374,7 @@ CMythSession::CMythSession(const CURL& url) : CThread("CMythSession")
   if (m_dll->IsLoaded())
   {
     m_dll->set_dbg_msgcallback(&CMythSession::LogCMyth);
-    if (g_advancedSettings.m_logLevel >= LOG_LEVEL_DEBUG_SAMBA)
+    if (g_advancedSettings.CanLogComponent(LOGCMYTH))
       m_dll->dbg_level(CMYTH_DBG_ALL);
     else if (g_advancedSettings.m_logLevel >= LOG_LEVEL_DEBUG)
       m_dll->dbg_level(CMYTH_DBG_DETAIL);
@@ -513,7 +514,7 @@ cmyth_conn_t CMythSession::GetControl()
   if (!m_control)
   {
     if (!m_dll->IsLoaded())
-      return false;
+      return NULL;
 
     m_control = m_dll->conn_connect_ctrl((char*)m_hostname.c_str(), m_port, 16*1024, 4096);
     if (!m_control)
@@ -527,7 +528,7 @@ cmyth_database_t CMythSession::GetDatabase()
   if (!m_database)
   {
     if (!m_dll->IsLoaded())
-      return false;
+      return NULL;
 
     m_database = m_dll->database_init((char*)m_hostname.c_str(), (char*)MYTH_DEFAULT_DATABASE,
                                       (char*)m_username.c_str(), (char*)m_password.c_str());

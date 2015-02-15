@@ -2,8 +2,8 @@
 #define KARAOKELYRICSTEXTKAR_H
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,13 +24,13 @@
 // C++ Interface: karaokelyricstextkar
 
 #include "karaokelyricstext.h"
-
+#include "utils/auto_buffer.h"
 
 //! This class loads MIDI/KAR format lyrics
 class CKaraokeLyricsTextKAR : public CKaraokeLyricsText
 {
   public:
-    CKaraokeLyricsTextKAR( const CStdString & midiFile );
+    CKaraokeLyricsTextKAR( const std::string & midiFile );
     ~CKaraokeLyricsTextKAR();
 
     //! Parses the lyrics or song file, and loads the lyrics into memory.
@@ -39,7 +39,7 @@ class CKaraokeLyricsTextKAR : public CKaraokeLyricsText
 
   private:
     void      parseMIDI();
-    CStdString    convertText( const char * data );
+    std::string    convertText( const char * data );
 
     unsigned char   readByte();
     unsigned short  readWord();
@@ -51,12 +51,11 @@ class CKaraokeLyricsTextKAR : public CKaraokeLyricsText
     void      setPos( unsigned int offset );
 
     // MIDI file name
-    CStdString     m_midiFile;
+    std::string     m_midiFile;
 
     // MIDI in-memory information
-    unsigned char *  m_midiData;
-    unsigned int  m_midiOffset;
-    unsigned int  m_midiSize;
+    XUTILS::auto_buffer m_midiData;
+    size_t        m_midiOffset;
     bool          m_reportedInvalidVarField;
 };
 

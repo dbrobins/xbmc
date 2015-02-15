@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 
 #include <string>
 #include <map>
+#include <vector>
 #include "utils/Job.h"
 
 class CCriticalSection;
@@ -39,7 +40,7 @@ class CZeroconf
 public:
 
   //tries to publish this service via zeroconf
-  //fcr_identifier can be used to stop this service later
+  //fcr_identifier can be used to stop or reannounce this service later
   //fcr_type is the zeroconf service type to publish (e.g. _http._tcp for webserver)
   //fcr_name is the name of the service to publish. The hostname is currently automatically appended
   //         and used for name collisions. e.g. XBMC would get published as fcr_name@Martn or, after collision fcr_name@Martn-2
@@ -49,7 +50,15 @@ public:
                       const std::string& fcr_type,
                       const std::string& fcr_name,
                       unsigned int f_port,
-                      std::map<std::string, std::string> txt);
+                      std::vector<std::pair<std::string, std::string> > txt /*= std::vector<std::pair<std::string, std::string> >()*/);
+  
+  //tries to rebroadcast that service on the network without removing/readding
+  //this can be achieved by changing a fake txt record. Implementations should
+  //implement it by doing so.
+  //
+  //fcr_identifier - the identifier of the already published service which should be reannounced
+  // returns true on successfull reannonuce - false if this service isn't published yet
+  bool ForceReAnnounceService(const std::string& fcr_identifier);
 
   ///removes the specified service
   ///returns false if fcr_identifier does not exist
@@ -61,7 +70,7 @@ public:
   //starts publishing
   //services that were added with PublishService(...) while Zeroconf wasn't
   //started, get published now.
-  void Start();
+  bool Start();
 
   // unpublishs all services (but keeps them stored in this class)
   // a call to Start() will republish them
@@ -78,6 +87,8 @@ public:
   static bool   IsInstantiated() { return  smp_instance != 0; }
   // win32: process results from the bonjour daemon
   virtual void  ProcessResults() {}
+  // returns if the service is started and services are announced
+  bool IsStarted() { return m_started; }
 
 protected:
   //methods to implement for concrete implementations
@@ -86,7 +97,12 @@ protected:
                                 const std::string& fcr_type,
                                 const std::string& fcr_name,
                                 unsigned int f_port,
-                                std::map<std::string, std::string> txt) = 0;
+                                const std::vector<std::pair<std::string, std::string> >& txt) = 0;
+
+  //methods to implement for concrete implementations
+  //update this service
+  virtual bool doForceReAnnounceService(const std::string& fcr_identifier) = 0;
+  
   //removes the service if published
   virtual bool doRemoveService(const std::string& fcr_ident) = 0;
 
@@ -107,7 +123,7 @@ private:
     std::string type;
     std::string name;
     unsigned int port;
-    std::map<std::string, std::string> txt;
+    std::vector<std::pair<std::string, std::string> > txt;
   };
 
   //protects data

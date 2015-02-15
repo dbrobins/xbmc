@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,12 +13,14 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "VideoDbUrl.h"
 #include "filesystem/VideoDatabaseDirectory.h"
+#include "playlists/SmartPlayList.h"
 #include "utils/StringUtils.h"
 #include "utils/Variant.h"
 
@@ -35,10 +37,10 @@ CVideoDbUrl::~CVideoDbUrl()
 bool CVideoDbUrl::parse()
 {
   // the URL must start with videodb://
-  if (m_url.GetProtocol() != "videodb" || m_url.GetFileName().empty())
+  if (!m_url.IsProtocol("videodb") || m_url.GetFileName().empty())
     return false;
 
-  CStdString path = m_url.Get();
+  std::string path = m_url.Get();
   VIDEODATABASEDIRECTORY::NODE_TYPE dirType = CVideoDatabaseDirectory::GetDirectoryType(path);
   VIDEODATABASEDIRECTORY::NODE_TYPE childType = CVideoDatabaseDirectory::GetDirectoryChildType(path);
 
@@ -159,7 +161,13 @@ bool CVideoDbUrl::parse()
 
   // add options based on the QueryParams
   if (queryParams.GetActorId() != -1)
-    AddOption("actorid", (int)queryParams.GetActorId());
+  {
+    std::string optionName = "actorid";
+    if (m_type == "musicvideos")
+      optionName = "artistid";
+
+    AddOption(optionName, (int)queryParams.GetActorId());
+  }
   if (queryParams.GetAlbumId() != -1)
     AddOption("albumid", (int)queryParams.GetAlbumId());
   if (queryParams.GetCountryId() != -1)
@@ -186,4 +194,26 @@ bool CVideoDbUrl::parse()
     AddOption("year", (int)queryParams.GetYear());
 
   return true;
+}
+
+bool CVideoDbUrl::validateOption(const std::string &key, const CVariant &value)
+{
+  if (!CDbUrl::validateOption(key, value))
+    return false;
+
+  // if the value is empty it will remove the option which is ok
+  // otherwise we only care about the "filter" option here
+  if (value.empty() || !StringUtils::EqualsNoCase(key, "filter"))
+    return true;
+
+  if (!value.isString())
+    return false;
+
+  CSmartPlaylist xspFilter;
+  if (!xspFilter.LoadFromJson(value.asString()))
+    return false;
+  
+  // check if the filter playlist matches the item type
+  return (xspFilter.GetType() == m_itemType ||
+         (xspFilter.GetType() == "movies" && m_itemType == "sets"));
 }

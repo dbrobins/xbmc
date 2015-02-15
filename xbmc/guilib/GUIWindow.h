@@ -9,8 +9,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,10 +29,10 @@
  */
 
 #include "GUIControlGroup.h"
-#include "boost/shared_ptr.hpp"
+#include <memory>
 #include "threads/CriticalSection.h"
 
-class CFileItem; typedef boost::shared_ptr<CFileItem> CFileItemPtr;
+class CFileItem; typedef std::shared_ptr<CFileItem> CFileItemPtr;
 
 #include "GUICallback.h"  // for GUIEvent
 
@@ -63,11 +63,10 @@ public:
   COrigin()
   {
     x = y = 0;
-    condition = 0;
   };
   float x;
   float y;
-  unsigned int condition;
+  INFO::InfoPtr condition;
 };
 
 /*!
@@ -81,11 +80,11 @@ public:
   enum WINDOW_TYPE { WINDOW = 0, MODAL_DIALOG, MODELESS_DIALOG, BUTTON_MENU, SUB_MENU };
   enum LOAD_TYPE { LOAD_EVERY_TIME, LOAD_ON_GUI_INIT, KEEP_IN_MEMORY };
 
-  CGUIWindow(int id, const CStdString &xmlFile);
+  CGUIWindow(int id, const std::string &xmlFile);
   virtual ~CGUIWindow(void);
 
   bool Initialize();  // loads the window
-  bool Load(const CStdString& strFileName, bool bContainsPath = false);
+  bool Load(const std::string& strFileName, bool bContainsPath = false);
 
   void CenterWindow();
 
@@ -98,7 +97,11 @@ public:
    \sa FrameMove
    */
   virtual void DoRender();
-  virtual void Render();
+
+  /*! \brief Do any post render activities.
+    Check if window closing animation is finished and finalize window closing.
+   */
+  void AfterRender();
   
   /*! \brief Main update function, called every frame prior to rendering
    Any window that requires updating on a frame by frame basis (such as to maintain
@@ -125,6 +128,7 @@ public:
   virtual bool OnMessage(CGUIMessage& message);
 
   bool ControlGroupHasFocus(int groupID, int controlID);
+  virtual void SetID(int id);
   virtual bool HasID(int controlID) const;
   const std::vector<int>& GetIDRange() const { return m_idRange; };
   int GetPreviousWindow() { return m_previousWindow; };
@@ -171,13 +175,13 @@ public:
    \param value value to set, may be a string, integer, boolean or double.
    \sa GetProperty
    */
-  void SetProperty(const CStdString &key, const CVariant &value);
+  void SetProperty(const std::string &key, const CVariant &value);
 
   /*! \brief Retreive a property
    \param key name of the property to retrieve
    \return value of the property, empty if it doesn't exist
    */
-  CVariant GetProperty(const CStdString &key) const;
+  CVariant GetProperty(const std::string &key) const;
 
   /*! \brief Clear a all the window's properties
    \sa SetProperty, HasProperty, GetProperty
@@ -191,8 +195,12 @@ public:
   virtual void OnDeinitWindow(int nextWindowID);
 protected:
   virtual EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event);
-  virtual bool LoadXML(const CStdString& strPath, const CStdString &strLowerPath);  ///< Loads from the given file
+  virtual bool LoadXML(const std::string& strPath, const std::string &strLowerPath);  ///< Loads from the given file
   bool Load(TiXmlElement *pRootElement);                 ///< Loads from the given XML root element
+  /*! \brief Check if XML file needs (re)loading
+   XML file has to be (re)loaded when window is not loaded or include conditions values were changed
+   */
+  bool NeedXMLReload();
   virtual void LoadAdditionalTags(TiXmlElement *root) {}; ///< Load additional information from the XML document
 
   virtual void SetDefaults();
@@ -211,7 +219,7 @@ protected:
   virtual void RestoreControlStates();
 
   // methods for updating controls and sending messages
-  void OnEditChanged(int id, CStdString &text);
+  void OnEditChanged(int id, std::string &text);
   bool SendMessage(int message, int id, int param1 = 0, int param2 = 0);
 
   typedef GUIEvent<CGUIMessage&> CLICK_EVENT;
@@ -222,11 +230,7 @@ protected:
   typedef std::map<int, SELECTED_EVENT> MAPCONTROLSELECTEDEVENTS;
   MAPCONTROLSELECTEDEVENTS m_mapSelectedEvents;
 
-  void LoadControl(TiXmlElement* pControl, CGUIControlGroup *pGroup);
-
-//#ifdef PRE_SKIN_VERSION_9_10_COMPATIBILITY
-  void ChangeButtonToEdit(int id, bool singleLabel = false);
-//#endif
+  void LoadControl(TiXmlElement* pControl, CGUIControlGroup *pGroup, const CRect &rect);
 
   std::vector<int> m_idRange;
   OVERLAY_STATE m_overlayState;
@@ -258,10 +262,7 @@ protected:
   bool m_animationsEnabled;
   struct icompare
   {
-    bool operator()(const CStdString &s1, const CStdString &s2) const
-    {
-      return s1.CompareNoCase(s2) < 0;
-    }
+    bool operator()(const std::string &s1, const std::string &s2) const;
   };
 
   CGUIAction m_loadActions;
@@ -274,8 +275,8 @@ protected:
   int m_exclusiveMouseControl; ///< \brief id of child control that wishes to receive all mouse events \sa GUI_MSG_EXCLUSIVE_MOUSE
 
 private:
-  std::map<CStdString, CVariant, icompare> m_mapProperties;
-  std::map<int, bool> m_xmlIncludeConditions; ///< \brief used to store conditions used to resolve includes for this window
+  std::map<std::string, CVariant, icompare> m_mapProperties;
+  std::map<INFO::InfoPtr, bool> m_xmlIncludeConditions; ///< \brief used to store conditions used to resolve includes for this window
 };
 
 #endif

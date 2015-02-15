@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,20 +19,20 @@
  */
 
 #include "commons/ilog.h"
-#include "utils/StdString.h"
+#include "utils/StringUtils.h"
 
 namespace XbmcCommons
 {
   void ILogger::Log(int loglevel, const char *format, ... )
   {
-    CStdString strData;
+    std::string strData;
 
     strData.reserve(16384);
     va_list va;
     va_start(va, format);
-    strData.FormatV(format,va);
+    strData = StringUtils::FormatV(format,va);
     va_end(va);
 
-    log(loglevel, strData);
+    log(loglevel, strData.c_str());
   }
 }

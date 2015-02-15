@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,14 +22,14 @@
 #include <string>
 #include <vector>
 #include <limits>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #include "JSONUtils.h"
 
 namespace JSONRPC
 {
   class JSONSchemaTypeDefinition;
-  typedef boost::shared_ptr<JSONSchemaTypeDefinition> JSONSchemaTypeDefinitionPtr;
+  typedef std::shared_ptr<JSONSchemaTypeDefinition> JSONSchemaTypeDefinitionPtr;
 
   /*! 
    \ingroup jsonrpc
@@ -321,7 +321,7 @@ namespace JSONRPC
      \brief Parses the given json schema description and evaluates
      and stores the defined type
      \param jsonType json schema description to parse
-     \return True if the json schema description has been parsed sucessfully otherwise false
+     \return True if the json schema description has been parsed successfully otherwise false
      */
     static bool AddType(const std::string &jsonType);
 
@@ -330,7 +330,7 @@ namespace JSONRPC
      and stores the defined method
      \param jsonMethod json schema description to parse
      \param method pointer to the implementation
-     \return True if the json schema description has been parsed sucessfully otherwise false
+     \return True if the json schema description has been parsed successfully otherwise false
      */
     static bool AddMethod(const std::string &jsonMethod, MethodCall method);
 
@@ -338,7 +338,7 @@ namespace JSONRPC
      \brief Parses the given json schema description and evaluates
      and stores the defined builtin method
      \param jsonMethod json schema description to parse
-     \return True if the json schema description has been parsed sucessfully otherwise false
+     \return True if the json schema description has been parsed successfully otherwise false
      */
     static bool AddBuiltinMethod(const std::string &jsonMethod);
 
@@ -346,7 +346,7 @@ namespace JSONRPC
      \brief Parses the given json schema description and evaluates
      and stores the defined notification
      \param jsonNotification json schema description to parse
-     \return True if the json schema description has been parsed sucessfully otherwise false
+     \return True if the json schema description has been parsed successfully otherwise false
      */
     static bool AddNotification(const std::string &jsonNotification);
 
@@ -359,7 +359,7 @@ namespace JSONRPC
      schema description
      \return Version of the json schema description
      */
-    static int GetVersion();
+    static const char* GetVersion();
 
     /*!
      \brief Prints the json schema description into the given result object
@@ -392,6 +392,8 @@ namespace JSONRPC
     
     static JSONSchemaTypeDefinitionPtr GetType(const std::string &identification);
 
+    static void Cleanup();
+
   private:
     static bool prepareDescription(std::string &description, CVariant &descriptionObject, std::string &name);
     static bool addMethod(const std::string &jsonMethod, MethodCall method);
@@ -413,6 +415,8 @@ namespace JSONRPC
       JsonRpcMethodIterator begin() const;
       JsonRpcMethodIterator find(const std::string& key) const;
       JsonRpcMethodIterator end() const;
+
+      void clear();
     private:
       std::map<std::string, JsonRpcMethod> m_actionmap;
     };

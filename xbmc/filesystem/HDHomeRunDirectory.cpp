@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2011-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2011-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "URL.h"
 #include "FileItem.h"
 #include "utils/URIUtils.h"
+#include "utils/StringUtils.h"
 #include "DllHDHomeRun.h"
 
 using namespace XFILE;
@@ -43,14 +44,12 @@ CHomeRunDirectory::~CHomeRunDirectory()
   delete m_pdll;
 }
 
-bool CHomeRunDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
+bool CHomeRunDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
   if(!m_pdll->IsLoaded())
     return false;
 
-  CURL url(strPath);
-
-  if(url.GetHostName().IsEmpty())
+  if(url.GetHostName().empty())
   {
     // no hostname, list all available devices
     int target_ip = 0;
@@ -61,12 +60,11 @@ bool CHomeRunDirectory::GetDirectory(const CStdString& strPath, CFileItemList &i
 
     for(int i=0;i<count;i++)
     {
-      CStdString device, ip;
       CFileItemPtr item;
       unsigned int ip_addr = result_list[i].ip_addr;
 
-      device.Format("%x", result_list[i].device_id);
-      ip.Format("%u.%u.%u.%u",
+      std::string device = StringUtils::Format("%x", result_list[i].device_id);
+      std::string ip = StringUtils::Format("%u.%u.%u.%u",
             (unsigned int)(ip_addr >> 24) & 0xFF, (unsigned int)(ip_addr >> 16) & 0xFF,
             (unsigned int)(ip_addr >> 8) & 0xFF, (unsigned int)(ip_addr >> 0) & 0xFF);
 
@@ -97,13 +95,13 @@ bool CHomeRunDirectory::GetDirectory(const CStdString& strPath, CFileItemList &i
       return true;
     }
 
-    CStdString label;
+    std::string label;
     if(status.signal_present)
-      label.Format("Current Stream: N/A");
+      label = StringUtils::Format("Current Stream: N/A");
     else
-      label.Format("Current Stream: Channel %s, SNR %d", status.channel, status.signal_to_noise_quality);
+      label = StringUtils::Format("Current Stream: Channel %s, SNR %d", status.channel, status.signal_to_noise_quality);
 
-    CStdString path = "hdhomerun://" + url.GetHostName() + "/" + url.GetFileName();
+    std::string path = "hdhomerun://" + url.GetHostName() + "/" + url.GetFileName();
     URIUtils::RemoveSlashAtEnd(path);
     CFileItemPtr item(new CFileItem(path, false));
     item->SetLabel(label);

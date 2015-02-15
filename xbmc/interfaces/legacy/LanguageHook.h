@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -43,7 +42,7 @@ namespace XBMCAddon
   class LanguageHook : public AddonClass
   {
   protected:
-    LanguageHook(const char* subclassName) : AddonClass(subclassName) {}
+    inline LanguageHook() {}
 
   public:
     virtual ~LanguageHook();
@@ -58,7 +57,7 @@ namespace XBMCAddon
      *  Python to run by using Py_BEGIN_ALLOW_THREADS. This is
      *  the place to put that functionality
      */
-    virtual void delayedCallOpen() { }
+    virtual void DelayedCallOpen() { }
 
     /**
      * If the scripting language needs special handling for calls 
@@ -72,15 +71,15 @@ namespace XBMCAddon
      *  state using Py_END_ALLOW_THREADS. This is the place to put
      *  that functionality
      */
-    virtual void delayedCallClose() { }
+    virtual void DelayedCallClose() { }
 
-    virtual void makePendingCalls() {}
+    virtual void MakePendingCalls() {}
 
     /**
      * For scripting languages that need a global callback handler, this
      *  method should be overloaded to supply one.
      */
-    virtual CallbackHandler* getCallbackHandler() { return NULL; }
+    virtual CallbackHandler* GetCallbackHandler() { return NULL; }
 
     /**
      * This is a callback method that can be overriden to receive a callback
@@ -89,7 +88,7 @@ namespace XBMCAddon
      *  cannot assume the subclasses have been built or that calling a
      *  virtual function on the AddonClass will work as expected.
      */
-    virtual void constructing(AddonClass* beingConstructed) { }
+    virtual void Constructing(AddonClass* beingConstructed) { }
 
     /**
      * This is a callback method that can be overriden to receive a callback
@@ -98,7 +97,7 @@ namespace XBMCAddon
      *  should assume the subclasses have been torn down and that calling a
      *  virtual function on the AddonClass will not work as expected.
      */
-    virtual void destructing(AddonClass* beingDestructed) { }
+    virtual void Destructing(AddonClass* beingDestructed) { }
 
     /**
      * This method should be done a different way but since the only other way
@@ -110,23 +109,23 @@ namespace XBMCAddon
      *  to use scripting language specific calls. So until I figure out a 
      *  better way to do this, this is how I need to retrieve it.
      */
-    virtual String getAddonId() { return emptyString; }
-    virtual String getAddonVersion() { return emptyString; }
+    virtual String GetAddonId() { return emptyString; }
+    virtual String GetAddonVersion() { return emptyString; }
 
-    virtual void registerPlayerCallback(IPlayerCallback* player) = 0;
-    virtual void unregisterPlayerCallback(IPlayerCallback* player) = 0;
-    virtual void registerMonitorCallback(XBMCAddon::xbmc::Monitor* player) = 0;
-    virtual void unregisterMonitorCallback(XBMCAddon::xbmc::Monitor* player) = 0;
-    virtual void waitForEvent(CEvent& hEvent) = 0;
+    virtual void RegisterPlayerCallback(IPlayerCallback* player) = 0;
+    virtual void UnregisterPlayerCallback(IPlayerCallback* player) = 0;
+    virtual void RegisterMonitorCallback(XBMCAddon::xbmc::Monitor* player) = 0;
+    virtual void UnregisterMonitorCallback(XBMCAddon::xbmc::Monitor* player) = 0;
+    virtual bool WaitForEvent(CEvent& hEvent, unsigned int milliseconds) = 0;
 
-    static void setLanguageHook(LanguageHook* languageHook);
-    static LanguageHook* getLanguageHook();
-    static void clearLanguageHook();
+    static void SetLanguageHook(LanguageHook* languageHook);
+    static LanguageHook* GetLanguageHook();
+    static void ClearLanguageHook();
   };
 
   /**
-   * This class can be used to access the language hook's delayedCallOpen
-   *  and delayedCallClose. It should be used whenever an API method 
+   * This class can be used to access the language hook's DelayedCallOpen
+   *  and DelayedCallClose. It should be used whenever an API method 
    *  is written such that it can block for an indefinite amount of time
    *  since certain scripting languages (like Python) need to do extra 
    *  work for delayed calls (like free the python locks and handle 
@@ -139,15 +138,15 @@ namespace XBMCAddon
 
   public:
     inline DelayedCallGuard(LanguageHook* languageHook_) : languageHook(languageHook_), clearOnExit(false)
-    { if (languageHook) languageHook->delayedCallOpen(); }
+    { if (languageHook) languageHook->DelayedCallOpen(); }
 
-    inline DelayedCallGuard() : languageHook(LanguageHook::getLanguageHook()), clearOnExit(false) 
-    { if (languageHook) languageHook->delayedCallOpen(); }
+    inline DelayedCallGuard() : languageHook(LanguageHook::GetLanguageHook()), clearOnExit(false) 
+    { if (languageHook) languageHook->DelayedCallOpen(); }
 
     inline ~DelayedCallGuard()
     {
-      if (clearOnExit) LanguageHook::clearLanguageHook();
-      if (languageHook) languageHook->delayedCallClose();
+      if (clearOnExit) LanguageHook::ClearLanguageHook();
+      if (languageHook) languageHook->DelayedCallClose();
     }
 
     inline LanguageHook* getLanguageHook() { return languageHook; }
@@ -156,8 +155,8 @@ namespace XBMCAddon
   class SetLanguageHookGuard
   {
   public:
-    inline SetLanguageHookGuard(LanguageHook* languageHook) { LanguageHook::setLanguageHook(languageHook); }
-    inline ~SetLanguageHookGuard() { LanguageHook::clearLanguageHook(); }
+    inline SetLanguageHookGuard(LanguageHook* languageHook) { LanguageHook::SetLanguageHook(languageHook); }
+    inline ~SetLanguageHookGuard() { LanguageHook::ClearLanguageHook(); }
   };
   
 }

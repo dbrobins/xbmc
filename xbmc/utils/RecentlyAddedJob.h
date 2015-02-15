@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
  *
  */
 
-#include "ThumbLoader.h"
 #include "Job.h"
 
 enum ERecentlyAddedFlag
@@ -33,12 +32,10 @@ class CRecentlyAddedJob : public CJob
 {
 public:
   CRecentlyAddedJob(int flag);
-  bool UpdateVideo();
-  bool UpdateMusic();
-  bool UpdateTotal();
+  static bool UpdateVideo();
+  static bool UpdateMusic();
+  static bool UpdateTotal();
   virtual bool DoWork();
-protected:
-  CVideoThumbLoader m_thumbLoader;
 private:
   int m_flag;
 };

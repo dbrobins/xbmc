@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,11 +20,14 @@
  *
  */
 
-#include "cores/AudioEngine/AEAudioFormat.h"
-#include "DllAvCodec.h"
-#include "DllAvFormat.h"
-#include "DllAvUtil.h"
-#include "DllSwResample.h"
+#include "cores/AudioEngine/Utils/AEAudioFormat.h"
+
+extern "C" {
+#include "libavcodec/avcodec.h"
+#include "libavformat/avformat.h"
+#include "libavutil/avutil.h"
+#include "libswresample/swresample.h"
+}
 
 #include "DVDStreamInfo.h"
 #include "linux/PlatformDefs.h"
@@ -32,47 +35,41 @@
 class COMXAudioCodecOMX
 {
 public:
-  void Upmix(void *input, unsigned int channelsInput,  void *output,
-    unsigned int channelsOutput, unsigned int frames, AEDataFormat dataFormat);
   COMXAudioCodecOMX();
   virtual ~COMXAudioCodecOMX();
   bool Open(CDVDStreamInfo &hints);
   void Dispose();
-  int Decode(BYTE* pData, int iSize);
-  int GetData(BYTE** dst);
+  int Decode(BYTE* pData, int iSize, double dts, double pts);
+  int GetData(BYTE** dst, double &dts, double &pts);
   void Reset();
   int GetChannels();
-  virtual CAEChannelInfo GetChannelMap();
+  void BuildChannelMap();
+  CAEChannelInfo GetChannelMap();
   int GetSampleRate();
   int GetBitsPerSample();
-  const char* GetName() { return "FFmpeg"; }
-  int GetBufferSize() { return m_iBuffered; }
+  static const char* GetName() { return "FFmpeg"; }
   int GetBitRate();
+  unsigned int GetFrameSize() { return m_frameSize; }
 
 protected:
   AVCodecContext* m_pCodecContext;
   SwrContext*     m_pConvert;
   enum AVSampleFormat m_iSampleFormat;
-  CAEChannelInfo      m_channelLayout;
+  enum AVSampleFormat m_desiredSampleFormat;
 
   AVFrame* m_pFrame1;
-  int   m_iBufferSize1;
 
-  BYTE *m_pBuffer2;
-  int   m_iBufferSize2;
-
-  BYTE *m_pBufferUpmix;
-  int   m_iBufferUpmixSize;
+  BYTE *m_pBufferOutput;
+  int   m_iBufferOutputUsed;
+  int   m_iBufferOutputAlloced;
 
   bool m_bOpenedCodec;
-  int m_iBuffered;
 
   int     m_channels;
-  uint64_t m_layout;
-
-  DllAvCodec m_dllAvCodec;
-  DllAvUtil m_dllAvUtil;
-  DllSwResample m_dllSwResample;
-
-  void BuildChannelMap();
+  CAEChannelInfo m_channelLayout;
+  bool m_bFirstFrame;
+  bool m_bGotFrame;
+  bool m_bNoConcatenate;
+  unsigned int  m_frameSize;
+  double m_dts, m_pts;
 };

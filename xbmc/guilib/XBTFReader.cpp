@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,8 @@
 #include "XBTFReader.h"
 #include "utils/EndianSwap.h"
 #include "utils/CharsetConverter.h"
-#ifdef _WIN32
+#include <stdio.h>
+#ifdef TARGET_WINDOWS
 #include "FileSystem/SpecialProtocol.h"
 #endif
 
@@ -53,12 +54,12 @@ bool CXBTFReader::IsOpen() const
   return m_file != NULL;
 }
 
-bool CXBTFReader::Open(const CStdString& fileName)
+bool CXBTFReader::Open(const std::string& fileName)
 {
   m_fileName = fileName;
 
-#ifdef _WIN32
-  CStdStringW strPathW;
+#ifdef TARGET_WINDOWS
+  std::wstring strPathW;
   g_charsetConverter.utf8ToW(CSpecialProtocol::TranslatePath(m_fileName), strPathW, false);
   m_file = _wfopen(strPathW.c_str(), L"rb");
 #else
@@ -131,7 +132,7 @@ bool CXBTFReader::Open(const CStdString& fileName)
   int64_t pos = ftell(m_file);
   if (pos != (int64_t)m_xbtf.GetHeaderSize())
   {
-    printf("Expected header size (%"PRId64") != actual size (%"PRId64")\n", m_xbtf.GetHeaderSize(), pos);
+    printf("Expected header size (%" PRId64") != actual size (%" PRId64")\n", m_xbtf.GetHeaderSize(), pos);
     return false;
   }
 
@@ -166,14 +167,14 @@ time_t CXBTFReader::GetLastModificationTimestamp()
   return fileStat.st_mtime;
 }
 
-bool CXBTFReader::Exists(const CStdString& name)
+bool CXBTFReader::Exists(const std::string& name)
 {
   return Find(name) != NULL;
 }
 
-CXBTFFile* CXBTFReader::Find(const CStdString& name)
+CXBTFFile* CXBTFReader::Find(const std::string& name)
 {
-  std::map<CStdString, CXBTFFile>::iterator iter = m_filesMap.find(name);
+  std::map<std::string, CXBTFFile>::iterator iter = m_filesMap.find(name);
   if (iter == m_filesMap.end())
   {
     return NULL;
@@ -188,7 +189,7 @@ bool CXBTFReader::Load(const CXBTFFrame& frame, unsigned char* buffer)
   {
     return false;
   }
-#if defined(TARGET_DARWIN) || defined(__FreeBSD__) || defined(__ANDROID__)
+#if defined(TARGET_DARWIN) || defined(TARGET_FREEBSD) || defined(TARGET_ANDROID)
     if (fseeko(m_file, (off_t)frame.GetOffset(), SEEK_SET) == -1)
 #else
     if (fseeko64(m_file, (off_t)frame.GetOffset(), SEEK_SET) == -1)

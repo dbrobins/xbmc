@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -23,8 +23,8 @@
 
 using namespace PERIPHERALS;
 
-CPeripheralBluetooth::CPeripheralBluetooth(const PeripheralType type, const PeripheralBusType busType, const CStdString &strLocation, const CStdString &strDeviceName, int iVendorId, int iProductId) :
-  CPeripheral(type, busType, strLocation, strDeviceName, iVendorId, iProductId)
+CPeripheralBluetooth::CPeripheralBluetooth(const PeripheralScanResult& scanResult) :
+  CPeripheral(scanResult)
 {
   m_features.push_back(FEATURE_BLUETOOTH);
 }

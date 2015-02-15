@@ -9,8 +9,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,21 +30,12 @@
 
 #include "GUIControl.h"
 #include "GUILabel.h"
+#include "utils/IRssObserver.h"
 
-typedef uint32_t character_t;
 typedef uint32_t color_t;
-typedef std::vector<character_t> vecText;
 typedef std::vector<color_t> vecColors;
 
 class CRssReader;
-
-class IRssObserver
-{
-public:
-  virtual void OnFeedUpdate(const vecText &feed) = 0;
-  virtual void OnFeedRelease() = 0;
-  virtual ~IRssObserver() {}
-};
 
 /*!
 \ingroup controls
@@ -53,7 +44,7 @@ public:
 class CGUIRSSControl : public CGUIControl, public IRssObserver
 {
 public:
-  CGUIRSSControl(int parentID, int controlID, float posX, float posY, float width, float height, const CLabelInfo& labelInfo, const CGUIInfoColor &channelColor, const CGUIInfoColor &headlineColor, CStdString& strRSSTags);
+  CGUIRSSControl(int parentID, int controlID, float posX, float posY, float width, float height, const CLabelInfo& labelInfo, const CGUIInfoColor &channelColor, const CGUIInfoColor &headlineColor, std::string& strRSSTags);
   CGUIRSSControl(const CGUIRSSControl &from);
   virtual ~CGUIRSSControl(void);
   virtual CGUIRSSControl *Clone() const { return new CGUIRSSControl(*this); };
@@ -62,11 +53,13 @@ public:
   virtual void Render();
   virtual void OnFeedUpdate(const vecText &feed);
   virtual void OnFeedRelease();
-  virtual bool CanFocus() const { return false; };
+  virtual bool CanFocus() const { return true; };
   virtual CRect CalcRenderRegion() const;
 
-  void SetIntervals(const std::vector<int>& vecIntervals);
-  void SetUrls(const std::vector<std::string>& vecUrl, bool rtl);
+  virtual void OnFocus();
+  virtual void OnUnFocus();
+
+  void SetUrlSet(const int urlset);
 
 protected:
   virtual bool UpdateColors();
@@ -76,7 +69,7 @@ protected:
   CRssReader* m_pReader;
   vecText m_feed;
 
-  CStdString m_strRSSTags;
+  std::string m_strRSSTags;
 
   CLabelInfo m_label;
   CGUIInfoColor m_channelColor;
@@ -86,5 +79,8 @@ protected:
   std::vector<int> m_vecIntervals;
   bool m_rtl;
   CScrollInfo m_scrollInfo;
+  bool m_dirty;
+  bool m_stopped;
+  int  m_urlset;
 };
 #endif

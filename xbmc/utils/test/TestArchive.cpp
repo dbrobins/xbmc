@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -194,38 +194,38 @@ TEST_F(TestArchive, CharArchive)
   EXPECT_EQ(char_ref, char_var);
 }
 
-TEST_F(TestArchive, CStdStringArchive)
+TEST_F(TestArchive, WStringArchive)
 {
   ASSERT_TRUE(file);
-  CStdStringW CStdStringW_ref = L"test CStdStringW", CStdStringW_var = L"";
+  std::wstring wstring_ref = L"test wstring", wstring_var;
 
   CArchive arstore(file, CArchive::store);
-  arstore << CStdStringW_ref;
+  arstore << wstring_ref;
   arstore.Close();
 
   ASSERT_TRUE((file->Seek(0, SEEK_SET) == 0));
   CArchive arload(file, CArchive::load);
-  arload >> CStdStringW_var;
+  arload >> wstring_var;
   arload.Close();
 
-  EXPECT_STREQ(CStdStringW_ref.c_str(), CStdStringW_var.c_str());
+  EXPECT_STREQ(wstring_ref.c_str(), wstring_var.c_str());
 }
 
-TEST_F(TestArchive, CStdStringWArchive)
+TEST_F(TestArchive, StringArchive)
 {
   ASSERT_TRUE(file);
-  CStdString CStdString_ref = "test CStdString", CStdString_var = "";
+  std::string string_ref = "test string", string_var;
 
   CArchive arstore(file, CArchive::store);
-  arstore << CStdString_ref;
+  arstore << string_ref;
   arstore.Close();
 
   ASSERT_TRUE((file->Seek(0, SEEK_SET) == 0));
   CArchive arload(file, CArchive::load);
-  arload >> CStdString_var;
+  arload >> string_var;
   arload.Close();
 
-  EXPECT_STREQ(CStdString_ref.c_str(), CStdString_var.c_str());
+  EXPECT_STREQ(string_ref.c_str(), string_var.c_str());
 }
 
 TEST_F(TestArchive, SYSTEMTIMEArchive)
@@ -261,6 +261,25 @@ TEST_F(TestArchive, CVariantArchive)
   arload.Close();
 
   EXPECT_TRUE(CVariant_var.isInteger());
+  EXPECT_EQ(1, CVariant_var.asInteger());
+}
+
+TEST_F(TestArchive, CVariantArchiveString)
+{
+  ASSERT_TRUE(file);
+  CVariant CVariant_ref("teststring"), CVariant_var;
+
+  CArchive arstore(file, CArchive::store);
+  arstore << CVariant_ref;
+  arstore.Close();
+
+  ASSERT_TRUE((file->Seek(0, SEEK_SET) == 0));
+  CArchive arload(file, CArchive::load);
+  arload >> CVariant_var;
+  arload.Close();
+
+  EXPECT_TRUE(CVariant_var.isString());
+  EXPECT_STREQ("teststring", CVariant_var.asString().c_str());
 }
 
 TEST_F(TestArchive, StringVectorArchive)
@@ -322,8 +341,8 @@ TEST_F(TestArchive, MultiTypeArchive)
   uint64_t uint64_t_ref = 6, uint64_t_var = 0;
   bool bool_ref = true, bool_var = false;
   char char_ref = 'A', char_var = '\0';
-  CStdString CStdString_ref = "test CStdString", CStdString_var = "";
-  CStdStringW CStdStringW_ref = L"test CStdStringW", CStdStringW_var = L"";
+  std::string string_ref = "test string", string_var;
+  std::wstring wstring_ref = L"test wstring", wstring_var;
   SYSTEMTIME SYSTEMTIME_ref = { 1, 2, 3, 4, 5, 6, 7, 8 };
   SYSTEMTIME SYSTEMTIME_var = { 0, 0, 0, 0, 0, 0, 0, 0 };
   CVariant CVariant_ref((int)1), CVariant_var;
@@ -349,8 +368,8 @@ TEST_F(TestArchive, MultiTypeArchive)
   arstore << uint64_t_ref;
   arstore << bool_ref;
   arstore << char_ref;
-  arstore << CStdString_ref;
-  arstore << CStdStringW_ref;
+  arstore << string_ref;
+  arstore << wstring_ref;
   arstore << SYSTEMTIME_ref;
   arstore << CVariant_ref;
   arstore << strArray_ref;
@@ -369,8 +388,8 @@ TEST_F(TestArchive, MultiTypeArchive)
   arload >> uint64_t_var;
   arload >> bool_var;
   arload >> char_var;
-  arload >> CStdString_var;
-  arload >> CStdStringW_var;
+  arload >> string_var;
+  arload >> wstring_var;
   arload >> SYSTEMTIME_var;
   arload >> CVariant_var;
   arload >> strArray_var;
@@ -385,8 +404,8 @@ TEST_F(TestArchive, MultiTypeArchive)
   EXPECT_EQ(uint64_t_ref, uint64_t_var);
   EXPECT_EQ(bool_ref, bool_var);
   EXPECT_EQ(char_ref, char_var);
-  EXPECT_STREQ(CStdString_ref.c_str(), CStdString_var.c_str());
-  EXPECT_STREQ(CStdStringW_ref.c_str(), CStdStringW_var.c_str());
+  EXPECT_STREQ(string_ref.c_str(), string_var.c_str());
+  EXPECT_STREQ(wstring_ref.c_str(), wstring_var.c_str());
   EXPECT_TRUE(!memcmp(&SYSTEMTIME_ref, &SYSTEMTIME_var, sizeof(SYSTEMTIME)));
   EXPECT_TRUE(CVariant_var.isInteger());
   EXPECT_STREQ("test strArray_ref 0", strArray_var.at(0).c_str());

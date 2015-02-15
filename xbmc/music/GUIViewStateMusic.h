@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
  *
  */
 
-#include "GUIViewState.h"
+#include "view/GUIViewState.h"
 
 class CGUIViewStateWindowMusic : public CGUIViewState
 {
@@ -30,8 +30,8 @@ protected:
   virtual VECSOURCES& GetSources();
   virtual int GetPlaylist();
   virtual bool AutoPlayNextItem();
-  virtual CStdString GetLockType();
-  virtual CStdString GetExtensions();
+  virtual std::string GetLockType();
+  virtual std::string GetExtensions();
 };
 
 class CGUIViewStateMusicSearch : public CGUIViewStateWindowMusic
@@ -104,14 +104,4 @@ protected:
   virtual bool AutoPlayNextItem();
   virtual bool HideParentDirItems();
   virtual VECSOURCES& GetSources();
-};
-
-class CGUIViewStateMusicLastFM : public CGUIViewStateWindowMusic
-{
-public:
-  CGUIViewStateMusicLastFM(const CFileItemList& items);
-
-protected:
-  virtual bool AutoPlayNextItem();
-  virtual void SaveViewState();
 };

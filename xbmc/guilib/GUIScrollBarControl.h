@@ -9,8 +9,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -59,7 +59,7 @@ public:
   virtual bool OnMessage(CGUIMessage& message);
   void SetValue(int value);
   int GetValue() const;
-  virtual CStdString GetDescription() const;
+  virtual std::string GetDescription() const;
   virtual bool IsVisible() const;
 protected:
   virtual bool HitTest(const CPoint &point) const;

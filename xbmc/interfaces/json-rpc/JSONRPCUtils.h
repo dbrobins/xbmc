@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,14 +15,16 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with XBMC; see the file COPYING.  If not, see
- *  the Free Software Foundation, 51 Franklin Street, Suite 500, Boston, MA 02110, USA.
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
 #include "IClient.h"
 #include "ITransportLayer.h"
+#include "FileItem.h"
+#include "GUIUserMessages.h"
+#include "guilib/GUIWindowManager.h"
 #include "interfaces/IAnnouncer.h"
-#include "utils/StdString.h"
 #include "utils/Variant.h"
 
 namespace JSONRPC
@@ -49,7 +51,7 @@ namespace JSONRPC
   /*!
    \brief Function pointer for JSON-RPC methods
    */
-  typedef JSONRPC_STATUS (*MethodCall) (const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant& parameterObject, CVariant &result);
+  typedef JSONRPC_STATUS (*MethodCall) (const std::string &method, ITransportLayer *transport, IClient *client, const CVariant& parameterObject, CVariant &result);
 
   /*!
    \ingroup jsonrpc
@@ -61,27 +63,28 @@ namespace JSONRPC
   */
   enum OperationPermission
   {
-    ReadData        =   0x1,
-    ControlPlayback =   0x2,
-    ControlNotify   =   0x4,
-    ControlPower    =   0x8,
-    UpdateData      =  0x10,
-    RemoveData      =  0x20,
-    Navigate        =  0x40,
-    WriteFile       =  0x80,
-    ControlSystem   = 0x100,
-    ControlGUI      = 0x200,
-    ManageAddon     = 0x400,
-    ExecuteAddon    = 0x800
+    ReadData        =    0x1,
+    ControlPlayback =    0x2,
+    ControlNotify   =    0x4,
+    ControlPower    =    0x8,
+    UpdateData      =   0x10,
+    RemoveData      =   0x20,
+    Navigate        =   0x40,
+    WriteFile       =   0x80,
+    ControlSystem   =  0x100,
+    ControlGUI      =  0x200,
+    ManageAddon     =  0x400,
+    ExecuteAddon    =  0x800,
+    ControlPVR      = 0x1000
   };
 
   const int OPERATION_PERMISSION_ALL = (ReadData | ControlPlayback | ControlNotify | ControlPower |
-                                        UpdateData | RemoveData | Navigate | WriteFile |
-                                        ControlSystem | ControlGUI | ManageAddon | ExecuteAddon);
+                                        UpdateData | RemoveData | Navigate | WriteFile | ControlSystem |
+                                        ControlGUI | ManageAddon | ExecuteAddon | ControlPVR);
 
   const int OPERATION_PERMISSION_NOTIFICATION = (ControlPlayback | ControlNotify | ControlPower | UpdateData |
                                                  RemoveData | Navigate | WriteFile | ControlSystem |
-                                                 ControlGUI | ManageAddon | ExecuteAddon);
+                                                 ControlGUI | ManageAddon | ExecuteAddon | ControlPVR);
 
   /*!
     \brief Returns a string representation for the 
@@ -117,6 +120,8 @@ namespace JSONRPC
       return "ManageAddon";
     case ExecuteAddon:
       return "ExecuteAddon";
+    case ControlPVR:
+      return "ControlPVR";
     default:
       return "Unknown";
     }
@@ -152,7 +157,25 @@ namespace JSONRPC
       return ManageAddon;
     if (permission.compare("ExecuteAddon") == 0)
       return ExecuteAddon;
+    if (permission.compare("ControlPVR") == 0)
+      return ControlPVR;
 
     return ReadData;
   }
+
+  class CJSONRPCUtils
+  {
+  public:
+    static inline void NotifyItemUpdated()
+    {
+      CGUIMessage message(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_UPDATE, g_windowManager.GetActiveWindow());
+      g_windowManager.SendThreadMessage(message);
+    }
+    static inline void NotifyItemUpdated(const CVideoInfoTag &info)
+    {
+      CFileItemPtr msgItem(new CFileItem(info));
+      CGUIMessage message(GUI_MSG_NOTIFY_ALL, g_windowManager.GetActiveWindow(), 0, GUI_MSG_UPDATE_ITEM, 0, msgItem);
+      g_windowManager.SendThreadMessage(message);
+    }
+  };
 }

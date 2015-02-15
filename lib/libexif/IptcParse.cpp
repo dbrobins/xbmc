@@ -56,7 +56,7 @@
 #define IPTC_COUNTRY                0x65
 #define IPTC_TRANSMISSION_REFERENCE 0x67
 #define IPTC_DATE                   0x37
-#define IPTC_COPYRIGHT              0x0A
+#define IPTC_URGENCY                0x0A
 #define IPTC_COUNTRY_CODE           0x64
 #define IPTC_REFERENCE_SERVICE      0x2D
 #define IPTC_TIME_CREATED           0x3C
@@ -177,7 +177,7 @@ bool CIptcParse::Process (const unsigned char* const Data, const unsigned short 
         case IPTC_COUNTRY:                  tag = info->Country;                 break;
         case IPTC_TRANSMISSION_REFERENCE:   tag = info->TransmissionReference;   break;
         case IPTC_DATE:                     tag = info->Date;                    break;
-        case IPTC_COPYRIGHT:                tag = info->Copyright;               break;
+        case IPTC_URGENCY:                  tag = info->Urgency;                 break;
         case IPTC_REFERENCE_SERVICE:        tag = info->ReferenceService;        break;
         case IPTC_COUNTRY_CODE:             tag = info->CountryCode;             break;
         case IPTC_TIME_CREATED:             tag = info->TimeCreated;             break;
@@ -201,8 +201,10 @@ bool CIptcParse::Process (const unsigned char* const Data, const unsigned short 
         // there may be multiple keywords - lets join them
         size_t maxLen = MAX_IPTC_STRING - strlen(tag);
         if (maxLen > 2)
+        {
           strcat(tag, ", ");
-        strncat(tag, pos, min(length, MAX_IPTC_STRING - maxLen - 3));
+          strncat(tag, pos, min(length, maxLen - 3));
+        }
       }
 /*      if (id == SLIDE_IPTC_CAPTION)
       {

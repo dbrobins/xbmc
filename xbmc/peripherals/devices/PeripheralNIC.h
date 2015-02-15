@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -26,7 +26,7 @@ namespace PERIPHERALS
   class CPeripheralNIC : public CPeripheral
   {
   public:
-    CPeripheralNIC(const PeripheralType type, const PeripheralBusType busType, const CStdString &strLocation, const CStdString &strDeviceName, int iVendorId, int iProductId);
+    CPeripheralNIC(const PeripheralScanResult& scanResult);
     virtual ~CPeripheralNIC(void) {};
   };
 }

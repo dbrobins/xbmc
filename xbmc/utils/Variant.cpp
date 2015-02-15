@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,20 @@
 #include <sstream>
 
 #include "Variant.h"
+
+#ifndef strtoll
+#ifdef TARGET_WINDOWS
+#define strtoll  _strtoi64
+#define strtoull _strtoui64
+#define wcstoll  _wcstoi64
+#define wcstoull _wcstoui64
+#else // TARGET_WINDOWS
+#define strtoll(str, endptr, base)  (int64_t)strtod(str, endptr)
+#define strtoull(str, endptr, base) (uint64_t)strtod(str, endptr)
+#define wcstoll(str, endptr, base)  (int64_t)wcstod(str, endptr)
+#define wcstoull(str, endptr, base) (uint64_t)wcstod(str, endptr)
+#endif // TARGET_WINDOWS
+#endif // strtoll
 
 using namespace std;
 
@@ -51,7 +65,8 @@ wstring trimRight(const wstring &str)
 int64_t str2int64(const string &str, int64_t fallback /* = 0 */)
 {
   char *end = NULL;
-  int64_t result = strtol(trimRight(str).c_str(), &end, 0);
+  string tmp = trimRight(str);
+  int64_t result = strtoll(tmp.c_str(), &end, 0);
   if (end == NULL || *end == '\0')
     return result;
 
@@ -61,7 +76,8 @@ int64_t str2int64(const string &str, int64_t fallback /* = 0 */)
 int64_t str2int64(const wstring &str, int64_t fallback /* = 0 */)
 {
   wchar_t *end = NULL;
-  int64_t result = wcstol(trimRight(str).c_str(), &end, 0);
+  wstring tmp = trimRight(str);
+  int64_t result = wcstoll(tmp.c_str(), &end, 0);
   if (end == NULL || *end == '\0')
     return result;
 
@@ -71,7 +87,8 @@ int64_t str2int64(const wstring &str, int64_t fallback /* = 0 */)
 uint64_t str2uint64(const string &str, uint64_t fallback /* = 0 */)
 {
   char *end = NULL;
-  uint64_t result = strtoul(trimRight(str).c_str(), &end, 0);
+  string tmp = trimRight(str);
+  uint64_t result = strtoull(tmp.c_str(), &end, 0);
   if (end == NULL || *end == '\0')
     return result;
 
@@ -81,7 +98,8 @@ uint64_t str2uint64(const string &str, uint64_t fallback /* = 0 */)
 uint64_t str2uint64(const wstring &str, uint64_t fallback /* = 0 */)
 {
   wchar_t *end = NULL;
-  uint64_t result = wcstoul(trimRight(str).c_str(), &end, 0);
+  wstring tmp = trimRight(str);
+  uint64_t result = wcstoull(tmp.c_str(), &end, 0);
   if (end == NULL || *end == '\0')
     return result;
 
@@ -91,7 +109,8 @@ uint64_t str2uint64(const wstring &str, uint64_t fallback /* = 0 */)
 double str2double(const string &str, double fallback /* = 0.0 */)
 {
   char *end = NULL;
-  double result = strtod(trimRight(str).c_str(), &end);
+  string tmp = trimRight(str);
+  double result = strtod(tmp.c_str(), &end);
   if (end == NULL || *end == '\0')
     return result;
 
@@ -101,7 +120,8 @@ double str2double(const string &str, double fallback /* = 0.0 */)
 double str2double(const wstring &str, double fallback /* = 0.0 */)
 {
   wchar_t *end = NULL;
-  double result = wcstod(trimRight(str).c_str(), &end);
+  wstring tmp = trimRight(str);
+  double result = wcstod(tmp.c_str(), &end);
   if (end == NULL || *end == '\0')
     return result;
 
@@ -231,6 +251,20 @@ CVariant::CVariant(const std::vector<std::string> &strArray)
   m_data.array->reserve(strArray.size());
   for (unsigned int index = 0; index < strArray.size(); index++)
     m_data.array->push_back(strArray.at(index));
+}
+
+CVariant::CVariant(const std::map<std::string, std::string> &strMap)
+{
+  m_type = VariantTypeObject;
+  m_data.map = new VariantMap;
+  for (std::map<std::string, std::string>::const_iterator it = strMap.begin(); it != strMap.end(); ++it)
+    m_data.map->insert(make_pair(it->first, CVariant(it->second)));
+}
+
+CVariant::CVariant(const std::map<std::string, CVariant> &variantMap)
+{
+  m_type = VariantTypeObject;
+  m_data.map = new VariantMap(variantMap.begin(), variantMap.end());
 }
 
 CVariant::CVariant(const CVariant &variant)
@@ -466,7 +500,6 @@ std::wstring CVariant::asWideString(const std::wstring &fallback /* = L"" */) co
       else
         strStream << m_data.dvalue;
       return strStream.str();
-      break;
     }
     default:
       return fallback;
@@ -516,7 +549,7 @@ const CVariant &CVariant::operator[](unsigned int position) const
 
 CVariant &CVariant::operator=(const CVariant &rhs)
 {
-  if (m_type == VariantTypeConstNull)
+  if (m_type == VariantTypeConstNull || this == &rhs)
     return *this;
 
   cleanup();
@@ -711,8 +744,10 @@ bool CVariant::empty() const
     return m_data.string->empty();
   else if (m_type == VariantTypeWideString)
     return m_data.wstring->empty();
-  else
+  else if (m_type == VariantTypeNull)
     return true;
+
+  return false;
 }
 
 void CVariant::clear()

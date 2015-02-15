@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,19 +25,19 @@
 #include "cdioSupport.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
+#include "utils/Environment.h"
 #include <cdio/logging.h>
 #include <cdio/util.h>
 #include <cdio/mmc.h>
 #include <cdio/cd_types.h>
 
-#if defined(_WIN32)
+#if defined(TARGET_WINDOWS)
 #pragma comment(lib, "libcdio.dll.lib")
 #endif
 
 using namespace MEDIA_DETECT;
 
-CLibcdio* CLibcdio::m_pInstance = NULL;
-char *CLibcdio::s_defaultDevice = NULL;
+std::shared_ptr<CLibcdio> CLibcdio::m_pInstance;
 
 /* Some interesting sector numbers stored in the above buffer. */
 #define ISO_SUPERBLOCK_SECTOR  16  /* buffer[0] */
@@ -102,7 +102,7 @@ xbox_cdio_log_handler (cdio_log_level_t level, const char message[])
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
-CLibcdio::CLibcdio()
+CLibcdio::CLibcdio(): s_defaultDevice(NULL)
 {
   cdio_log_set_handler( xbox_cdio_log_handler );
 }
@@ -113,20 +113,16 @@ CLibcdio::~CLibcdio()
   s_defaultDevice = NULL;
 }
 
-void CLibcdio::RemoveInstance()
+void CLibcdio::ReleaseInstance()
 {
-  if (m_pInstance)
-  {
-    delete m_pInstance;
-    m_pInstance = NULL;
-  }
+  m_pInstance.reset();
 }
 
-CLibcdio* CLibcdio::GetInstance()
+std::shared_ptr<CLibcdio> CLibcdio::GetInstance()
 {
   if (!m_pInstance)
   {
-    m_pInstance = new CLibcdio();
+    m_pInstance = std::shared_ptr<CLibcdio>(new CLibcdio());
   }
   return m_pInstance;
 }
@@ -216,8 +212,9 @@ char* CLibcdio::GetDeviceFileName()
 
   if (s_defaultDevice == NULL)
   {
-    if (getenv("XBMC_DVD_DEVICE") != NULL)
-      s_defaultDevice = strdup(getenv("XBMC_DVD_DEVICE"));
+    std::string strEnvDvd = CEnvironment::getenv("XBMC_DVD_DEVICE");
+    if (!strEnvDvd.empty())
+      s_defaultDevice = strdup(strEnvDvd.c_str());
     else
     {
       CdIo_t *p_cdio = ::cdio_open(NULL, DRIVER_UNKNOWN);
@@ -278,11 +275,11 @@ HANDLE CCdIoSupport::OpenCDROM()
   return (HANDLE) cdio;
 }
 
-HANDLE CCdIoSupport::OpenIMAGE( CStdString& strFilename )
+HANDLE CCdIoSupport::OpenIMAGE( std::string& strFilename )
 {
   CSingleLock lock(*m_cdio);
 
-  CdIo* cdio = ::cdio_open(strFilename, DRIVER_UNKNOWN);
+  CdIo* cdio = ::cdio_open(strFilename.c_str(), DRIVER_UNKNOWN);
 
   return (HANDLE) cdio;
 }
@@ -403,8 +400,8 @@ void CCdIoSupport::PrintAnalysis(int fs, int num_audio)
   case FS_ISO_9660_INTERACTIVE:
   case FS_ISO_HFS:
   case FS_ISO_UDF:
-    CLog::Log(LOGINFO, "ISO 9660: %i blocks, label `%.32s'\n",
-              m_nIsofsSize, buffer[0] + 40);
+    CLog::Log(LOGINFO, "ISO 9660: %i blocks, label %s",
+              m_nIsofsSize, m_strDiscLabel.c_str());
     break;
   }
 
@@ -730,6 +727,8 @@ CCdInfo* CCdIoSupport::GetCdInfo(char* cDeviceFileName)
       ti.isofs_size = 0;
       ti.nJolietLevel = 0;
       ti.nFrames = 0;
+      ti.nMins = 0;
+      ti.nSecs = 0;
       info->SetTrackInformation( i, ti );
       CLog::Log(LOGDEBUG, "cdio_track_msf for track %i failed, I give up.", i);
       delete info;
@@ -883,8 +882,8 @@ CCdInfo* CCdIoSupport::GetCdInfo(char* cDeviceFileName)
                   " ISO 9660 blocks: %6i",
                   j++, i, m_nStartTrack, m_nIsofsSize);
 
-        CLog::Log(LOGINFO, "ISO 9660: %i blocks, label '%.32s'\n",
-                  m_nIsofsSize, buffer[0] + 40);
+        CLog::Log(LOGINFO, "ISO 9660: %i blocks, label %s",
+                  m_nIsofsSize, m_strDiscLabel.c_str());
         m_nFs |= MULTISESSION;
         ti.nfsInfo = m_nFs;
       }
@@ -931,7 +930,7 @@ UINT CCdIoSupport::MsfSeconds(msf_t *msf)
 //    the total length of the disk, and
 //    the number of tracks.
 
-ULONG CCdIoSupport::CddbDiscId()
+uint32_t CCdIoSupport::CddbDiscId()
 {
   CSingleLock lock(*m_cdio);
 

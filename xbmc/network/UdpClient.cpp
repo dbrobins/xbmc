@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 
 #include "threads/SystemClock.h"
 #include "UdpClient.h"
-#ifdef _LINUX
+#ifdef TARGET_POSIX
 #include <sys/ioctl.h>
 #endif
 #include "Network.h"
@@ -34,7 +34,7 @@
 
 #define UDPCLIENT_DEBUG_LEVEL LOGDEBUG
 
-CUdpClient::CUdpClient(void) : CThread("CUdpClient")
+CUdpClient::CUdpClient(void) : CThread("UDPClient")
 {}
 
 CUdpClient::~CUdpClient(void)
@@ -88,7 +88,7 @@ void CUdpClient::OnStartup()
   SetPriority( GetMinPriority() );
 }
 
-bool CUdpClient::Broadcast(int aPort, CStdString& aMessage)
+bool CUdpClient::Broadcast(int aPort, const std::string& aMessage)
 {
   CSingleLock lock(critical_section);
 
@@ -105,14 +105,14 @@ bool CUdpClient::Broadcast(int aPort, CStdString& aMessage)
 }
 
 
-bool CUdpClient::Send(CStdString aIpAddress, int aPort, CStdString& aMessage)
+bool CUdpClient::Send(const std::string& aIpAddress, int aPort, const std::string& aMessage)
 {
   CSingleLock lock(critical_section);
 
   SOCKADDR_IN addr;
   addr.sin_family = AF_INET;
   addr.sin_port = htons(aPort);
-  addr.sin_addr.s_addr = inet_addr(aIpAddress);
+  addr.sin_addr.s_addr = inet_addr(aIpAddress.c_str());
   memset(&addr.sin_zero, 0, sizeof(addr.sin_zero));
 
   UdpCommand transmit = {addr, aMessage, NULL, 0};
@@ -121,7 +121,7 @@ bool CUdpClient::Send(CStdString aIpAddress, int aPort, CStdString& aMessage)
   return true;
 }
 
-bool CUdpClient::Send(SOCKADDR_IN aAddress, CStdString& aMessage)
+bool CUdpClient::Send(SOCKADDR_IN aAddress, const std::string& aMessage)
 {
   CSingleLock lock(critical_section);
 
@@ -175,7 +175,7 @@ void CUdpClient::Process()
     {
       // read data
       int messageLength = sizeof(messageBuffer) - 1 ;
-#ifndef _LINUX
+#ifndef TARGET_POSIX
       int remoteAddressSize;
 #else
       socklen_t remoteAddressSize;
@@ -189,7 +189,7 @@ void CUdpClient::Process()
         messageLength = ret;
         messageBuffer[messageLength] = '\0';
 
-        CStdString message = messageBuffer;
+        std::string message = messageBuffer;
 
         CLog::Log(UDPCLIENT_DEBUG_LEVEL, "UDPCLIENT RX: %u\t\t<- '%s'",
                   XbmcThreads::SystemClockMillis(), message.c_str() );
@@ -260,7 +260,7 @@ bool CUdpClient::DispatchNextCommand()
 
     do
     {
-      ret = sendto(client_socket, command.message, command.message.GetLength(), 0, (struct sockaddr *) & command.address, sizeof(command.address));
+      ret = sendto(client_socket, command.message.c_str(), command.message.size(), 0, (struct sockaddr *) & command.address, sizeof(command.address));
     }
     while (ret == -1 && !m_bStop);
   }

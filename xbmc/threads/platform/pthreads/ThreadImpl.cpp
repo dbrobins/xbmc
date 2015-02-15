@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
  *
  */
 
+#include "config.h"
 #include <limits.h>
 #if defined(TARGET_ANDROID)
 #include <unistd.h>
@@ -26,7 +27,7 @@
 #endif
 #include <sys/resource.h>
 #include <string.h>
-#ifdef __FreeBSD__
+#ifdef TARGET_FREEBSD
 #include <sys/param.h>
 #if __FreeBSD_version < 900031
 #include <sys/thr.h>
@@ -57,7 +58,7 @@ void CThread::TermHandler() { }
 
 void CThread::SetThreadInfo()
 {
-#ifdef __FreeBSD__
+#ifdef TARGET_FREEBSD
 #if __FreeBSD_version < 900031
   long lwpid;
   thr_self(&lwpid);
@@ -71,10 +72,16 @@ void CThread::SetThreadInfo()
   m_ThreadOpaque.LwpId = syscall(SYS_gettid);
 #endif
 
+#if defined(HAVE_PTHREAD_SETNAME_NP)
 #ifdef TARGET_DARWIN
 #if(__MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 || __IPHONE_OS_VERSION_MIN_REQUIRED >= 30200)
   pthread_setname_np(m_ThreadName.c_str());
 #endif
+#else
+  pthread_setname_np(m_ThreadId, m_ThreadName.c_str());
+#endif
+#elif defined(HAVE_PTHREAD_SET_NAME_NP)
+  pthread_set_name_np(m_ThreadId, m_ThreadName.c_str());
 #endif
     
 #ifdef RLIMIT_NICE
@@ -89,6 +96,9 @@ void CThread::SetThreadInfo()
   }
   else
     userMaxPrio = 0;
+
+  if (geteuid() == 0)
+    userMaxPrio = GetMaxPriority();
 
   // if the user does not have an entry in limits.conf the following
   // call will fail
@@ -161,6 +171,9 @@ bool CThread::SetPriority(const int iPriority)
     }
     else
       userMaxPrio = 0;
+
+    if (geteuid() == 0)
+      userMaxPrio = GetMaxPriority();
 
     // keep priority in bounds
     int prio = iPriority;

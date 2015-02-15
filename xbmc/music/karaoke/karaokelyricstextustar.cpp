@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,19 +20,20 @@
 
 // C++ Implementation: karaokelyricstextlrc
 
+#include <cstdlib>
 #include <math.h>
 
 #include "filesystem/File.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
-
+#include "utils/StringUtils.h"
 #include "karaokelyricstextustar.h"
 
 
-CKaraokeLyricsTextUStar::CKaraokeLyricsTextUStar( const CStdString & lyricsFile )
+CKaraokeLyricsTextUStar::CKaraokeLyricsTextUStar( const std::string & lyricsFile )
   : CKaraokeLyricsText()
+  , m_lyricsFile(lyricsFile)
 {
-  m_lyricsFile = lyricsFile;
 }
 
 
@@ -41,51 +42,36 @@ CKaraokeLyricsTextUStar::~CKaraokeLyricsTextUStar()
 }
 
 
-std::vector< CStdString > CKaraokeLyricsTextUStar::readFile(const CStdString & lyricsFile, bool report_errors )
+std::vector< std::string > CKaraokeLyricsTextUStar::readFile(const std::string & lyricsFile, bool report_errors )
 {
-  std::vector< CStdString > lines;
+  std::vector< std::string > lines;
 
   XFILE::CFile file;
+  XFILE::auto_buffer buf;
 
-  if ( !file.Open( lyricsFile ) )
-    return std::vector< CStdString >();
-
-  unsigned int lyricSize = (unsigned int) file.GetLength();
-
-  if ( !lyricSize )
+  if (file.LoadFile(lyricsFile, buf) <= 0)
   {
-    if ( report_errors )
-      CLog::Log( LOGERROR, "UStar lyric loader: lyric file %s has zero length", lyricsFile.c_str() );
+    if (report_errors)
+      CLog::Log(LOGERROR, "%s: can't load \"%s\" file", __FUNCTION__, lyricsFile.c_str());
 
-    return std::vector< CStdString >();
+    return std::vector< std::string >();
   }
-
-  // Read the file into memory array
-  std::vector<char> lyricData( lyricSize );
-
-  file.Seek( 0, SEEK_SET );
-
-  // Read the whole file
-  if ( file.Read( &lyricData[0], lyricSize) != lyricSize )
-    return std::vector< CStdString >(); // disk error?
-
   file.Close();
 
+  const size_t lyricSize = buf.size();
+
   // Parse into the string array
-  unsigned int offset = 0;
-  unsigned int lineoffset = 0;
+  size_t offset = 0;
+  size_t lineoffset = 0;
 
   while ( offset < lyricSize )
   {
     // End of line?
-    if ( lyricData[offset] == 0x0D || lyricData[offset] == 0x0A )
+    if (buf.get()[offset] == 0x0D || buf.get()[offset] == 0x0A)
     {
       // An empty line?
       if ( lineoffset != offset )
-      {
-        lyricData[offset] = '\0';
-        lines.push_back( &lyricData[lineoffset] );
-      }
+        lines.push_back(std::string(buf.get() + lineoffset, offset - lineoffset));
 
       // Point to the next symbol
       lineoffset = offset + 1;
@@ -96,18 +82,15 @@ std::vector< CStdString > CKaraokeLyricsTextUStar::readFile(const CStdString & l
 
   // Last line, if any
   if ( lineoffset < lyricSize )
-  {
-    lyricData[lyricSize-1] = '\0';
-    lines.push_back( &lyricData[lineoffset] );
-  }
+    lines.push_back(std::string(buf.get() + lineoffset, buf.size() - lineoffset));
 
   return lines;
 }
 
 
-bool CKaraokeLyricsTextUStar::isValidFile(const CStdString & lyricsFile)
+bool CKaraokeLyricsTextUStar::isValidFile(const std::string & lyricsFile)
 {
-  std::vector< CStdString > lines = readFile( lyricsFile, false );
+  std::vector< std::string > lines = readFile( lyricsFile, false );
 
   if ( lines.size() == 0 )
     return false;
@@ -120,12 +103,12 @@ bool CKaraokeLyricsTextUStar::isValidFile(const CStdString & lyricsFile)
 bool CKaraokeLyricsTextUStar::Load()
 {
   // Header parameters
-  CStdString coverimage, bgimage;
+  std::string coverimage, bgimage;
   int bpm = 0, startoffsetms = 0;
   bool relative = false;
 
   // Read the text file
-  std::vector< CStdString > lines = readFile( m_lyricsFile, true );
+  std::vector< std::string > lines = readFile( m_lyricsFile, true );
 
   if ( lines.size() == 0 )
     return false;
@@ -140,16 +123,15 @@ bool CKaraokeLyricsTextUStar::Load()
   for ( ; idx < lines.size() && lines[idx][0] == '#'; idx++ )
   {
     // Parse into key:value
-    int offset = lines[idx].Find( ':' );
-
-    if ( offset == -1 )
+    size_t offset = lines[idx].find(':');
+    if (offset == std::string::npos)
     {
       CLog::Log( LOGERROR, "UStar lyric loader: invalid line '%s', no semicolon", lines[idx].c_str() );
       return false;
     }
 
-    CStdString key = lines[idx].Mid( 1, offset - 1 );
-    CStdString value = lines[idx].Mid( offset + 1 );
+    std::string key = lines[idx].substr(1, offset - 1);
+    std::string value = lines[idx].substr(offset + 1);
 
     if ( key == "TITLE" )
       m_songName = value;
@@ -157,9 +139,8 @@ bool CKaraokeLyricsTextUStar::Load()
       m_artist = value;
     else if ( key == "VIDEO" )
     {
-      CStdString videopath;
-      URIUtils::GetDirectory( m_lyricsFile, videopath );
-      m_videoFile = videopath + value;
+      m_videoFile = URIUtils::GetDirectory(m_lyricsFile);
+      m_videoFile = URIUtils::AddFileToFolder(m_videoFile, value);
 
       if ( !XFILE::CFile::Exists( m_videoFile ) )
       {
@@ -178,7 +159,7 @@ bool CKaraokeLyricsTextUStar::Load()
     else if ( key == "GAP" )
       startoffsetms = atoi( value.c_str() );
     else if ( key == "RELATIVE" )
-      relative = (value.ToUpper() == "YES" );
+      relative = StringUtils::EqualsNoCase(value, "YES");
     else if ( key == "LANGUAGE" || key == "EDITION" || key == "GENRE" || key == "YEAR" || key == "MP3" )
     {
       ; // do nothing

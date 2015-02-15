@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 TEST(TestFileUtils, DeleteItem_CFileItemPtr)
 {
   XFILE::CFile *tmpfile;
-  CStdString tmpfilepath;
+  std::string tmpfilepath;
 
   ASSERT_TRUE((tmpfile = XBMC_CREATETEMPFILE("")));
   tmpfilepath = XBMC_TEMPFILEPATH(tmpfile);
@@ -41,7 +41,7 @@ TEST(TestFileUtils, DeleteItem_CFileItemPtr)
   EXPECT_TRUE(CFileUtils::DeleteItem(item));
 }
 
-TEST(TestFileUtils, DeleteItem_CStdString)
+TEST(TestFileUtils, DeleteItemString)
 {
   XFILE::CFile *tmpfile;
 
@@ -50,4 +50,4 @@ TEST(TestFileUtils, DeleteItem_CStdString)
 }
 
 /* Executing RenameFile() requires input from the user */
-// static bool RenameFile(const CStdString &strFile);
+// static bool RenameFile(const std::string &strFile);

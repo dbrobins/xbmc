@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -131,7 +131,7 @@ bool CZeroconfAvahi::doPublishService(const std::string& fcr_identifier,
                               const std::string& fcr_type,
                               const std::string& fcr_name,
                               unsigned int f_port,
-                              std::map<std::string, std::string> txt)
+                              const std::vector<std::pair<std::string, std::string> >&  txt)
 {
   CLog::Log(LOGDEBUG, "CZeroconfAvahi::doPublishService identifier: %s type: %s name:%s port:%i", fcr_identifier.c_str(), fcr_type.c_str(), fcr_name.c_str(), f_port);
 
@@ -145,7 +145,7 @@ bool CZeroconfAvahi::doPublishService(const std::string& fcr_identifier,
 
   //txt records to AvahiStringList
   AvahiStringList *txtList = NULL;
-  for(std::map<std::string, std::string>::iterator it=txt.begin(); it!=txt.end(); it++)
+  for(std::vector<std::pair<std::string, std::string> >::const_iterator it=txt.begin(); it!=txt.end(); ++it)
   {
     txtList = avahi_string_list_add_pair(txtList, it->first.c_str(), it->second.c_str());
   }
@@ -165,6 +165,26 @@ bool CZeroconfAvahi::doPublishService(const std::string& fcr_identifier,
     CLog::Log(LOGDEBUG, "CZeroconfAvahi::doPublishService: client not running, queued for publishing");
   }
   return true;
+}
+
+bool CZeroconfAvahi::doForceReAnnounceService(const std::string& fcr_identifier)
+{
+  bool ret = false;
+  ScopedEventLoopBlock l_block(mp_poll);
+  tServiceMap::iterator it = m_services.find(fcr_identifier);
+  if (it != m_services.end() && it->second->mp_group)
+  {
+    // to force a reannounce on avahi its enough to reverse the txtrecord list
+    it->second->mp_txt = avahi_string_list_reverse(it->second->mp_txt);
+
+    // this will trigger the reannouncement
+    if ((avahi_entry_group_update_service_txt_strlst(it->second->mp_group, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, AvahiPublishFlags(0),
+                                              it->second->m_name.c_str(),
+                                              it->second->m_type.c_str(), NULL, it->second->mp_txt)) >= 0)
+      ret = true;
+  }
+
+  return ret;
 }
 
 bool CZeroconfAvahi::doRemoveService(const std::string& fcr_ident)
@@ -387,7 +407,7 @@ void CZeroconfAvahi::addService(tServiceMap::mapped_type fp_service_info, AvahiC
   {
     if ((ret = avahi_entry_group_add_service_strlst(fp_service_info->mp_group, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, AvahiPublishFlags(0),
                                              fp_service_info->m_name.c_str(),
-                                             fp_service_info->m_type.c_str(), NULL, NULL, fp_service_info->m_port, fp_service_info->mp_txt) < 0))
+                                             fp_service_info->m_type.c_str(), NULL, NULL, fp_service_info->m_port, fp_service_info->mp_txt)) < 0)
     {
       if (ret == AVAHI_ERR_COLLISION)
       {

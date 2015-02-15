@@ -1,5 +1,22 @@
-
-#include "Dialog.h"
+ /*
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 #include "LanguageHook.h"
 
 #include "dialogs/GUIDialogOK.h"
@@ -8,7 +25,11 @@
 #include "guilib/GUIWindowManager.h"
 #include "dialogs/GUIDialogFileBrowser.h"
 #include "dialogs/GUIDialogNumeric.h"
-#include "settings/Settings.h"
+#include "settings/MediaSourceSettings.h"
+#include "dialogs/GUIDialogKaiToast.h"
+#include "ModuleXbmcgui.h"
+#include "guilib/GUIKeyboardFactory.h"
+#include "utils/StringUtils.h"
 
 #define ACTIVE_WINDOW g_windowManager.GetActiveWindow()
 
@@ -16,10 +37,9 @@ namespace XBMCAddon
 {
   namespace xbmcgui
   {
-
     static void XBMCWaitForThreadMessage(int message, int param1, int param2)
     {
-      ThreadMessage tMsg = {message, param1, param2};
+      ThreadMessage tMsg = {(DWORD)message, param1, param2};
       CApplicationMessenger::Get().SendMessage(tMsg, true);
     }
 
@@ -29,7 +49,8 @@ namespace XBMCAddon
                        const String& line2,
                        const String& line3,
                        const String& nolabel,
-                       const String& yeslabel) throw (WindowException)
+                       const String& yeslabel,
+                       int autoclose) throw (WindowException)
     {
       DelayedCallGuard dcguard(languageHook);
       const int window = WINDOW_DIALOG_YES_NO;
@@ -52,6 +73,9 @@ namespace XBMCAddon
       if (!yeslabel.empty())
         pDialog->SetChoice(1,yeslabel);
 
+      if (autoclose > 0)
+        pDialog->SetAutoClose(autoclose);
+
       //send message and wait for user input
       XBMCWaitForThreadMessage(TMSG_DIALOG_DOMODAL, window, ACTIVE_WINDOW);
 
@@ -67,9 +91,8 @@ namespace XBMCAddon
         throw WindowException("Error: Window is NULL, this is not possible :-)");
 
       pDialog->Reset();
-      CStdString utf8Heading;
       if (!heading.empty())
-        pDialog->SetHeading(utf8Heading);
+        pDialog->SetHeading(heading);
 
       String listLine;
       for(unsigned int i = 0; i < list.size(); i++)
@@ -131,13 +154,13 @@ namespace XBMCAddon
                                 const String& defaultt ) throw (WindowException)
     {
       DelayedCallGuard dcguard(languageHook);
-      CStdString value;
+      std::string value;
       std::string mask = maskparam;
-      VECSOURCES *shares = g_settings.GetSourcesFromType(s_shares);
+      VECSOURCES *shares = CMediaSourceSettings::Get().GetSources(s_shares);
       if (!shares) 
-        throw WindowException("Error: GetSourcesFromType given %s is NULL.",s_shares.c_str());
+        throw WindowException("Error: GetSources given %s is NULL.",s_shares.c_str());
 
-      if (useFileDirectories && (!maskparam.empty() && !maskparam.size() == 0))
+      if (useFileDirectories && !maskparam.empty())
         mask += "|.rar|.zip";
 
       value = defaultt;
@@ -155,26 +178,21 @@ namespace XBMCAddon
                           bool useFileDirectories, const String& defaultt ) throw (WindowException)
     {
       DelayedCallGuard dcguard(languageHook);
-      VECSOURCES *shares = g_settings.GetSourcesFromType(s_shares);
-      CStdStringArray tmpret;
+      VECSOURCES *shares = CMediaSourceSettings::Get().GetSources(s_shares);
+      std::vector<String> valuelist;
       String lmask = mask;
       if (!shares) 
-        throw WindowException("Error: GetSourcesFromType given %s is NULL.",s_shares.c_str());
+        throw WindowException("Error: GetSources given %s is NULL.",s_shares.c_str());
 
-      if (useFileDirectories && (!lmask.empty() && !(lmask.size() == 0)))
+      if (useFileDirectories && !lmask.empty())
         lmask += "|.rar|.zip";
 
       if (type == 1)
-        CGUIDialogFileBrowser::ShowAndGetFileList(*shares, lmask, heading, tmpret, useThumbs, useFileDirectories);
+        CGUIDialogFileBrowser::ShowAndGetFileList(*shares, lmask, heading, valuelist, useThumbs, useFileDirectories);
       else if (type == 2)
-        CGUIDialogFileBrowser::ShowAndGetImageList(*shares, heading, tmpret);
+        CGUIDialogFileBrowser::ShowAndGetImageList(*shares, heading, valuelist);
       else
         throw WindowException("Error: Cannot retreive multuple directories using browse %s is NULL.",s_shares.c_str());
-
-      std::vector<String> valuelist;
-      int index = 0;
-      for (CStdStringArray::iterator iter = tmpret.begin(); iter != tmpret.end(); iter++)
-        valuelist[index++] = (*iter);
 
       return valuelist;
     }
@@ -182,7 +200,7 @@ namespace XBMCAddon
     String Dialog::numeric(int inputtype, const String& heading, const String& defaultt)
     {
       DelayedCallGuard dcguard(languageHook);
-      CStdString value;
+      std::string value;
       SYSTEMTIME timedate;
       GetLocalTime(&timedate);
 
@@ -192,13 +210,13 @@ namespace XBMCAddon
         {
           if (!defaultt.empty() && defaultt.size() == 10)
           {
-            CStdString sDefault = defaultt;
-            timedate.wDay = atoi(sDefault.Left(2));
-            timedate.wMonth = atoi(sDefault.Mid(3,4));
-            timedate.wYear = atoi(sDefault.Right(4));
+            std::string sDefault = defaultt;
+            timedate.wDay = atoi(sDefault.substr(0, 2).c_str());
+            timedate.wMonth = atoi(sDefault.substr(3, 4).c_str());
+            timedate.wYear = atoi(sDefault.substr(sDefault.size() - 4).c_str());
           }
           if (CGUIDialogNumeric::ShowAndGetDate(timedate, heading))
-            value.Format("%2d/%2d/%4d", timedate.wDay, timedate.wMonth, timedate.wYear);
+            value = StringUtils::Format("%2d/%2d/%4d", timedate.wDay, timedate.wMonth, timedate.wYear);
           else
             return emptyString;
         }
@@ -206,12 +224,12 @@ namespace XBMCAddon
         {
           if (!defaultt.empty() && defaultt.size() == 5)
           {
-            CStdString sDefault = defaultt;
-            timedate.wHour = atoi(sDefault.Left(2));
-            timedate.wMinute = atoi(sDefault.Right(2));
+            std::string sDefault = defaultt;
+            timedate.wHour = atoi(sDefault.substr(0, 2).c_str());
+            timedate.wMinute = atoi(sDefault.substr(3, 2).c_str());
           }
           if (CGUIDialogNumeric::ShowAndGetTime(timedate, heading))
-            value.Format("%2d:%02d", timedate.wHour, timedate.wMinute);
+            value = StringUtils::Format("%2d:%02d", timedate.wHour, timedate.wMinute);
           else
             return emptyString;
         }
@@ -231,8 +249,118 @@ namespace XBMCAddon
       return value;
     }
 
-    DialogProgress::~DialogProgress() {}
+    void Dialog::notification(const String& heading, const String& message, const String& icon, int time, bool sound)
+    {
+      DelayedCallGuard dcguard(languageHook);
 
+      std::string strIcon = getNOTIFICATION_INFO();
+      int iTime = TOAST_DISPLAY_TIME;
+
+      if (time > 0)
+        iTime = time;
+      if (!icon.empty())
+        strIcon = icon;
+      
+      if (strIcon == getNOTIFICATION_INFO())
+        CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Info, heading, message, iTime, sound);
+      else if (strIcon == getNOTIFICATION_WARNING())
+        CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Warning, heading, message, iTime, sound);
+      else if (strIcon == getNOTIFICATION_ERROR())
+        CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Error, heading, message, iTime, sound);
+      else
+        CGUIDialogKaiToast::QueueNotification(strIcon, heading, message, iTime, sound);
+    }
+    
+    String Dialog::input(const String& heading, const String& defaultt, int type, int option, int autoclose) throw (WindowException)
+    {
+      DelayedCallGuard dcguard(languageHook);
+      std::string value(defaultt);
+      SYSTEMTIME timedate;
+      GetLocalTime(&timedate);
+
+      switch (type)
+      {
+        case INPUT_ALPHANUM:
+          {
+            bool bHiddenInput = (option & ALPHANUM_HIDE_INPUT) == ALPHANUM_HIDE_INPUT;
+            if (!CGUIKeyboardFactory::ShowAndGetInput(value, heading, true, bHiddenInput, autoclose))
+              value = emptyString;
+          }
+          break;
+        case INPUT_NUMERIC:
+          {
+            if (!CGUIDialogNumeric::ShowAndGetNumber(value, heading, autoclose))
+              value = emptyString;
+          }
+          break;
+        case INPUT_DATE:
+          {
+            if (!defaultt.empty() && defaultt.size() == 10)
+            {
+              std::string sDefault = defaultt;
+              timedate.wDay = atoi(sDefault.substr(0, 2).c_str());
+              timedate.wMonth = atoi(sDefault.substr(3, 4).c_str());
+              timedate.wYear = atoi(sDefault.substr(sDefault.size() - 4).c_str());
+            }
+            if (CGUIDialogNumeric::ShowAndGetDate(timedate, heading))
+              value = StringUtils::Format("%2d/%2d/%4d", timedate.wDay, timedate.wMonth, timedate.wYear);
+            else
+              value = emptyString;
+          }
+          break;
+        case INPUT_TIME:
+          {
+            if (!defaultt.empty() && defaultt.size() == 5)
+            {
+              std::string sDefault = defaultt;
+              timedate.wHour = atoi(sDefault.substr(0, 2).c_str());
+              timedate.wMinute = atoi(sDefault.substr(3, 2).c_str());
+            }
+            if (CGUIDialogNumeric::ShowAndGetTime(timedate, heading))
+              value = StringUtils::Format("%2d:%02d", timedate.wHour, timedate.wMinute);
+            else
+              value = emptyString;
+          }
+          break;
+        case INPUT_IPADDRESS:
+          {
+            if (!CGUIDialogNumeric::ShowAndGetIPAddress(value, heading))
+              value = emptyString;
+          }
+          break;
+        case INPUT_PASSWORD:
+          {
+            bool bResult = false;
+
+            if (option & PASSWORD_VERIFY)
+              bResult = CGUIKeyboardFactory::ShowAndVerifyPassword(value, heading, 0, autoclose) == 0 ? true : false;
+            else
+              bResult = CGUIKeyboardFactory::ShowAndVerifyNewPassword(value, heading, true, autoclose);
+
+            if (!bResult)
+              value = emptyString;
+          }
+          break;
+        default:
+          value = emptyString;
+          break;
+      }
+
+      return value;
+    }
+
+    DialogProgress::~DialogProgress() { XBMC_TRACE; deallocating(); }
+
+    void DialogProgress::deallocating()
+    {
+      XBMC_TRACE;
+
+      if (dlg && open)
+      {
+        DelayedCallGuard dg;
+        dlg->Close();
+      }
+    }
 
     void DialogProgress::create(const String& heading, const String& line1, 
                                 const String& line2,
@@ -245,6 +373,7 @@ namespace XBMCAddon
         throw WindowException("Error: Window is NULL, this is not possible :-)");
 
       dlg = pDialog;
+      open = true;
 
       pDialog->SetHeading(heading);
 
@@ -263,10 +392,10 @@ namespace XBMCAddon
                                 const String& line3) throw (WindowException)
     {
       DelayedCallGuard dcguard(languageHook);
-      CGUIDialogProgress* pDialog= dlg;
+      CGUIDialogProgress* pDialog = dlg;
 
       if (pDialog == NULL)
-        throw WindowException("Error: Window is NULL, this is not possible :-)");
+        throw WindowException("Dialog not created.");
 
       if (percent >= 0 && percent <= 100)
       {
@@ -289,13 +418,83 @@ namespace XBMCAddon
     void DialogProgress::close()
     {
       DelayedCallGuard dcguard(languageHook);
+      if (dlg == NULL)
+        throw WindowException("Dialog not created.");
       dlg->Close();
+      open = false;
     }
 
     bool DialogProgress::iscanceled()
     {
+      if (dlg == NULL)
+        throw WindowException("Dialog not created.");
       return dlg->IsCanceled();
     }
+
+    DialogProgressBG::~DialogProgressBG() { XBMC_TRACE; deallocating(); }
+
+    void DialogProgressBG::deallocating()
+    {
+      XBMC_TRACE;
+
+      if (dlg && open)
+      {
+        DelayedCallGuard dg;
+        dlg->Close();
+      }
+    }
+
+    void DialogProgressBG::create(const String& heading, const String& message) throw (WindowException)
+    {
+      DelayedCallGuard dcguard(languageHook);
+      CGUIDialogExtendedProgressBar* pDialog = 
+          (CGUIDialogExtendedProgressBar*)g_windowManager.GetWindow(WINDOW_DIALOG_EXT_PROGRESS);
+
+      if (pDialog == NULL)
+        throw WindowException("Error: Window is NULL, this is not possible :-)");
+
+      CGUIDialogProgressBarHandle* pHandle = pDialog->GetHandle(heading);
+
+      dlg = pDialog;
+      handle = pHandle;
+      open = true;
+
+      pHandle->SetTitle(heading);
+      if (!message.empty())
+        pHandle->SetText(message);
+    }
+
+    void DialogProgressBG::update(int percent, const String& heading, const String& message) throw (WindowException)
+    {
+      DelayedCallGuard dcguard(languageHook);
+      CGUIDialogProgressBarHandle* pHandle = handle;
+
+      if (pHandle == NULL)
+        throw WindowException("Dialog not created.");
+
+      if (percent >= 0 && percent <= 100)
+        pHandle->SetPercentage((float)percent);
+      if (!heading.empty())
+        pHandle->SetTitle(heading);
+      if (!message.empty())
+        pHandle->SetText(message);
+    }
+
+    void DialogProgressBG::close()
+    {
+      DelayedCallGuard dcguard(languageHook);
+      if (handle == NULL)
+        throw WindowException("Dialog not created.");
+      handle->MarkFinished();
+      open = false;
+    }
+
+    bool DialogProgressBG::isFinished()
+    {
+      if (handle == NULL)
+        throw WindowException("Dialog not created.");
+      return handle->IsFinished();
+    }
+
   }
 }
-

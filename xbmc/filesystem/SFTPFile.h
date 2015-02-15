@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
  *
  */
 
-
 #include "system.h"
 #ifdef HAS_FILESYSTEM_SFTP
 #include "IFile.h"
@@ -27,10 +26,16 @@
 #include "threads/CriticalSection.h"
 
 #include <libssh/libssh.h>
+#ifdef TARGET_WINDOWS
+#define ssize_t SSIZE_T
 #include <libssh/sftp.h>
+#undef ssize_t
+#else  // !TARGET_WINDOWS
+#include <libssh/sftp.h>
+#endif // !TARGET_WINDOWS
 #include <string>
 #include <map>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 class CURL;
 
@@ -52,13 +57,14 @@ class CURL;
 class CSFTPSession
 {
 public:
-  CSFTPSession(const CStdString &host, unsigned int port, const CStdString &username, const CStdString &password);
+  CSFTPSession(const std::string &host, unsigned int port, const std::string &username, const std::string &password);
   virtual ~CSFTPSession();
 
-  sftp_file CreateFileHande(const CStdString &file);
+  sftp_file CreateFileHande(const std::string &file);
   void CloseFileHandle(sftp_file handle);
-  bool GetDirectory(const CStdString &base, const CStdString &folder, CFileItemList &items);
-  bool Exists(const char *path);
+  bool GetDirectory(const std::string &base, const std::string &folder, CFileItemList &items);
+  bool DirectoryExists(const char *path);
+  bool FileExists(const char *path);
   int Stat(const char *path, struct __stat64* buffer);
   int Seek(sftp_file handle, uint64_t position);
   int Read(sftp_file handle, void *buffer, size_t length);
@@ -66,8 +72,9 @@ public:
   bool IsIdle();
 private:
   bool VerifyKnownHost(ssh_session session);
-  bool Connect(const CStdString &host, unsigned int port, const CStdString &username, const CStdString &password);
+  bool Connect(const std::string &host, unsigned int port, const std::string &username, const std::string &password);
   void Disconnect();
+  bool GetItemPermissions(const char *path, uint32_t &permissions);
   CCriticalSection m_critSect;
 
   bool m_connected;
@@ -76,18 +83,18 @@ private:
   int m_LastActive;
 };
 
-typedef boost::shared_ptr<CSFTPSession> CSFTPSessionPtr;
+typedef std::shared_ptr<CSFTPSession> CSFTPSessionPtr;
 
 class CSFTPSessionManager
 {
 public:
   static CSFTPSessionPtr CreateSession(const CURL &url);
-  static CSFTPSessionPtr CreateSession(const CStdString &host, unsigned int port, const CStdString &username, const CStdString &password);
+  static CSFTPSessionPtr CreateSession(const std::string &host, unsigned int port, const std::string &username, const std::string &password);
   static void ClearOutIdleSessions();
   static void DisconnectAllSessions();
 private:
   static CCriticalSection m_critSect;
-  static std::map<CStdString, CSFTPSessionPtr> sessions;
+  static std::map<std::string, CSFTPSessionPtr> sessions;
 };
 
 namespace XFILE
@@ -99,7 +106,7 @@ namespace XFILE
     virtual ~CSFTPFile();
     virtual void Close();
     virtual int64_t Seek(int64_t iFilePosition, int iWhence = SEEK_SET);
-    virtual unsigned int Read(void* lpBuf, int64_t uiBufSize);
+    virtual ssize_t Read(void* lpBuf, size_t uiBufSize);
     virtual bool Open(const CURL& url);
     virtual bool Exists(const CURL& url);
     virtual int Stat(const CURL& url, struct __stat64* buffer);
@@ -109,7 +116,7 @@ namespace XFILE
     virtual int     GetChunkSize() {return 1;};
     virtual int     IoControl(EIoControl request, void* param);
   private:
-    CStdString m_file;
+    std::string m_file;
     CSFTPSessionPtr m_session;
     sftp_file m_sftp_handle;
   };

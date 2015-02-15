@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2011-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2011-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,12 +24,16 @@
 #include "DVDOverlayText.h"
 #include "DVDStreamInfo.h"
 #include "DVDCodecs/DVDCodecs.h"
-#include "settings/GUISettings.h"
+#include "settings/Settings.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
+#include "utils/auto_buffer.h"
 
 // 3GPP/TX3G (aka MPEG-4 Timed Text) Subtitle support
 // 3GPP -> 3rd Generation Partnership Program
 // adapted from https://trac.handbrake.fr/browser/trunk/libhb/dectx3gsub.c;
+
+#define LEN_CHECK(x)    do { if((end - pos) < (x)) return OC_ERROR; } while(0)
 
 // NOTE: None of these macros check for buffer overflow
 #define READ_U8()       *pos;                                                     pos += 1;
@@ -64,7 +68,7 @@ CDVDOverlayCodecTX3G::CDVDOverlayCodecTX3G() : CDVDOverlayCodec("TX3G Subtitle D
   m_pOverlay = NULL;
   // stupid, this comes from a static global in GUIWindowFullScreen.cpp
   uint32_t colormap[8] = { 0xFFFFFF00, 0xFFFFFFFF, 0xFF0099FF, 0xFF00FF00, 0xFFCCFF00, 0xFF00FFFF, 0xFFE5E5E5, 0xFFC0C0C0 };
-  m_textColor = colormap[g_guiSettings.GetInt("subtitles.color")];
+  m_textColor = colormap[CSettings::Get().GetInt("subtitles.color")];
 }
 
 CDVDOverlayCodecTX3G::~CDVDOverlayCodecTX3G()
@@ -75,7 +79,7 @@ CDVDOverlayCodecTX3G::~CDVDOverlayCodecTX3G()
 
 bool CDVDOverlayCodecTX3G::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
 {
-  if (hints.codec == CODEC_ID_MOV_TEXT)
+  if (hints.codec == AV_CODEC_ID_MOV_TEXT)
     return true;
   return false;
 }
@@ -91,15 +95,12 @@ int CDVDOverlayCodecTX3G::Decode(DemuxPacket *pPacket)
   if (m_pOverlay)
     SAFE_RELEASE(m_pOverlay);
 
-  BYTE *data = pPacket->pData;
-  int size = pPacket->iSize;
-
   m_pOverlay = new CDVDOverlayText();
   CDVDOverlayCodec::GetAbsoluteTimes(m_pOverlay->iPTSStartTime, m_pOverlay->iPTSStopTime, pPacket, m_pOverlay->replace);
 
   // do not move this. READ_XXXX macros modify pos.
-  uint8_t  *pos = data;
-  uint8_t  *end = pos + size;
+  uint8_t  *pos = pPacket->pData;
+  uint8_t  *end = pPacket->pData + pPacket->iSize;
 
   // Parse the packet as a TX3G TextSample.
   // Look for a single StyleBox ('styl') and 
@@ -107,17 +108,26 @@ int CDVDOverlayCodecTX3G::Decode(DemuxPacket *pPacket)
   // Ignore all other box types.
   // NOTE: Buffer overflows on read are not checked.
   // ALSO: READ_XXXX/SKIP_XXXX macros will modify pos.
+  LEN_CHECK(2);
   uint16_t textLength = READ_U16();
+  LEN_CHECK(textLength);
   uint8_t *text = READ_ARRAY(textLength);
 
   int numStyleRecords = 0;
-  uint8_t *bgnStyle   = (uint8_t*)calloc(textLength, 1);
-  uint8_t *endStyle   = (uint8_t*)calloc(textLength, 1);
+  // reserve one more style slot for broken encoders
+
+  XUTILS::auto_buffer bgnStyle(textLength+1);
+  XUTILS::auto_buffer endStyle(textLength+1);
+
+  memset(bgnStyle.get(), 0, textLength+1);
+  memset(endStyle.get(), 0, textLength+1);
+
   int bgnColorIndex = 0, endColorIndex = 0;
   uint32_t textColorRGBA = m_textColor;
   while (pos < end)
   {
     // Read TextSampleModifierBox
+    LEN_CHECK(4);
     uint32_t size = READ_U32();
     if (size == 0)
       size = pos - end;   // extends to end of packet
@@ -126,6 +136,7 @@ int CDVDOverlayCodecTX3G::Decode(DemuxPacket *pPacket)
       CLog::Log(LOGDEBUG, "CDVDOverlayCodecTX3G: TextSampleModifierBox has unsupported large size" );
       break;
     }
+    LEN_CHECK(4);
     uint32_t type = READ_U32();
     if (type == FOURCC("uuid"))
     {
@@ -139,23 +150,34 @@ int CDVDOverlayCodecTX3G::Decode(DemuxPacket *pPacket)
       if ( numStyleRecords != 0 )
       {
         CLog::Log(LOGDEBUG, "CDVDOverlayCodecTX3G: found additional StyleBoxes on subtitle; skipping" );
+        LEN_CHECK(size);
         SKIP_ARRAY(size);
         continue;
       }
 
+      LEN_CHECK(2);
       numStyleRecords = READ_U16();
       for (int i = 0; i < numStyleRecords; i++)
       {
         StyleRecord curRecord;
+        LEN_CHECK(12);
         curRecord.bgnChar         = READ_U16();
         curRecord.endChar         = READ_U16();
         curRecord.fontID          = READ_U16();
         curRecord.faceStyleFlags  = READ_U8();
         curRecord.fontSize        = READ_U8();
         curRecord.textColorRGBA   = READ_U32();
+        // clamp bgnChar/bgnChar to textLength,
+        // we alloc enough space above and this
+        // fixes borken encoders that do not handle
+        // endChar correctly.
+        if (curRecord.bgnChar > textLength)
+          curRecord.bgnChar = textLength;
+        if (curRecord.endChar > textLength)
+          curRecord.endChar = textLength;
 
-        bgnStyle[curRecord.bgnChar] |= curRecord.faceStyleFlags;
-        endStyle[curRecord.endChar] |= curRecord.faceStyleFlags;
+        bgnStyle.get()[curRecord.bgnChar] |= curRecord.faceStyleFlags;
+        endStyle.get()[curRecord.endChar] |= curRecord.faceStyleFlags;
         bgnColorIndex = curRecord.bgnChar;
         endColorIndex = curRecord.endChar;
         textColorRGBA = curRecord.textColorRGBA;
@@ -164,14 +186,17 @@ int CDVDOverlayCodecTX3G::Decode(DemuxPacket *pPacket)
     else
     {
       // Found some other kind of TextSampleModifierBox. Skip it.
+      LEN_CHECK(size);
       SKIP_ARRAY(size);
     }
   }
 
   // Copy text to out and add HTML markup for the style records
   int charIndex = 0;
-  CStdStringA strUTF8;
-  for (pos = text, end = text + textLength; pos < end; pos++)
+  std::string strUTF8;
+  // index over textLength chars to include broken encoders,
+  // so we pickup closing styles on broken encoders
+  for (pos = text, end = text + textLength; pos <= end; pos++)
   {
     if ((*pos & 0xC0) == 0x80)
     {
@@ -180,8 +205,8 @@ int CDVDOverlayCodecTX3G::Decode(DemuxPacket *pPacket)
       continue;   // ...without incrementing 'charIndex'
     }
 
-    uint8_t bgnStyles = bgnStyle[charIndex];
-    uint8_t endStyles = endStyle[charIndex];
+    uint8_t bgnStyles = bgnStyle.get()[charIndex];
+    uint8_t endStyles = endStyle.get()[charIndex];
 
     // [B] or [/B] -> toggle bold on and off
     // [I] or [/I] -> toggle italics on and off
@@ -200,7 +225,7 @@ int CDVDOverlayCodecTX3G::Decode(DemuxPacket *pPacket)
 
     // invert the order from above so we bracket the text correctly.
     if (bgnColorIndex == charIndex && textColorRGBA != m_textColor)
-      strUTF8.AppendFormat("[COLOR %8x]", textColorRGBA);
+      strUTF8 += StringUtils::Format("[COLOR %8x]", textColorRGBA);
     // we do not support underline
     //if (bgnStyles & UNDERLINE)
     //  strUTF8.append("[U]");
@@ -216,14 +241,11 @@ int CDVDOverlayCodecTX3G::Decode(DemuxPacket *pPacket)
     charIndex++;
   }
   
-  free(bgnStyle);
-  free(endStyle);
-    
-  if (strUTF8.IsEmpty())
+  if (strUTF8.empty())
     return OC_BUFFER;
 
   if (strUTF8[strUTF8.size()-1] == '\n')
-    strUTF8.Delete(strUTF8.size()-1);
+    strUTF8.erase(strUTF8.size()-1);
 
   // add a new text element to our container
   m_pOverlay->AddElement(new CDVDOverlayText::CElementText(strUTF8.c_str()));

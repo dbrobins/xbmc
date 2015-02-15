@@ -1,22 +1,24 @@
 /*
-* XBMC Media Center
-* Copyright (c) 2002 Frodo
-* Portions Copyright (c) by the authors of ffmpeg and xvid
-*
-* This program is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program; if not, write to the Free Software
-* Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-*/
+ *      Copyright (c) 2002 Frodo
+ *      Portions Copyright (c) by the authors of ffmpeg and xvid
+ *      Copyright (C) 2002-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 
 #include "ISOFile.h"
 #include "URL.h"
@@ -32,8 +34,9 @@ using namespace XFILE;
 //////////////////////////////////////////////////////////////////////
 //*********************************************************************************************
 CISOFile::CISOFile()
+  : m_bOpened(false)
+  , m_hFile(INVALID_HANDLE_VALUE)
 {
-  m_bOpened = false;
 }
 
 //*********************************************************************************************
@@ -65,9 +68,13 @@ bool CISOFile::Open(const CURL& url)
 }
 
 //*********************************************************************************************
-unsigned int CISOFile::Read(void *lpBuf, int64_t uiBufSize)
+ssize_t CISOFile::Read(void *lpBuf, size_t uiBufSize)
 {
-  if (!m_bOpened) return 0;
+  if (!m_bOpened)
+    return -1;
+  if (uiBufSize > SSIZE_MAX)
+    uiBufSize = SSIZE_MAX;
+
   char *pData = (char *)lpBuf;
 
   if (m_cache.getSize() > 0)
@@ -87,7 +94,7 @@ unsigned int CISOFile::Read(void *lpBuf, int64_t uiBufSize)
 
       if (m_cache.getMaxWriteSize() > 5000)
       {
-        byte buffer[5000];
+        uint8_t buffer[5000];
         long lBytesRead = m_isoReader.ReadFile( m_hFile, buffer, sizeof(buffer));
         if (lBytesRead > 0)
           m_cache.WriteData((char*)buffer, lBytesRead);
@@ -97,10 +104,8 @@ unsigned int CISOFile::Read(void *lpBuf, int64_t uiBufSize)
     }
     return lTotalBytesRead;
   }
-  int iResult = m_isoReader.ReadFile( m_hFile, (byte*)pData, (long)uiBufSize);
-  if (iResult == -1)
-    return 0;
-  return iResult;
+
+  return m_isoReader.ReadFile( m_hFile, (uint8_t*)pData, (long)uiBufSize);;
 }
 
 //*********************************************************************************************

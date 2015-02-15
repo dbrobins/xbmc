@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,42 +20,42 @@
  *
  */
 
-#include "GUIWindowPVRCommon.h"
-#include "utils/Observer.h"
+#include "GUIWindowPVRBase.h"
+#include "video/VideoThumbLoader.h"
+#include "video/VideoDatabase.h"
 
 namespace PVR
 {
-  class CGUIWindowPVR;
-
-  class CGUIWindowPVRRecordings : public CGUIWindowPVRCommon, private Observer
+  class CGUIWindowPVRRecordings : public CGUIWindowPVRBase
   {
-    friend class CGUIWindowPVR;
-
   public:
-    CGUIWindowPVRRecordings(CGUIWindowPVR *parent);
+    CGUIWindowPVRRecordings(bool bRadio);
     virtual ~CGUIWindowPVRRecordings(void) {};
 
-    static CStdString GetResumeString(const CFileItem& item);
+    static std::string GetResumeString(const CFileItem& item);
 
-    void GetContextButtons(int itemNumber, CContextButtons &buttons) const;
+    void OnWindowLoaded();
+    bool OnMessage(CGUIMessage& message);
     bool OnAction(const CAction &action);
+    void GetContextButtons(int itemNumber, CContextButtons &buttons);
     bool OnContextButton(int itemNumber, CONTEXT_BUTTON button);
-    void OnWindowUnload(void);
-    void UpdateData(bool bUpdateSelectedFile = true);
-    void Notify(const Observable &obs, const ObservableMessage msg);
+    bool Update(const std::string &strDirectory, bool updateFilterPath = true);
     void UnregisterObservers(void);
     void ResetObservers(void);
 
-  private:
-    bool OnClickButton(CGUIMessage &message);
-    bool OnClickList(CGUIMessage &message);
+  protected:
+    std::string GetDirectoryPath(void);
+    void OnPrepareFileItems(CFileItemList &items);
 
+  private:
+    bool ActionDeleteRecording(CFileItem *item);
     bool OnContextButtonDelete(CFileItem *item, CONTEXT_BUTTON button);
     bool OnContextButtonInfo(CFileItem *item, CONTEXT_BUTTON button);
     bool OnContextButtonPlay(CFileItem *item, CONTEXT_BUTTON button);
     bool OnContextButtonRename(CFileItem *item, CONTEXT_BUTTON button);
     bool OnContextButtonMarkWatched(const CFileItemPtr &item, CONTEXT_BUTTON button);
 
-    CStdString m_strSelectedPath;
+    CVideoThumbLoader m_thumbLoader;
+    CVideoDatabase m_database;
   };
 }

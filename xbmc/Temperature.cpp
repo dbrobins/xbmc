@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,9 @@
 #include "LangInfo.h"
 #include "guilib/LocalizeStrings.h"
 #include "Temperature.h"
-
+#include "utils/StringUtils.h"
+#include "utils/Archive.h"
+#include <assert.h>
 
 CTemperature::CTemperature()
 {
@@ -43,8 +45,8 @@ CTemperature::CTemperature(double value)
 
 bool CTemperature::operator >(const CTemperature& right) const
 {
-  ASSERT(IsValid());
-  ASSERT(right.IsValid());
+  assert(IsValid());
+  assert(right.IsValid());
 
   if (!IsValid() || !right.IsValid())
     return false;
@@ -62,8 +64,8 @@ bool CTemperature::operator >=(const CTemperature& right) const
 
 bool CTemperature::operator <(const CTemperature& right) const
 {
-  ASSERT(IsValid());
-  ASSERT(right.IsValid());
+  assert(IsValid());
+  assert(right.IsValid());
 
   if (!IsValid() || !right.IsValid())
     return false;
@@ -81,8 +83,8 @@ bool CTemperature::operator <=(const CTemperature& right) const
 
 bool CTemperature::operator ==(const CTemperature& right) const
 {
-  ASSERT(IsValid());
-  ASSERT(right.IsValid());
+  assert(IsValid());
+  assert(right.IsValid());
 
   if (!IsValid() || !right.IsValid())
     return false;
@@ -107,8 +109,8 @@ const CTemperature& CTemperature::operator =(const CTemperature& right)
 
 const CTemperature& CTemperature::operator +=(const CTemperature& right)
 {
-  ASSERT(IsValid());
-  ASSERT(right.IsValid());
+  assert(IsValid());
+  assert(right.IsValid());
 
   m_value+=right.m_value;
   return *this;
@@ -116,8 +118,8 @@ const CTemperature& CTemperature::operator +=(const CTemperature& right)
 
 const CTemperature& CTemperature::operator -=(const CTemperature& right)
 {
-  ASSERT(IsValid());
-  ASSERT(right.IsValid());
+  assert(IsValid());
+  assert(right.IsValid());
 
   m_value-=right.m_value;
   return *this;
@@ -125,8 +127,8 @@ const CTemperature& CTemperature::operator -=(const CTemperature& right)
 
 const CTemperature& CTemperature::operator *=(const CTemperature& right)
 {
-  ASSERT(IsValid());
-  ASSERT(right.IsValid());
+  assert(IsValid());
+  assert(right.IsValid());
 
   m_value*=right.m_value;
   return *this;
@@ -134,8 +136,8 @@ const CTemperature& CTemperature::operator *=(const CTemperature& right)
 
 const CTemperature& CTemperature::operator /=(const CTemperature& right)
 {
-  ASSERT(IsValid());
-  ASSERT(right.IsValid());
+  assert(IsValid());
+  assert(right.IsValid());
 
   m_value/=right.m_value;
   return *this;
@@ -143,8 +145,8 @@ const CTemperature& CTemperature::operator /=(const CTemperature& right)
 
 CTemperature CTemperature::operator +(const CTemperature& right) const
 {
-  ASSERT(IsValid());
-  ASSERT(right.IsValid());
+  assert(IsValid());
+  assert(right.IsValid());
 
   CTemperature temp(*this);
 
@@ -158,8 +160,8 @@ CTemperature CTemperature::operator +(const CTemperature& right) const
 
 CTemperature CTemperature::operator -(const CTemperature& right) const
 {
-  ASSERT(IsValid());
-  ASSERT(right.IsValid());
+  assert(IsValid());
+  assert(right.IsValid());
 
   CTemperature temp(*this);
   if (!IsValid() || !right.IsValid())
@@ -172,8 +174,8 @@ CTemperature CTemperature::operator -(const CTemperature& right) const
 
 CTemperature CTemperature::operator *(const CTemperature& right) const
 {
-  ASSERT(IsValid());
-  ASSERT(right.IsValid());
+  assert(IsValid());
+  assert(right.IsValid());
 
   CTemperature temp(*this);
   if (!IsValid() || !right.IsValid())
@@ -185,8 +187,8 @@ CTemperature CTemperature::operator *(const CTemperature& right) const
 
 CTemperature CTemperature::operator /(const CTemperature& right) const
 {
-  ASSERT(IsValid());
-  ASSERT(right.IsValid());
+  assert(IsValid());
+  assert(right.IsValid());
 
   CTemperature temp(*this);
   if (!IsValid() || !right.IsValid())
@@ -198,7 +200,7 @@ CTemperature CTemperature::operator /(const CTemperature& right) const
 
 CTemperature& CTemperature::operator ++()
 {
-  ASSERT(IsValid());
+  assert(IsValid());
 
   m_value++;
   return *this;
@@ -206,7 +208,7 @@ CTemperature& CTemperature::operator ++()
 
 CTemperature& CTemperature::operator --()
 {
-  ASSERT(IsValid());
+  assert(IsValid());
 
   m_value--;
   return *this;
@@ -214,7 +216,7 @@ CTemperature& CTemperature::operator --()
 
 CTemperature CTemperature::operator ++(int)
 {
-  ASSERT(IsValid());
+  assert(IsValid());
 
   CTemperature temp(*this);
   m_value++;
@@ -223,7 +225,7 @@ CTemperature CTemperature::operator ++(int)
 
 CTemperature CTemperature::operator --(int)
 {
-  ASSERT(IsValid());
+  assert(IsValid());
 
   CTemperature temp(*this);
   m_value--;
@@ -232,7 +234,7 @@ CTemperature CTemperature::operator --(int)
 
 bool CTemperature::operator >(double right) const
 {
-  ASSERT(IsValid());
+  assert(IsValid());
 
   if (!IsValid())
     return false;
@@ -247,7 +249,7 @@ bool CTemperature::operator >=(double right) const
 
 bool CTemperature::operator <(double right) const
 {
-  ASSERT(IsValid());
+  assert(IsValid());
 
   if (!IsValid())
     return false;
@@ -275,7 +277,7 @@ bool CTemperature::operator !=(double right) const
 
 const CTemperature& CTemperature::operator +=(double right)
 {
-  ASSERT(IsValid());
+  assert(IsValid());
 
   m_value+=right;
   return *this;
@@ -283,7 +285,7 @@ const CTemperature& CTemperature::operator +=(double right)
 
 const CTemperature& CTemperature::operator -=(double right)
 {
-  ASSERT(IsValid());
+  assert(IsValid());
 
   m_value-=right;
   return *this;
@@ -291,7 +293,7 @@ const CTemperature& CTemperature::operator -=(double right)
 
 const CTemperature& CTemperature::operator *=(double right)
 {
-  ASSERT(IsValid());
+  assert(IsValid());
 
   m_value*=right;
   return *this;
@@ -299,7 +301,7 @@ const CTemperature& CTemperature::operator *=(double right)
 
 const CTemperature& CTemperature::operator /=(double right)
 {
-  ASSERT(IsValid());
+  assert(IsValid());
 
   m_value/=right;
   return *this;
@@ -307,7 +309,7 @@ const CTemperature& CTemperature::operator /=(double right)
 
 CTemperature CTemperature::operator +(double right) const
 {
-  ASSERT(IsValid());
+  assert(IsValid());
 
   CTemperature temp(*this);
   temp.m_value+=right;
@@ -316,7 +318,7 @@ CTemperature CTemperature::operator +(double right) const
 
 CTemperature CTemperature::operator -(double right) const
 {
-  ASSERT(IsValid());
+  assert(IsValid());
 
   CTemperature temp(*this);
   temp.m_value-=right;
@@ -325,7 +327,7 @@ CTemperature CTemperature::operator -(double right) const
 
 CTemperature CTemperature::operator *(double right) const
 {
-  ASSERT(IsValid());
+  assert(IsValid());
 
   CTemperature temp(*this);
   temp.m_value*=right;
@@ -334,7 +336,7 @@ CTemperature CTemperature::operator *(double right) const
 
 CTemperature CTemperature::operator /(double right) const
 {
-  ASSERT(IsValid());
+  assert(IsValid());
 
   CTemperature temp(*this);
   temp.m_value/=right;
@@ -476,20 +478,17 @@ double CTemperature::ToLocale() const
     value=ToNewton();
     break;
   default:
-    ASSERT(false);
+    assert(false);
     break;
   }
   return value;
 }
 
 // Returns temperature as localized string
-CStdString CTemperature::ToString() const
+std::string CTemperature::ToString() const
 {
   if (!IsValid())
     return g_localizeStrings.Get(13205); // "Unknown"
 
-  CStdString str;
-  str.Format("%2.0f%s", ToLocale(), g_langInfo.GetTempUnitString().c_str());
-
-  return str;
+  return StringUtils::Format("%2.0f%s", ToLocale(), g_langInfo.GetTempUnitString().c_str());
 }

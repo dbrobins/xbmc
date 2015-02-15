@@ -2,6 +2,7 @@
 
 MAKECLEAN=0
 MAKEFLAGS=""
+BGPROCESSFILE=$2
 
 if [ "$1" = "clean" ]
 then
@@ -20,18 +21,18 @@ then
 make distclean
 fi
 echo "***** Building libdvdcss *****"
-sh bootstrap
+autoreconf -i
 ./configure \
       CFLAGS="-DNDEBUG" \
       --disable-doc \
       --enable-static \
       --with-pic
 make $MAKEFLAGS
-strip -S src/.libs/libdvdcss-2.dll
+strip -S .libs/libdvdcss-2.dll
 cd ..
 mkdir -p includes/dvdcss
 cp libdvdcss/src/dvdcss/dvdcss.h includes/dvdcss
-cp libdvdcss/src/.libs/libdvdcss-2.dll /xbmc/system/players/dvdplayer/
+cp libdvdcss/.libs/libdvdcss-2.dll /xbmc/system/players/dvdplayer/
 
 #libdvdread
 cd libdvdread
@@ -47,7 +48,7 @@ echo "***** Building libdvdread *****"
       --extra-cflags="-DHAVE_DVDCSS_DVDCSS_H -D_XBMC -DNDEBUG -D_MSC_VER -I`pwd`/../includes" \
       --disable-debug
 mkdir -p ../includes/dvdread
-cp ../libdvdread/src/*.h ../includes/dvdread
+cp ../libdvdread/src/dvdread/*.h ../includes/dvdread
 make $MAKEFLAGS
 cd ..
 
@@ -63,13 +64,15 @@ echo "***** Building libdvdnav *****"
       --disable-shared \
       --enable-static \
       --extra-cflags="-D_XBMC -DNDEBUG -I`pwd`/../includes" \
-      --with-dvdread-config="`pwd`/../libdvdread/obj/dvdread-config" \
+      --with-dvdread-config="`pwd`/../dvdread-config" \
       --disable-debug
+mkdir -p ../includes/dvdnav
+cp ../libdvdnav/src/dvdnav/*.h ../includes/dvdnav
 make $MAKEFLAGS
 gcc \
       -shared \
       -o obj/libdvdnav.dll \
-      ../libdvdread/obj/*.o obj/*.o ../libdvdcss/src/.libs/libdvdcss.dll.a \
+      ../libdvdread/obj/*.o obj/*.o ../libdvdcss/.libs/libdvdcss.dll.a \
       -ldl \
       -Wl,--enable-auto-image-base \
       -Xlinker --enable-auto-import
@@ -78,3 +81,5 @@ strip -S obj/libdvdnav.dll
 cd ..
 cp libdvdnav/obj/libdvdnav.dll /xbmc/system/players/dvdplayer/
 echo "***** Done *****"
+#remove the bgprocessfile for signaling the process end
+rm $BGPROCESSFILE

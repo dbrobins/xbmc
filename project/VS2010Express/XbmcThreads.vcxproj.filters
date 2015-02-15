@@ -12,6 +12,7 @@
     <ClCompile Include="..\..\xbmc\threads\platform\win\Win32Exception.cpp">
       <Filter>platform\win</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\xbmc\threads\Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\xbmc\threads\Atomics.h" />
@@ -57,12 +58,10 @@
     <ClInclude Include="..\..\xbmc\threads\platform\ThreadImpl.cpp">
       <Filter>platform</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\xbmc\threads\platform\win\Implementation.cpp">
-      <Filter>platform\win</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\xbmc\threads\platform\win\Win32Exception.h">
       <Filter>platform\win</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\xbmc\threads\Timer.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="platform">

@@ -1,5 +1,5 @@
 /*
- *  Copyright © 2010-2012 Team XBMC
+ *  Copyright © 2010-2013 Team XBMC
  *  http://xbmc.org
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -21,7 +21,7 @@
 #define _SHADER_H_
 
 #include <vector>
-#include "d3dx9.h"
+#include <d3dx9.h>
 #include "Renderer.h"
 
 enum EShaderType

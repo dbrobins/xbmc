@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include "android/activity/XBMCApp.h"
 #include "AndroidDyload.h"
+#include "utils/StringUtils.h"
+#include "CompileInfo.h"
 using namespace std;
 
 //#define DEBUG_SPEW
@@ -19,7 +21,7 @@ bool CAndroidDyload::IsSystemLib(const string &filename)
 {
   {
     CSingleLock lock(m_libLock);
-    for ( solibit i = m_libs.begin() ; i != m_libs.end(); i++ )
+    for ( solibit i = m_libs.begin() ; i != m_libs.end(); ++i )
     {
       if (i->first == filename)
         return i->second.system;
@@ -93,7 +95,7 @@ void* CAndroidDyload::Find(const string &filename)
 string CAndroidDyload::Find(void *handle)
 {
   CSingleLock lock(m_libLock);
-  for ( solibit i = m_libs.begin() ; i != m_libs.end(); i++ )
+  for ( solibit i = m_libs.begin() ; i != m_libs.end(); ++i )
   {
     if (i->second.handle == handle)
       return i->first;
@@ -104,7 +106,7 @@ string CAndroidDyload::Find(void *handle)
 void *CAndroidDyload::FindInDeps(const string &filename)
 {
   CSingleLock lock(m_depsLock);
-  for (std::list<recursivelibdep>::iterator k = m_lib.deps.begin(); k != m_lib.deps.end(); k++)
+  for (std::list<recursivelibdep>::iterator k = m_lib.deps.begin(); k != m_lib.deps.end(); ++k)
   {
     if (k->filename == filename)
       return k->handle;
@@ -144,6 +146,7 @@ void CAndroidDyload::GetDeps(string filename, strings *results)
   if(read(fd, &header, sizeof(header)) < 0)
   {
     CXBMCApp::android_printf("Cannot read elf header: %s\n", strerror(errno));
+    close(fd);
     return;
   }
 
@@ -169,7 +172,10 @@ void CAndroidDyload::GetDeps(string filename, strings *results)
   }
 
   if(!data)
+  { 
+    close(fd);
     return;
+  }
 
   for(i = 0; i < header.e_shnum; i++)
   {
@@ -195,6 +201,7 @@ void CAndroidDyload::GetDeps(string filename, strings *results)
       }
     }
   }
+  close(fd);
   return;
 }
 
@@ -211,7 +218,7 @@ void* CAndroidDyload::Open(const char * path)
     return handle;
   }
   bool checkSystem = IsSystemLib(path);
-  handle = Open_Internal(filename, checkSystem);
+  handle = Open_Internal(std::string(path), checkSystem);
   if (handle != NULL)
   {
     CSingleLock lock(m_depsLock);
@@ -241,8 +248,11 @@ void* CAndroidDyload::Open_Internal(string filename, bool checkSystem)
 
   for (strings::iterator j = deps.begin(); j != deps.end(); ++j)
   {
-    // Don't traverse into libxbmc's deps, they're guaranteed to be loaded.
-    if (*j == "libxbmc.so")
+    std::string appName = CCompileInfo::GetAppName();
+    std::string libName = "lib" + appName + ".so";
+    StringUtils::ToLower(libName);
+    // Don't traverse into libkodi's deps, they're guaranteed to be loaded.
+    if (*j == libName.c_str())
       continue;
 
     if (FindInDeps(*j))
@@ -266,12 +276,9 @@ void* CAndroidDyload::Open_Internal(string filename, bool checkSystem)
 
   handle = dlopen(path.c_str(), RTLD_LOCAL);
 
-  if (handle == NULL)
-    CXBMCApp::android_printf("xb_dlopen: Error from dlopen(%s): %s", path.c_str(), dlerror());
-
   recursivelibdep dep;
   dep.handle = handle;
-  dep.filename = filename;
+  dep.filename = filename.substr(filename.find_last_of('/') +1);
   m_lib.deps.push_back(dep);
 
   lib.refcount = 1;
@@ -287,11 +294,11 @@ void* CAndroidDyload::Open_Internal(string filename, bool checkSystem)
 int CAndroidDyload::Close(void *handle)
 {
   CSingleLock lock(m_depsLock);
-  for (std::list<recursivelib>::iterator i = m_recursivelibs.begin(); i != m_recursivelibs.end(); i++)
+  for (std::list<recursivelib>::iterator i = m_recursivelibs.begin(); i != m_recursivelibs.end(); ++i)
   {
     if (i->handle == handle) 
     {
-      for (std::list<recursivelibdep>::iterator j = i->deps.begin(); j != i->deps.end(); j++)
+      for (std::list<recursivelibdep>::iterator j = i->deps.begin(); j != i->deps.end(); ++j)
       {
         if (DecRef(j->filename) == 0)
         {
@@ -315,16 +322,16 @@ int CAndroidDyload::Close(void *handle)
 void CAndroidDyload::Dump()
 {
   CSingleLock liblock(m_libLock);
-  for ( solibit i = m_libs.begin() ; i != m_libs.end(); i++ )
+  for ( solibit i = m_libs.begin() ; i != m_libs.end(); ++i )
   {
     CXBMCApp::android_printf("lib: %s. refcount: %i",i->first.c_str(), i->second.refcount);
   }
 
   CSingleLock depslock(m_depsLock);
-  for (std::list<recursivelib>::iterator i = m_recursivelibs.begin(); i != m_recursivelibs.end(); i++)
+  for (std::list<recursivelib>::iterator i = m_recursivelibs.begin(); i != m_recursivelibs.end(); ++i)
   {
     CXBMCApp::android_printf("xb_dlopen: recursive dep: %s", i->filename.c_str());
-    for (std::list<recursivelibdep>::iterator j = i->deps.begin(); j != i->deps.end(); j++)
+    for (std::list<recursivelibdep>::iterator j = i->deps.begin(); j != i->deps.end(); ++j)
     {
       CXBMCApp::android_printf("xb_dlopen: recursive dep: \\-- %s", j->filename.c_str());
     }

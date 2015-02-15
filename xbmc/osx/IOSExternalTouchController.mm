@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,11 @@
 #undef BOOL
 
 #import "IOSExternalTouchController.h"
+#if defined(TARGET_DARWIN_IOS_ATV2)
+#import "KodiController.h"
+#else
 #import "XBMCController.h"
+#endif
 
 //dim the touchscreen after 15 secs without touch event
 const CGFloat touchScreenDimTimeoutSecs       = 15.0;
@@ -65,19 +69,19 @@ const CGFloat timeFadeSecs                    = 2.0;
     [descriptionLabel setTextColor:[UIColor grayColor]];
     [descriptionLabel setBackgroundColor:[UIColor clearColor]];
     //text is aligned left in its frame
-    [descriptionLabel setTextAlignment:UITextAlignmentCenter];
+    [descriptionLabel setTextAlignment:NSTextAlignmentCenter];
     [descriptionLabel setContentMode:UIViewContentModeCenter];
     //setup multiline behaviour
-    [descriptionLabel setLineBreakMode:UILineBreakModeTailTruncation];
+    [descriptionLabel setLineBreakMode:(NSLineBreakMode)UILineBreakModeTailTruncation];
 
     [descriptionLabel setNumberOfLines:5];
-    CStdString descText    = g_localizeStrings.Get(34404) + "\n";
+    std::string descText    = g_localizeStrings.Get(34404) + "\n";
     descText              += g_localizeStrings.Get(34405) + "\n";
     descText              += g_localizeStrings.Get(34406) + "\n";
     descText              += g_localizeStrings.Get(34407) + "\n";
     descText              += g_localizeStrings.Get(34408) + "\n";
 
-    NSString *stringFromUTFString = [[NSString alloc] initWithUTF8String:descText];
+    NSString *stringFromUTFString = [[NSString alloc] initWithUTF8String:descText.c_str()];
     
     [descriptionLabel setText:stringFromUTFString];
     [stringFromUTFString release];
@@ -89,7 +93,7 @@ const CGFloat timeFadeSecs                    = 2.0;
     [descriptionLabel release];
 
     //load the splash image
-    CStdString strUserSplash = CSpecialProtocol::TranslatePath("special://xbmc/media/Splash.png");
+    std::string strUserSplash = CSpecialProtocol::TranslatePath("special://xbmc/media/Splash.png");
     xbmcLogo = [UIImage imageWithContentsOfFile:[NSString stringWithUTF8String:strUserSplash.c_str()]];
     
     //make a view with the image
@@ -113,6 +117,7 @@ const CGFloat timeFadeSecs                    = 2.0;
     [_internalWindow setBackgroundColor:[UIColor blackColor]];
     [_internalWindow setScreen:[UIScreen mainScreen]];
     [_internalWindow makeKeyAndVisible];
+    [_internalWindow setRootViewController:self];
 
     [self setWantsFullScreenLayout:YES];
 
@@ -336,6 +341,20 @@ const CGFloat timeFadeSecs                    = 2.0;
   [super dealloc];  
 }
 //--------------------------------------------------------------
+// - iOS6 rotation API - will be called on iOS7 runtime!--------
+- (NSUInteger)supportedInterfaceOrientations
+{
+  // mask defines available as of ios6 sdk
+  //return UIInterfaceOrientationMaskAll;
+  return (1 << UIInterfaceOrientationLandscapeLeft) | (1 << UIInterfaceOrientationLandscapeRight) |
+  (1 << UIInterfaceOrientationPortraitUpsideDown) | (1 << UIInterfaceOrientationPortrait);
+}
+- (BOOL)shouldAutorotate
+{
+  _startup = false;
+  return [self shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)[[UIDevice currentDevice] orientation]];
+}
+// - old rotation API will be called on iOS6 and lower - removed in iOS7
 -(BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
 { 
   if(_startup)
@@ -371,4 +390,5 @@ const CGFloat timeFadeSecs                    = 2.0;
     }
   }
 }
+//--------------------------------------------------------------
 @end

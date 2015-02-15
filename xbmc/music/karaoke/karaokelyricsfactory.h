@@ -1,13 +1,9 @@
 #ifndef KARAOKELYRICSFACTORY_H
 #define KARAOKELYRICSFACTORY_H
 
-/**
-  @author Team XBMC
-*/
-
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -40,10 +36,10 @@ class CKaraokeLyricsFactory
     //! should be limited to simple checks like whether the specific filename exists.
     //! If the loader needs more than that to make sure lyrics are there, it must create this
     //! loader, which should handle the processing in load().
-    static CKaraokeLyrics * CreateLyrics( const CStdString& songName );
+    static CKaraokeLyrics * CreateLyrics( const std::string& songName );
 
     //! This function returns true if the lyrics are (or might be) available for this song.
-    static bool HasLyrics( const CStdString& songName );
+    static bool HasLyrics( const std::string& songName );
 };
 
 #endif

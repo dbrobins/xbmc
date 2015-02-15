@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -43,7 +43,7 @@ CIrssMessage::CIrssMessage(IRSS_MessageType type, uint32_t flags, char* data, in
   SetDataAsBytes(data, size);
 }
 
-CIrssMessage::CIrssMessage(IRSS_MessageType type, uint32_t flags, const CStdString& data)
+CIrssMessage::CIrssMessage(IRSS_MessageType type, uint32_t flags, const std::string& data)
 {
   m_type = type;
   m_flags = flags;
@@ -69,9 +69,9 @@ void CIrssMessage::SetDataAsBytes(char* data, int size)
   }
 }
 
-void CIrssMessage::SetDataAsString(const CStdString& data)
+void CIrssMessage::SetDataAsString(const std::string& data)
 {
-  if (!data || data.IsEmpty())
+  if (data.empty())
   {
     FreeData();
   }

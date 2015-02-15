@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,15 +28,18 @@
 #include "music/windows/GUIWindowMusicBase.h"
 #include "music/tags/MusicInfoTag.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/Key.h"
 #include "filesystem/File.h"
 #include "filesystem/CurlFile.h"
 #include "FileItem.h"
-#include "settings/Settings.h"
 #include "settings/AdvancedSettings.h"
-#include "settings/GUISettings.h"
+#include "settings/MediaSourceSettings.h"
+#include "settings/Settings.h"
 #include "guilib/LocalizeStrings.h"
 #include "TextureCache.h"
 #include "music/Album.h"
+#include "storage/MediaManager.h"
+#include "GUIDialogMusicInfo.h"
 
 using namespace XFILE;
 
@@ -103,12 +106,11 @@ bool CGUIDialogSongInfo::OnMessage(CGUIMessage& message)
       }
       else if (iControl == CONTROL_ALBUMINFO)
       {
-        CGUIWindowMusicBase *window = (CGUIWindowMusicBase *)g_windowManager.GetWindow(g_windowManager.GetActiveWindow());
+        CGUIWindowMusicBase *window = (CGUIWindowMusicBase *)g_windowManager.GetWindow(WINDOW_MUSIC_NAV);
         if (window)
         {
           CFileItem item(*m_song);
-          CStdString path;
-          path.Format("musicdb://3/%li",m_albumId);
+          std::string path = StringUtils::Format("musicdb://albums/%li",m_albumId);
           item.SetPath(path);
           item.m_bIsFolder = true;
           window->OnInfo(&item, true);
@@ -142,6 +144,11 @@ bool CGUIDialogSongInfo::OnAction(const CAction &action)
       SetRating(rating - 1);
     return true;
   }
+  else if (action.GetID() == ACTION_SHOW_INFO)
+  {
+    Close();
+    return true;
+  }
   return CGUIDialog::OnAction(action);
 }
 
@@ -159,8 +166,7 @@ void CGUIDialogSongInfo::OnInitWindow()
   // no known db info - check if parent dir is an album
   if (m_song->GetMusicInfoTag()->GetDatabaseId() == -1)
   {
-    CStdString path;
-    URIUtils::GetDirectory(m_song->GetPath(),path);
+    std::string path = URIUtils::GetDirectory(m_song->GetPath());
     m_albumId = db.GetAlbumIdByPath(path);
   }
   else
@@ -193,13 +199,30 @@ void CGUIDialogSongInfo::SetSong(CFileItem *item)
   m_song->LoadMusicTag();
   m_startRating = m_song->GetMusicInfoTag()->GetRating();
   MUSIC_INFO::CMusicInfoLoader::LoadAdditionalTagInfo(m_song.get());
-  // set artist thumb as well
-  if (m_song->HasMusicInfoTag() && !m_song->GetMusicInfoTag()->GetArtist().empty())
+   // set artist thumb as well
+  CMusicDatabase db;
+  db.Open();
+  if (item->IsMusicDb())
   {
-    CMusicDatabase db;
-    db.Open();
+    std::vector<int> artists;
+    CVariant artistthumbs;
+    db.GetArtistsBySong(item->GetMusicInfoTag()->GetDatabaseId(), true, artists);
+    for (std::vector<int>::const_iterator artistId = artists.begin(); artistId != artists.end(); ++artistId)
+    {
+      std::string thumb = db.GetArtForItem(*artistId, MediaTypeArtist, "thumb");
+      if (!thumb.empty())
+        artistthumbs.push_back(thumb);
+    }
+    if (artistthumbs.size())
+    {
+      m_song->SetProperty("artistthumbs", artistthumbs);
+      m_song->SetProperty("artistthumb", artistthumbs[0]);
+    }
+  }
+  else if (m_song->HasMusicInfoTag() && !m_song->GetMusicInfoTag()->GetArtist().empty())
+  {
     int idArtist = db.GetArtistByName(m_song->GetMusicInfoTag()->GetArtist()[0]);
-    std::string thumb = db.GetArtForItem(idArtist, "artist", "thumb");
+    std::string thumb = db.GetArtForItem(idArtist, MediaTypeArtist, "thumb");
     if (!thumb.empty())
       m_song->SetProperty("artistthumb", thumb);
   }
@@ -211,10 +234,10 @@ CFileItemPtr CGUIDialogSongInfo::GetCurrentListItem(int offset)
   return m_song;
 }
 
-bool CGUIDialogSongInfo::DownloadThumbnail(const CStdString &thumbFile)
+bool CGUIDialogSongInfo::DownloadThumbnail(const std::string &thumbFile)
 {
   // TODO: Obtain the source...
-  CStdString source;
+  std::string source;
   CCurlFile http;
   http.Download(source, thumbFile);
   return true;
@@ -235,29 +258,29 @@ void CGUIDialogSongInfo::OnGetThumb()
 
 
   // Grab the thumbnail from the web
-  CStdString thumbFromWeb;
   /*
-  URIUtils::AddFileToFolder(g_advancedSettings.m_cachePath, "allmusicThumb.jpg", thumbFromWeb);
+  std::string thumbFromWeb;
+  thumbFromWeb = URIUtils::AddFileToFolder(g_advancedSettings.m_cachePath, "allmusicThumb.jpg");
   if (DownloadThumbnail(thumbFromWeb))
   {
     CFileItemPtr item(new CFileItem("thumb://allmusic.com", false));
-    item->SetThumbnailImage(thumbFromWeb);
+    item->SetArt("thumb", thumbFromWeb);
     item->SetLabel(g_localizeStrings.Get(20055));
     items.Add(item);
   }*/
 
   // Current thumb
-  if (CFile::Exists(m_song->GetThumbnailImage()))
+  if (CFile::Exists(m_song->GetArt("thumb")))
   {
     CFileItemPtr item(new CFileItem("thumb://Current", false));
-    item->SetThumbnailImage(m_song->GetThumbnailImage());
+    item->SetArt("thumb", m_song->GetArt("thumb"));
     item->SetLabel(g_localizeStrings.Get(20016));
     items.Add(item);
   }
 
   // local thumb
-  CStdString cachedLocalThumb;
-  CStdString localThumb(m_song->GetUserMusicThumb(true));
+  std::string cachedLocalThumb;
+  std::string localThumb(m_song->GetUserMusicThumb(true));
   if (m_song->IsMusicDb())
   {
     CFileItem item(m_song->GetMusicInfoTag()->GetURL(), false);
@@ -266,7 +289,7 @@ void CGUIDialogSongInfo::OnGetThumb()
   if (CFile::Exists(localThumb))
   {
     CFileItemPtr item(new CFileItem("thumb://Local", false));
-    item->SetThumbnailImage(localThumb);
+    item->SetArt("thumb", localThumb);
     item->SetLabel(g_localizeStrings.Get(20017));
     items.Add(item);
   }
@@ -275,13 +298,16 @@ void CGUIDialogSongInfo::OnGetThumb()
     // which is probably the allmusic.com thumb.  These could be wrong, so allow the user
     // to delete the incorrect thumb
     CFileItemPtr item(new CFileItem("thumb://None", false));
-    item->SetThumbnailImage("DefaultAlbumCover.png");
+    item->SetArt("thumb", "DefaultAlbumCover.png");
     item->SetLabel(g_localizeStrings.Get(20018));
     items.Add(item);
   }
 
-  CStdString result;
-  if (!CGUIDialogFileBrowser::ShowAndGetImage(items, g_settings.m_musicSources, g_localizeStrings.Get(1030), result))
+  std::string result;
+  VECSOURCES sources(*CMediaSourceSettings::Get().GetSources("music"));
+  CGUIDialogMusicInfo::AddItemPathToFileBrowserSources(sources, *m_song);
+  g_mediaManager.GetLocalDrives(sources);
+  if (!CGUIDialogFileBrowser::ShowAndGetImage(items, sources, g_localizeStrings.Get(1030), result))
     return;   // user cancelled
 
   if (result == "thumb://Current")
@@ -290,11 +316,11 @@ void CGUIDialogSongInfo::OnGetThumb()
   // delete the thumbnail if that's what the user wants, else overwrite with the
   // new thumbnail
 
-  CStdString newThumb;
+  std::string newThumb;
   if (result == "thumb://None")
     newThumb = "-";
   else if (result == "thumb://allmusic.com")
-    newThumb = thumbFromWeb;
+    newThumb.clear();
   else if (result == "thumb://Local")
     newThumb = localThumb;
   else
@@ -308,7 +334,7 @@ void CGUIDialogSongInfo::OnGetThumb()
     db.Close();
   }
 
-  m_song->SetThumbnailImage(newThumb);
+  m_song->SetArt("thumb", newThumb);
 
   // tell our GUI to completely reload all controls (as some of them
   // are likely to have had this image in use so will need refreshing)

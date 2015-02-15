@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,9 @@
 #include "FileItem.h"
 #include "GUIUserMessages.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/Key.h"
 #include "input/MouseStat.h"
+#include "cores/IPlayer.h"
 
 #include "pvr/PVRManager.h"
 #include "pvr/channels/PVRChannelGroupsContainer.h"
@@ -50,22 +52,15 @@ void CGUIDialogVideoOSD::FrameMove()
                            || g_windowManager.IsWindowActive(WINDOW_DIALOG_VIDEO_BOOKMARKS)
                            || g_windowManager.IsWindowActive(WINDOW_DIALOG_PVR_OSD_CHANNELS)
                            || g_windowManager.IsWindowActive(WINDOW_DIALOG_PVR_OSD_GUIDE)
-                           || g_windowManager.IsWindowActive(WINDOW_DIALOG_PVR_OSD_DIRECTOR)
-                           || g_windowManager.IsWindowActive(WINDOW_DIALOG_PVR_OSD_CUTTER)
                            || g_windowManager.IsWindowActive(WINDOW_DIALOG_OSD_TELETEXT))
-      SetAutoClose(100); // enough for 10fps
+      // extend show time by original value
+      SetAutoClose(m_showDuration);
   }
   CGUIDialog::FrameMove();
 }
 
 bool CGUIDialogVideoOSD::OnAction(const CAction &action)
 {
-  if (action.GetID() == ACTION_NEXT_ITEM || action.GetID() == ACTION_PREV_ITEM)
-  {
-    // these could indicate next chapter if video supports it
-    if (g_application.m_pPlayer != NULL && g_application.m_pPlayer->OnAction(action))
-      return true;
-  }
   if (action.GetID() == ACTION_SHOW_OSD)
   {
     Close();
@@ -112,10 +107,6 @@ bool CGUIDialogVideoOSD::OnMessage(CGUIMessage& message)
       pDialog = (CGUIDialog *)g_windowManager.GetWindow(WINDOW_DIALOG_PVR_OSD_CHANNELS);
       if (pDialog && pDialog->IsDialogRunning()) pDialog->Close(true);
       pDialog = (CGUIDialog *)g_windowManager.GetWindow(WINDOW_DIALOG_PVR_OSD_GUIDE);
-      if (pDialog && pDialog->IsDialogRunning()) pDialog->Close(true);
-      pDialog = (CGUIDialog *)g_windowManager.GetWindow(WINDOW_DIALOG_PVR_OSD_DIRECTOR);
-      if (pDialog && pDialog->IsDialogRunning()) pDialog->Close(true);
-      pDialog = (CGUIDialog *)g_windowManager.GetWindow(WINDOW_DIALOG_PVR_OSD_CUTTER);
       if (pDialog && pDialog->IsDialogRunning()) pDialog->Close(true);
       pDialog = (CGUIDialog *)g_windowManager.GetWindow(WINDOW_DIALOG_OSD_TELETEXT);
       if (pDialog && pDialog->IsDialogRunning()) pDialog->Close(true);

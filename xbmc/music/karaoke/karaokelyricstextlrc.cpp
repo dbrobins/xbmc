@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -40,15 +40,15 @@ enum ParserState
 // Used in multi-time lyric loader
 typedef struct
 {
-  CStdString    text;
+  std::string    text;
   unsigned int   timing;
   unsigned int   flags;
 } MtLyric;
  
-CKaraokeLyricsTextLRC::CKaraokeLyricsTextLRC( const CStdString & lyricsFile )
+CKaraokeLyricsTextLRC::CKaraokeLyricsTextLRC( const std::string & lyricsFile )
   : CKaraokeLyricsText()
+  , m_lyricsFile(lyricsFile)
 {
-  m_lyricsFile = lyricsFile;
 }
 
 
@@ -63,25 +63,12 @@ bool CKaraokeLyricsTextLRC::Load()
   // Clear the lyrics array
   clearLyrics();
 
-  if ( !file.Open( m_lyricsFile ) )
-    return false;
-
-  unsigned int lyricSize = (unsigned int) file.GetLength();
-
-  if ( !lyricSize )
+  XFILE::auto_buffer buf;
+  if (file.LoadFile(m_lyricsFile, buf) <= 0)
   {
-    CLog::Log( LOGERROR, "LRC lyric loader: lyric file %s has zero length", m_lyricsFile.c_str() );
+    CLog::Log(LOGERROR, "%s: can't load \"%s\" file", __FUNCTION__, m_lyricsFile.c_str());
     return false;
   }
-
-  // Read the file into memory array
-  std::vector<char> lyricData( lyricSize );
-
-  file.Seek( 0, SEEK_SET );
-
-  // Read the whole file
-  if ( file.Read( &lyricData[0], lyricSize) != lyricSize )
-    return false; // disk error?
 
   file.Close();
 
@@ -90,27 +77,26 @@ bool CKaraokeLyricsTextLRC::Load()
 
   unsigned int offset = 0;
 
-  CStdString ext, songfilename = getSongFile();
-  URIUtils::GetExtension( songfilename, ext );
+  std::string songfilename = getSongFile();
 
   // Skip windoze UTF8 file prefix, if any, and reject UTF16 files
-  if ( lyricSize > 3 )
+  if (buf.size() > 3)
   {
-    if ( (unsigned char)lyricData[0] == 0xFF && (unsigned char)lyricData[1] == 0xFE )
+    if ((unsigned char)buf.get()[0] == 0xFF && (unsigned char)buf.get()[1] == 0xFE)
     {
       CLog::Log( LOGERROR, "LRC lyric loader: lyrics file is in UTF16 encoding, must be in UTF8" );
       return false;
     }
 
     // UTF8 prefix added by some windoze apps
-    if ( (unsigned char)lyricData[0] == 0xEF && (unsigned char)lyricData[1] == 0xBB && (unsigned char)lyricData[2] == 0xBF )
+    if ((unsigned char)buf.get()[0] == 0xEF && (unsigned char)buf.get()[1] == 0xBB && (unsigned char)buf.get()[2] == 0xBF)
       offset = 3;
   }
 
-  if (checkMultiTime(&lyricData[offset], lyricSize - offset))
-    return ParserMultiTime(&lyricData[offset], lyricSize - offset, timing_correction);
+  if (checkMultiTime(buf.get() + offset, buf.size() - offset))
+    return ParserMultiTime(buf.get() + offset, buf.size() - offset, timing_correction);
   else
-    return ParserNormal(&lyricData[offset], lyricSize - offset, timing_correction);
+    return ParserNormal(buf.get() + offset, buf.size() - offset, timing_correction);
 }
 
 bool CKaraokeLyricsTextLRC::checkMultiTime(char *lyricData, unsigned int lyricSize)
@@ -187,7 +173,7 @@ bool CKaraokeLyricsTextLRC::ParserNormal(char *lyricData, unsigned int lyricSize
 
         // Add existing lyrics
         char current = *p;
-        CStdString text;
+        std::string text;
 
         if ( offset > state_offset )
         {
@@ -253,7 +239,7 @@ bool CKaraokeLyricsTextLRC::ParserNormal(char *lyricData, unsigned int lyricSize
             m_artist += fieldptr;
           else if ( !strcmp( timestr, "sr" ) )
           {
-            // m_artist += "[CR]" + CStdString( fieldptr ); // Add source to the artist name as a separate line
+            // m_artist += "[CR]" + std::string( fieldptr ); // Add source to the artist name as a separate line
           }
           else if ( !strcmp( timestr, "ti" ) )
             m_songName = fieldptr;
@@ -362,7 +348,7 @@ bool CKaraokeLyricsTextLRC::ParserMultiTime(char *lyricData, unsigned int lyricS
 
         // Add existing lyrics
         char current = *p;
-        CStdString text;
+        std::string text;
 
         if ( offset > state_offset )
         {
@@ -442,7 +428,7 @@ bool CKaraokeLyricsTextLRC::ParserMultiTime(char *lyricData, unsigned int lyricS
             m_artist += fieldptr;
           else if ( !strcmp( timestr, "sr" ) )
           {
-            // m_artist += "[CR]" + CStdString( fieldptr ); // Add source to the artist name as a separate line
+            // m_artist += "[CR]" + std::string( fieldptr ); // Add source to the artist name as a separate line
           }
           else if ( !strcmp( timestr, "ti" ) )
             m_songName = fieldptr;

@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
  */
 
 #include "guilib/GUIDialog.h"
-#include "GUIViewControl.h"
+#include "view/GUIViewControl.h"
 
 class CFileItemList;
 
@@ -36,9 +36,11 @@ namespace PVR
     virtual void OnWindowUnload();
 
   protected:
+    virtual void OnInitWindow();
+    virtual void OnDeinitWindow(int nextWindowID);
+
     void ShowInfo(int iItem);
     void Clear();
-    void Update();
 
     CGUIControl *GetFirstFocusableControl(int id);
 

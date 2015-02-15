@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,9 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -36,57 +35,150 @@ namespace XBMCAddon
     class Monitor : public AddonCallback
     {
       String Id;
+      CEvent abortEvent;
     public:
       Monitor();
 
 #ifndef SWIG
-      inline void    OnSettingsChanged() { TRACE; invokeCallback(new CallbackFunction<Monitor>(this,&Monitor::onSettingsChanged)); }
-      inline void    OnScreensaverActivated() { TRACE; invokeCallback(new CallbackFunction<Monitor>(this,&Monitor::onScreensaverActivated)); }
-      inline void    OnScreensaverDeactivated() { TRACE; invokeCallback(new CallbackFunction<Monitor>(this,&Monitor::onScreensaverDeactivated)); }
-      inline void    OnDatabaseUpdated(const String &database) { TRACE; invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onDatabaseUpdated,database)); }
-      inline void    OnAbortRequested() { TRACE; invokeCallback(new CallbackFunction<Monitor>(this,&Monitor::onAbortRequested)); }
+      inline void    OnSettingsChanged() { XBMC_TRACE; invokeCallback(new CallbackFunction<Monitor>(this,&Monitor::onSettingsChanged)); }
+      inline void    OnScreensaverActivated() { XBMC_TRACE; invokeCallback(new CallbackFunction<Monitor>(this,&Monitor::onScreensaverActivated)); }
+      inline void    OnScreensaverDeactivated() { XBMC_TRACE; invokeCallback(new CallbackFunction<Monitor>(this,&Monitor::onScreensaverDeactivated)); }
+      inline void    OnDPMSActivated() { XBMC_TRACE; invokeCallback(new CallbackFunction<Monitor>(this,&Monitor::onDPMSActivated)); }
+      inline void    OnDPMSDeactivated() { XBMC_TRACE; invokeCallback(new CallbackFunction<Monitor>(this,&Monitor::onDPMSDeactivated)); }
+      inline void    OnScanStarted(const String &library)
+      {
+	XBMC_TRACE;
+	invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onScanStarted,library));
+	invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onDatabaseScanStarted,library));
+      }
+      inline void    OnScanFinished(const String &library)
+      {
+	XBMC_TRACE;
+	invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onScanFinished,library));
+	invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onDatabaseUpdated,library));
+      }
+      inline void    OnCleanStarted(const String &library) { XBMC_TRACE; invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onCleanStarted,library)); }
+      inline void    OnCleanFinished(const String &library) { XBMC_TRACE; invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onCleanFinished,library)); }
+      inline void    OnNotification(const String &sender, const String &method, const String &data) { XBMC_TRACE; invokeCallback(new CallbackFunction<Monitor,const String,const String,const String>(this,&Monitor::onNotification,sender,method,data)); }
+
+      inline const String& GetId() { return Id; }
+
+      void OnAbortRequested();
 #endif
 
       /**
-       * onSettingsChanged() -- onSettingsChanged method.
-       * 
-       * Will be called when addon settings are changed
+       * onSettingsChanged() -- onSettingsChanged method.\n
+       * \n
+       * Will be called when addon settings are changed\n
        */
-      virtual void    onSettingsChanged() { TRACE; }
+      virtual void    onSettingsChanged() { XBMC_TRACE; }
 
       /**
-       * onScreensaverActivated() -- onScreensaverActivated method.
-       * 
-       * Will be called when screensaver kicks in
+       * onScreensaverActivated() -- onScreensaverActivated method.\n
+       * \n
+       * Will be called when screensaver kicks in\n
        */
-      virtual void    onScreensaverActivated() { TRACE; }
+      virtual void    onScreensaverActivated() { XBMC_TRACE; }
 
       /**
-       * onScreensaverDeactivated() -- onScreensaverDeactivated method.
-       * 
-       * Will be called when screensaver goes off
+       * onScreensaverDeactivated() -- onScreensaverDeactivated method.\n
+       * \n
+       * Will be called when screensaver goes off\n
        */
-      virtual void    onScreensaverDeactivated() { TRACE; }
+      virtual void    onScreensaverDeactivated() { XBMC_TRACE; }
 
       /**
-       * onDatabaseUpdated(database) -- onDatabaseUpdated method.
-       * 
-       * database - video/music as stri
-       * 
-       * Will be called when database gets updated and return video or music to indicate which DB has been changed
+       * onDPMSActivated() -- onDPMSActivated method.\n
+       * \n
+       * Will be called when energysaving/DPMS gets active\n
        */
-      virtual void    onDatabaseUpdated(const String database) { TRACE; }
+      virtual void    onDPMSActivated() { XBMC_TRACE; }
 
       /**
-       * onAbortRequested() -- onAbortRequested method.
-       * 
-       * Will be called when XBMC requests Abort
+       * onDPMSDeactivated() -- onDPMSDeactivated method.\n
+       * \n
+       * Will be called when energysaving/DPMS is turned off\n
        */
-      virtual void    onAbortRequested() { TRACE; }
+      virtual void    onDPMSDeactivated() { XBMC_TRACE; }
+
+      /**
+       * onScanStarted(library) -- onScanStarted method.\n
+       *\n
+       * library : video/music as string\n
+       *\n
+       * Will be called when library scan has started and return video or music to indicate which library is being scanned\n
+       */
+      virtual void    onScanStarted(const String library) { XBMC_TRACE; }
+
+      /**
+       * onScanFinished(library) -- onScanFinished method.\n
+       * \n
+       * library : video/music as string\n
+       * \n
+       * Will be called when library scan has ended and return video or music to indicate which library has been scanned\n
+       */
+      virtual void    onScanFinished(const String library) { XBMC_TRACE; }
+
+      /**
+       * onDatabaseScanStarted(database) -- Deprecated, use onScanStarted().
+       */
+      virtual void    onDatabaseScanStarted(const String database) { XBMC_TRACE; }
+
+      /**
+       * onDatabaseUpdated(database) -- Deprecated, use onScanFinished().
+       */
+      virtual void    onDatabaseUpdated(const String database) { XBMC_TRACE; }
+
+      /**
+       * onCleanStarted(library) -- onCleanStarted method.\n
+       * \n
+       * library : video/music as string\n
+       * \n
+       * Will be called when library clean has started and return video or music to indicate which library is being cleaned\n
+       */
+      virtual void    onCleanStarted(const String library) { XBMC_TRACE; }
+
+      /**
+       * onCleanFinished(library) -- onCleanFinished method.\n
+       * \n
+       * library : video/music as string\n
+       * \n
+       * Will be called when library clean has ended and return video or music to indicate which library has been cleaned\n
+       */
+      virtual void    onCleanFinished(const String library) { XBMC_TRACE; }
+
+      /**
+       * onAbortRequested() -- Deprecated, use waitForAbort() to be notified about this event.\n
+       */
+      virtual void    onAbortRequested() { XBMC_TRACE; }
+
+      /**
+       * onNotification(sender, method, data) -- onNotification method.\n
+       *\n
+       * sender : sender of the notification\n
+       * method : name of the notification\n
+       * data   : JSON-encoded data of the notification\n
+       *\n
+       * Will be called when XBMC receives or sends a notification\n
+       */
+      virtual void    onNotification(const String sender, const String method, const String data) { XBMC_TRACE; }
+
+      /**
+       * waitForAbort([timeout]) -- Block until abort is requested, or until timeout occurs. If an
+       *                            abort requested have already been made, return immediately.
+       *
+       * Returns True when abort have been requested, False if a timeout is given and the operation times out.
+       *
+       * timeout : [opt] float - timeout in seconds. Default: no timeout.\n
+       */
+      bool waitForAbort(double timeout = -1);
+
+      /**
+       * abortRequested() -- Returns True if abort has been requested.
+       */
+      bool abortRequested();
 
       virtual ~Monitor();
-
-      inline const String& GetId() { return Id; }
     };
   }
 };

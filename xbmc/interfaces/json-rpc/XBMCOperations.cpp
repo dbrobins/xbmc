@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,54 +26,54 @@
 
 using namespace JSONRPC;
 
-JSONRPC_STATUS CXBMCOperations::GetInfoLabels(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+JSONRPC_STATUS CXBMCOperations::GetInfoLabels(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
-  std::vector<CStdString> info;
+  std::vector<std::string> info;
 
   for (unsigned int i = 0; i < parameterObject["labels"].size(); i++)
   {
-   CStdString field = parameterObject["labels"][i].asString();
-    field = field.ToLower();
+    std::string field = parameterObject["labels"][i].asString();
+    StringUtils::ToLower(field);
 
     info.push_back(parameterObject["labels"][i].asString());
   }
 
   if (info.size() > 0)
   {
-    std::vector<CStdString> infoLabels = CApplicationMessenger::Get().GetInfoLabels(info);
+    std::vector<std::string> infoLabels = CApplicationMessenger::Get().GetInfoLabels(info);
     for (unsigned int i = 0; i < info.size(); i++)
     {
       if (i >= infoLabels.size())
         break;
-      result[info[i].c_str()] = infoLabels[i];
+      result[info[i]] = infoLabels[i];
     }
   }
 
   return OK;
 }
 
-JSONRPC_STATUS CXBMCOperations::GetInfoBooleans(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+JSONRPC_STATUS CXBMCOperations::GetInfoBooleans(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
-  std::vector<CStdString> info;
+  std::vector<std::string> info;
 
   bool CanControlPower = (client->GetPermissionFlags() & ControlPower) > 0;
 
   for (unsigned int i = 0; i < parameterObject["booleans"].size(); i++)
   {
-    CStdString field = parameterObject["booleans"][i].asString();
-    field = field.ToLower();
+    std::string field = parameterObject["booleans"][i].asString();
+    StringUtils::ToLower(field);
 
     // Need to override power management of whats in infomanager since jsonrpc
     // have a security layer aswell.
-    if (field.Equals("system.canshutdown"))
+    if (field == "system.canshutdown")
       result[parameterObject["booleans"][i].asString()] = (g_powerManager.CanPowerdown() && CanControlPower);
-    else if (field.Equals("system.canpowerdown"))
+    else if (field == "system.canpowerdown")
       result[parameterObject["booleans"][i].asString()] = (g_powerManager.CanPowerdown() && CanControlPower);
-    else if (field.Equals("system.cansuspend"))
+    else if (field == "system.cansuspend")
       result[parameterObject["booleans"][i].asString()] = (g_powerManager.CanSuspend() && CanControlPower);
-    else if (field.Equals("system.canhibernate"))
+    else if (field == "system.canhibernate")
       result[parameterObject["booleans"][i].asString()] = (g_powerManager.CanHibernate() && CanControlPower);
-    else if (field.Equals("system.canreboot"))
+    else if (field == "system.canreboot")
       result[parameterObject["booleans"][i].asString()] = (g_powerManager.CanReboot() && CanControlPower);
     else
       info.push_back(parameterObject["booleans"][i].asString());

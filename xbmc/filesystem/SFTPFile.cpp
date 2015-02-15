@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
  *
  */
 
-
 #include "threads/SystemClock.h"
 #include "SFTPFile.h"
 #ifdef HAS_FILESYSTEM_SFTP
@@ -31,11 +30,17 @@
 #include <fcntl.h>
 #include <sstream>
 
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
 #pragma comment(lib, "ssh.lib")
 #endif
 
-#ifdef _MSC_VER
+#ifndef S_ISDIR
+#define S_ISDIR(m) ((m & _S_IFDIR) != 0)
+#endif
+#ifndef S_ISREG
+#define S_ISREG(m) ((m & _S_IFREG) != 0)
+#endif
+#ifndef O_RDONLY
 #define O_RDONLY _O_RDONLY
 #endif
 
@@ -43,15 +48,57 @@ using namespace XFILE;
 using namespace std;
 
 
-static CStdString CorrectPath(const CStdString path)
+static std::string CorrectPath(const std::string& path)
 {
-  if(path == "~" || path.Left(2) == "~/")
-    return "./" + path.Mid(2);
+  if (path == "~")
+    return "./";
+  else if (path.substr(0, 2) == "~/")
+    return "./" + path.substr(2);
   else
     return "/" + path;
 }
 
-CSFTPSession::CSFTPSession(const CStdString &host, unsigned int port, const CStdString &username, const CStdString &password)
+static const char * SFTPErrorText(int sftp_error)
+{
+  switch(sftp_error)
+  {
+    case SSH_FX_OK:
+      return "No error";
+    case SSH_FX_EOF:
+      return "End-of-file encountered";
+    case SSH_FX_NO_SUCH_FILE:
+      return "File doesn't exist";
+    case SSH_FX_PERMISSION_DENIED:
+      return "Permission denied";
+    case SSH_FX_BAD_MESSAGE:
+      return "Garbage received from server";
+    case SSH_FX_NO_CONNECTION:
+      return "No connection has been set up";
+    case SSH_FX_CONNECTION_LOST:
+      return "There was a connection, but we lost it";
+    case SSH_FX_OP_UNSUPPORTED:
+      return "Operation not supported by the server";
+    case SSH_FX_INVALID_HANDLE:
+      return "Invalid file handle";
+    case SSH_FX_NO_SUCH_PATH:
+      return "No such file or directory path exists";
+    case SSH_FX_FILE_ALREADY_EXISTS:
+      return "An attempt to create an already existing file or directory has been made";
+    case SSH_FX_WRITE_PROTECT:
+      return "We are trying to write on a write-protected filesystem";
+    case SSH_FX_NO_MEDIA:
+      return "No media in remote drive";
+    case -1:
+      return "Not a valid error code, probably called on an invalid session";
+    default:
+      CLog::Log(LOGERROR, "SFTPErrorText: Unknown error code: %d", sftp_error);
+  }
+  return "Unknown error code";
+}
+
+
+
+CSFTPSession::CSFTPSession(const std::string &host, unsigned int port, const std::string &username, const std::string &password)
 {
   CLog::Log(LOGINFO, "SFTPSession: Creating new session on host '%s:%d' with user '%s'", host.c_str(), port, username.c_str());
   CSingleLock lock(m_critSect);
@@ -67,7 +114,7 @@ CSFTPSession::~CSFTPSession()
   Disconnect();
 }
 
-sftp_file CSFTPSession::CreateFileHande(const CStdString &file)
+sftp_file CSFTPSession::CreateFileHande(const std::string &file)
 {
   if (m_connected)
   {
@@ -80,10 +127,10 @@ sftp_file CSFTPSession::CreateFileHande(const CStdString &file)
       return handle;
     }
     else
-      CLog::Log(LOGERROR, "SFTPSession: Was connected but couldn't create filehandle\n");
+      CLog::Log(LOGERROR, "SFTPSession: Was connected but couldn't create filehandle for '%s'", file.c_str());
   }
   else
-    CLog::Log(LOGERROR, "SFTPSession: Not connected and can't create file handle");
+    CLog::Log(LOGERROR, "SFTPSession: Not connected and can't create file handle for '%s'", file.c_str());
 
   return NULL;
 }
@@ -94,8 +141,9 @@ void CSFTPSession::CloseFileHandle(sftp_file handle)
   sftp_close(handle);
 }
 
-bool CSFTPSession::GetDirectory(const CStdString &base, const CStdString &folder, CFileItemList &items)
+bool CSFTPSession::GetDirectory(const std::string &base, const std::string &folder, CFileItemList &items)
 {
+  int sftp_error = SSH_FX_OK;
   if (m_connected)
   {
     sftp_dir dir = NULL;
@@ -104,9 +152,17 @@ bool CSFTPSession::GetDirectory(const CStdString &base, const CStdString &folder
       CSingleLock lock(m_critSect);
       m_LastActive = XbmcThreads::SystemClockMillis();
       dir = sftp_opendir(m_sftp_session, CorrectPath(folder).c_str());
+
+      //Doing as little work as possible within the critical section
+      if (!dir)
+        sftp_error = sftp_get_error(m_sftp_session);
     }
 
-    if (dir)
+    if (!dir)
+    {
+      CLog::Log(LOGERROR, "%s: %s for '%s'", __FUNCTION__, SFTPErrorText(sftp_error), folder.c_str());
+    }
+    else
     {
       bool read = true;
       while (read)
@@ -128,8 +184,8 @@ bool CSFTPSession::GetDirectory(const CStdString &base, const CStdString &folder
         
         if (attributes)
         {
-          CStdString itemName = attributes->name;
-          CStdString localPath = folder;
+          std::string itemName = attributes->name;
+          std::string localPath = folder;
           localPath.append(itemName);
 
           if (attributes->type == SSH_FILEXFER_TYPE_SYMLINK)
@@ -182,24 +238,23 @@ bool CSFTPSession::GetDirectory(const CStdString &base, const CStdString &folder
     }
   }
   else
-    CLog::Log(LOGERROR, "SFTPSession: Not connected, can't list directory");
+    CLog::Log(LOGERROR, "SFTPSession: Not connected, can't list directory '%s'", folder.c_str());
 
   return false;
 }
 
-bool CSFTPSession::Exists(const char *path)
+bool CSFTPSession::DirectoryExists(const char *path)
 {
-  bool exists = false;
-  CSingleLock lock(m_critSect);
-  if(m_connected)
-  {
-    sftp_attributes attributes = sftp_stat(m_sftp_session, CorrectPath(path).c_str());
-    exists = attributes != NULL;
+  uint32_t permissions = 0;
+  bool exists = GetItemPermissions(path, permissions);
+  return exists && S_ISDIR(permissions);
+}
 
-    if (attributes)
-      sftp_attributes_free(attributes);
-  }
-  return exists;
+bool CSFTPSession::FileExists(const char *path)
+{
+  uint32_t permissions = 0;
+  bool exists = GetItemPermissions(path, permissions);
+  return exists && S_ISREG(permissions);
 }
 
 int CSFTPSession::Stat(const char *path, struct __stat64* buffer)
@@ -217,18 +272,23 @@ int CSFTPSession::Stat(const char *path, struct __stat64* buffer)
       buffer->st_mtime = attributes->mtime;
       buffer->st_atime = attributes->atime;
 
+      if S_ISDIR(attributes->permissions)
+        buffer->st_mode = _S_IFDIR;
+      else if S_ISREG(attributes->permissions)
+        buffer->st_mode = _S_IFREG;
+
       sftp_attributes_free(attributes);
       return 0;
     }
     else
     {
-      CLog::Log(LOGERROR, "SFTPSession: STAT - Failed to get attributes");
+      CLog::Log(LOGERROR, "SFTPSession::Stat - Failed to get attributes for '%s'", path);
       return -1;
     }
   }
   else
   {
-    CLog::Log(LOGERROR, "SFTPSession: STAT - Not connected");
+    CLog::Log(LOGERROR, "SFTPSession::Stat - Failed because not connected for '%s'", path);
     return -1;
   }
 }
@@ -290,7 +350,7 @@ bool CSFTPSession::VerifyKnownHost(ssh_session session)
   return false;
 }
 
-bool CSFTPSession::Connect(const CStdString &host, unsigned int port, const CStdString &username, const CStdString &password)
+bool CSFTPSession::Connect(const std::string &host, unsigned int port, const std::string &username, const std::string &password)
 {
   int timeout     = SFTP_TIMEOUT;
   m_connected     = false;
@@ -300,7 +360,7 @@ bool CSFTPSession::Connect(const CStdString &host, unsigned int port, const CStd
   m_session=ssh_new();
   if (m_session == NULL)
   {
-    CLog::Log(LOGERROR, "SFTPSession: Failed to initialize session");
+    CLog::Log(LOGERROR, "SFTPSession: Failed to initialize session for host '%s'", host.c_str());
     return false;
   }
 
@@ -360,7 +420,10 @@ bool CSFTPSession::Connect(const CStdString &host, unsigned int port, const CStd
   }
 
   if (!VerifyKnownHost(m_session))
+  {
+    CLog::Log(LOGERROR, "SFTPSession: Host is not known '%s'", ssh_get_error(m_session));
     return false;
+  }
 
 
   int noAuth = SSH_AUTH_DENIED;
@@ -370,11 +433,19 @@ bool CSFTPSession::Connect(const CStdString &host, unsigned int port, const CStd
     return false;
   }
 
+#if LIBSSH_VERSION_MINOR >= 6
+  int method = ssh_userauth_list(m_session, NULL);
+#else
   int method = ssh_auth_list(m_session);
+#endif
 
   // Try to authenticate with public key first
   int publicKeyAuth = SSH_AUTH_DENIED;
+#if LIBSSH_VERSION_MINOR >= 6
+  if (method & SSH_AUTH_METHOD_PUBLICKEY && (publicKeyAuth = ssh_userauth_publickey_auto(m_session, NULL, NULL)) == SSH_AUTH_ERROR)
+#else
   if (method & SSH_AUTH_METHOD_PUBLICKEY && (publicKeyAuth = ssh_userauth_autopubkey(m_session, NULL)) == SSH_AUTH_ERROR)
+#endif
   {
     CLog::Log(LOGERROR, "SFTPSession: Failed to authenticate via publickey '%s'", ssh_get_error(m_session));
     return false;
@@ -382,10 +453,18 @@ bool CSFTPSession::Connect(const CStdString &host, unsigned int port, const CStd
 
   // Try to authenticate with password
   int passwordAuth = SSH_AUTH_DENIED;
-  if (method & SSH_AUTH_METHOD_PASSWORD && publicKeyAuth != SSH_AUTH_SUCCESS && (passwordAuth = ssh_userauth_password(m_session, username.c_str(), password.c_str())) == SSH_AUTH_ERROR)
+  if (method & SSH_AUTH_METHOD_PASSWORD)
   {
-    CLog::Log(LOGERROR, "SFTPSession: Failed to authenticate via password '%s'", ssh_get_error(m_session));
-    return false;
+    if (publicKeyAuth != SSH_AUTH_SUCCESS &&
+        (passwordAuth = ssh_userauth_password(m_session, username.c_str(), password.c_str())) == SSH_AUTH_ERROR)
+      {
+        CLog::Log(LOGERROR, "SFTPSession: Failed to authenticate via password '%s'", ssh_get_error(m_session));
+        return false;
+      }
+  }
+  else if (!password.empty())
+  {
+    CLog::Log(LOGERROR, "SFTPSession: Password present, but server does not support password authentication");
   }
 
   if (noAuth == SSH_AUTH_SUCCESS || publicKeyAuth == SSH_AUTH_SUCCESS || passwordAuth == SSH_AUTH_SUCCESS)
@@ -406,6 +485,10 @@ bool CSFTPSession::Connect(const CStdString &host, unsigned int port, const CStd
 
     m_connected = true;
   }
+  else
+  {
+    CLog::Log(LOGERROR, "SFTPSession: No authentication method successful");
+  }
 
   return m_connected;
 }
@@ -422,8 +505,35 @@ void CSFTPSession::Disconnect()
   m_session = NULL;
 }
 
+/*!
+ \brief Gets POSIX compatible permissions information about the specified file or directory.
+ \param path Remote SSH path to the file or directory.
+ \param permissions POSIX compatible permissions information for the file or directory (if it exists). i.e. can use macros S_ISDIR() etc.
+ \return Returns \e true, if it was possible to get permissions for the file or directory, \e false otherwise.
+ */
+bool CSFTPSession::GetItemPermissions(const char *path, uint32_t &permissions)
+{
+  bool gotPermissions = false;
+  CSingleLock lock(m_critSect);
+  if(m_connected)
+  {
+    sftp_attributes attributes = sftp_stat(m_sftp_session, CorrectPath(path).c_str());
+    if (attributes)
+    {
+      if (attributes->flags & SSH_FILEXFER_ATTR_PERMISSIONS)
+      {
+        permissions = attributes->permissions;
+        gotPermissions = true;
+      }
+
+      sftp_attributes_free(attributes);
+    }
+  }
+  return gotPermissions;
+}
+
 CCriticalSection CSFTPSessionManager::m_critSect;
-map<CStdString, CSFTPSessionPtr> CSFTPSessionManager::sessions;
+map<std::string, CSFTPSessionPtr> CSFTPSessionManager::sessions;
 
 CSFTPSessionPtr CSFTPSessionManager::CreateSession(const CURL &url)
 {
@@ -435,15 +545,15 @@ CSFTPSessionPtr CSFTPSessionManager::CreateSession(const CURL &url)
   return CSFTPSessionManager::CreateSession(hostname, port, username, password);
 }
 
-CSFTPSessionPtr CSFTPSessionManager::CreateSession(const CStdString &host, unsigned int port, const CStdString &username, const CStdString &password)
+CSFTPSessionPtr CSFTPSessionManager::CreateSession(const std::string &host, unsigned int port, const std::string &username, const std::string &password)
 {
   // Convert port number to string
   stringstream itoa;
   itoa << port;
-  CStdString portstr = itoa.str();
+  std::string portstr = itoa.str();
 
   CSingleLock lock(m_critSect);
-  CStdString key = username + ":" + password + "@" + host + ":" + portstr;
+  std::string key = username + ':' + password + '@' + host + ':' + portstr;
   CSFTPSessionPtr ptr = sessions[key];
   if (ptr == NULL)
   {
@@ -457,12 +567,12 @@ CSFTPSessionPtr CSFTPSessionManager::CreateSession(const CStdString &host, unsig
 void CSFTPSessionManager::ClearOutIdleSessions()
 {
   CSingleLock lock(m_critSect);
-  for(map<CStdString, CSFTPSessionPtr>::iterator iter = sessions.begin(); iter != sessions.end();)
+  for(map<std::string, CSFTPSessionPtr>::iterator iter = sessions.begin(); iter != sessions.end();)
   {
     if (iter->second->IsIdle())
       sessions.erase(iter++);
     else
-      iter++;
+      ++iter;
   }
 }
 
@@ -533,10 +643,13 @@ int64_t CSFTPFile::Seek(int64_t iFilePosition, int iWhence)
   }
 }
 
-unsigned int CSFTPFile::Read(void* lpBuf, int64_t uiBufSize)
+ssize_t CSFTPFile::Read(void* lpBuf, size_t uiBufSize)
 {
   if (m_session && m_sftp_handle)
   {
+    if (uiBufSize > SSIZE_MAX)
+      uiBufSize = SSIZE_MAX;
+
     int rc = m_session->Read(m_sftp_handle, lpBuf, (size_t)uiBufSize);
 
     if (rc >= 0)
@@ -554,10 +667,10 @@ bool CSFTPFile::Exists(const CURL& url)
 {
   CSFTPSessionPtr session = CSFTPSessionManager::CreateSession(url);
   if (session)
-    return session->Exists(url.GetFileName().c_str());
+    return session->FileExists(url.GetFileName().c_str());
   else
   {
-    CLog::Log(LOGERROR, "SFTPFile: Failed to create session to check exists");
+    CLog::Log(LOGERROR, "SFTPFile: Failed to create session to check exists for '%s'", url.GetFileName().c_str());
     return false;
   }
 }
@@ -569,7 +682,7 @@ int CSFTPFile::Stat(const CURL& url, struct __stat64* buffer)
     return session->Stat(url.GetFileName().c_str(), buffer);
   else
   {
-    CLog::Log(LOGERROR, "SFTPFile: Failed to create session to stat");
+    CLog::Log(LOGERROR, "SFTPFile: Failed to create session to stat for '%s'", url.GetFileName().c_str());
     return -1;
   }
 }
@@ -579,7 +692,7 @@ int CSFTPFile::Stat(struct __stat64* buffer)
   if (m_session)
     return m_session->Stat(m_file.c_str(), buffer);
 
-  CLog::Log(LOGERROR, "SFTPFile: Can't stat without a session");
+  CLog::Log(LOGERROR, "SFTPFile: Can't stat without a session for '%s'", m_file.c_str());
   return -1;
 }
 
@@ -600,7 +713,7 @@ int64_t CSFTPFile::GetPosition()
   if (m_session && m_sftp_handle)
     return m_session->GetPosition(m_sftp_handle);
 
-  CLog::Log(LOGERROR, "SFTPFile: Can't get position without a filehandle");
+  CLog::Log(LOGERROR, "SFTPFile: Can't get position without a filehandle for '%s'", m_file.c_str());
   return 0;
 }
 

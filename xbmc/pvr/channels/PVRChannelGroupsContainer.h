@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -124,14 +124,14 @@ namespace PVR
      * @param bRadio Get radio channels or tv channels.
      * @return True if the list was filled succesfully.
      */
-    bool GetGroupsDirectory(CFileItemList *results, bool bRadio);
+    bool GetGroupsDirectory(CFileItemList *results, bool bRadio) const;
 
     /*!
      * @brief Get a channel given it's path.
      * @param strPath The path.
      * @return The channel or NULL if it wasn't found.
      */
-    CFileItemPtr GetByPath(const CStdString &strPath) const;
+    CFileItemPtr GetByPath(const std::string &strPath) const;
 
     /*!
      * @brief Get the directory for a path.
@@ -139,13 +139,13 @@ namespace PVR
      * @param results The file list to store the results in.
      * @return True if the directory was found, false if not.
      */
-    bool GetDirectory(const CStdString& strPath, CFileItemList &results);
+    bool GetDirectory(const std::string& strPath, CFileItemList &results) const;
 
     /*!
      * @brief The total amount of unique channels in all containers.
      * @return The total amount of unique channels in all containers.
      */
-    int GetNumChannelsFromAll(void);
+    int GetNumChannelsFromAll(void) const;
 
     /*!
      * @brief Get the group that is currently selected in the UI.
@@ -156,23 +156,23 @@ namespace PVR
 
     /*!
      * @brief Get a channel given it's channel ID from all containers.
-     * @param iClientChannelNumber The channel number on the client.
+     * @param iUniqueChannelId The unique channel id on the client.
      * @param iClientID The ID of the client.
      * @return The channel or NULL if it wasn't found.
      */
-    CPVRChannelPtr GetByUniqueID(int iClientChannelNumber, int iClientID);
+    CPVRChannelPtr GetByUniqueID(int iUniqueChannelId, int iClientID) const;
 
     /*!
      * @brief Get a channel given it's channel ID from all containers.
      * @param iChannelID The channel ID.
      * @return The channel or NULL if it wasn't found.
      */
-    CFileItemPtr GetByChannelIDFromAll(int iChannelID);
+    CFileItemPtr GetByChannelIDFromAll(int iChannelID) const;
 
     /*!
      * @brief Try to find missing channel icons automatically
      */
-    void SearchMissingChannelIcons(void);
+    void SearchMissingChannelIcons(void) const;
 
     /*!
      * @brief The channel that was played last that has a valid client or NULL if there was none.
@@ -180,7 +180,30 @@ namespace PVR
      */
     CFileItemPtr GetLastPlayedChannel(void) const;
 
-    bool CreateChannel(const CPVRChannel &channel);
+    /*!
+     * @brief The group that was played last and optionally contains the given channel.
+     * @param iChannelID The channel ID
+     * @return The last watched group.
+     */
+    CPVRChannelGroupPtr GetLastPlayedGroup(int iChannelID = -1) const;
+
+    /*!
+     * @brief Create EPG tags for channels in all internal channel groups.
+     * @return True if EPG tags were created succesfully.
+     */
+    bool CreateChannelEpgs(void);
+
+    /*!
+     * @brief Return the group which was previous played.
+     * @return The group which was previous played.
+     */
+    CPVRChannelGroupPtr GetPreviousPlayedGroup(void);
+
+    /*!
+     * @brief Set the last played group.
+     * @param The last played group
+     */
+    void SetLastPlayedGroup(CPVRChannelGroupPtr group);
 
   protected:
     /*!
@@ -195,5 +218,10 @@ namespace PVR
     CCriticalSection   m_critSection;
     bool               m_bUpdateChannelsOnly;
     bool               m_bIsUpdating;
+    CPVRChannelGroupPtr m_lastPlayedGroups[2]; /*!< used to store the last played groups */
+
+  private :
+    CPVRChannelGroupsContainer& operator=(const CPVRChannelGroupsContainer&);
+    CPVRChannelGroupsContainer(const CPVRChannelGroupsContainer&);
   };
 }

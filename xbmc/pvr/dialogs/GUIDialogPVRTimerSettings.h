@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2014 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,42 +19,62 @@
  *
  */
 
+#include <map>
+
 #include "XBDateTime.h"
-#include "settings/GUIDialogSettings.h"
-#include "guilib/GUIListItem.h"
+#include "settings/dialogs/GUIDialogSettingsManualBase.h"
 
 class CFileItem;
+class CSetting;
+class CSettingGroup;
 
 namespace PVR
 {
   class CPVRTimerInfoTag;
 
-  class CGUIDialogPVRTimerSettings : public CGUIDialogSettings
+  class CGUIDialogPVRTimerSettings : public CGUIDialogSettingsManualBase
   {
   public:
-    CGUIDialogPVRTimerSettings(void);
-    virtual ~CGUIDialogPVRTimerSettings(void) {}
+    CGUIDialogPVRTimerSettings();
+    virtual ~CGUIDialogPVRTimerSettings() { }
+
     void SetTimer(CFileItem *item);
-    bool GetOK() { return !m_cancelled; }
 
   protected:
-    virtual void CreateSettings();
-    virtual void OnSettingChanged(SettingInfo &setting);
-    virtual void OnOkay();
-    virtual void OnCancel() { m_cancelled = true; }
-    virtual void AddChannelNames(CFileItemList &channelsList, SETTINGSTRINGS &channelNames, bool bRadio);
+    // implementations of ISettingCallback
+    virtual void OnSettingChanged(const CSetting *setting);
+    virtual void OnSettingAction(const CSetting *setting);
+
+    // specialization of CGUIDialogSettingsBase
+    virtual bool AllowResettingSettings() const { return false; }
+    virtual void Save();
+    virtual void SetupView();
+
+    // specialization of CGUIDialogSettingsManualBase
+    virtual void InitializeSettings();
+    
+    virtual CSetting* AddChannelNames(CSettingGroup *group, bool bRadio);
     virtual void SetWeekdaySettingFromTimer(const CPVRTimerInfoTag &timer);
     virtual void SetTimerFromWeekdaySetting(CPVRTimerInfoTag &timer);
 
-    SYSTEMTIME      timerStartTime;
-    SYSTEMTIME      timerEndTime;
-    CStdString      timerStartTimeStr;
-    CStdString      timerEndTimeStr;
-    int             m_tmp_iFirstDay;;
-    int             m_tmp_day;
-    bool            m_bTimerActive;
+    void getChannelNames(bool bRadio, std::vector< std::pair<std::string, int> > &list, int &current, bool updateChannelEntries = false);
+    void setButtonLabels();
 
-    CFileItem      *m_timerItem;
-    bool            m_cancelled;
+    static bool IsTimerDayRepeating(const std::string &condition, const std::string &value, const CSetting *setting);
+
+    static void ChannelNamesOptionsFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
+    static void DaysOptionsFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
+
+    SYSTEMTIME                          m_timerStartTime;
+    SYSTEMTIME                          m_timerEndTime;
+    std::string                         m_timerStartTimeStr;
+    std::string                         m_timerEndTimeStr;
+    int                                 m_tmp_iFirstDay;
+    int                                 m_tmp_day;
+    bool                                m_bTimerActive;
+    int                                 m_selectedChannelEntry;
+    std::map<std::pair<bool, int>, int> m_channelEntries;
+
+    CFileItem                          *m_timerItem;
   };
 }

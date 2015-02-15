@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2010 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,15 +24,22 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "../library.xbmc.addon/libXBMC_addon.h"
+#include "libXBMC_addon.h"
 
 typedef void* GUIHANDLE;
 
 #ifdef _WIN32
 #define GUI_HELPER_DLL "\\library.xbmc.gui\\libXBMC_gui" ADDON_HELPER_EXT
 #else
-#define GUI_HELPER_DLL "/library.xbmc.gui/libXBMC_gui-" ADDON_HELPER_ARCH ADDON_HELPER_EXT
+#define GUI_HELPER_DLL_NAME "libXBMC_gui-" ADDON_HELPER_ARCH ADDON_HELPER_EXT
+#define GUI_HELPER_DLL "/library.xbmc.gui/" GUI_HELPER_DLL_NAME
 #endif
+
+/* current ADDONGUI API version */
+#define XBMC_GUI_API_VERSION "5.7.0"
+
+/* min. ADDONGUI API version */
+#define XBMC_GUI_MIN_API_VERSION "5.3.0"
 
 #define ADDON_ACTION_PREVIOUS_MENU          10
 #define ADDON_ACTION_CLOSE_DIALOG           51
@@ -42,6 +49,7 @@ class CAddonGUISpinControl;
 class CAddonGUIRadioButton;
 class CAddonGUIProgressControl;
 class CAddonListItem;
+class CAddonGUIRenderingControl;
 
 class CHelper_libXBMC_gui
 {
@@ -68,6 +76,15 @@ public:
     std::string libBasePath;
     libBasePath  = ((cb_array*)m_Handle)->libPath;
     libBasePath += GUI_HELPER_DLL;
+
+#if defined(ANDROID)
+      struct stat st;
+      if(stat(libBasePath.c_str(),&st) != 0)
+      {
+        std::string tempbin = getenv("XBMC_ANDROID_LIBS");
+        libBasePath = tempbin + "/" + GUI_HELPER_DLL_NAME;
+      }
+#endif
 
     m_libXBMC_gui = dlopen(libBasePath.c_str(), RTLD_LAZY);
     if (m_libXBMC_gui == NULL)
@@ -143,6 +160,14 @@ public:
     GUI_ListItem_destroy = (void (*)(CAddonListItem* p))
       dlsym(m_libXBMC_gui, "GUI_ListItem_destroy");
     if (GUI_ListItem_destroy == NULL) { fprintf(stderr, "Unable to assign function %s\n", dlerror()); return false; }
+
+    GUI_control_get_rendering = (CAddonGUIRenderingControl* (*)(void *HANDLE, void *CB, CAddonGUIWindow *window, int controlId))
+      dlsym(m_libXBMC_gui, "GUI_control_get_rendering");
+    if (GUI_control_get_rendering == NULL) { fprintf(stderr, "Unable to assign function %s\n", dlerror()); return false; }
+
+    GUI_control_release_rendering = (void (*)(CAddonGUIRenderingControl* p))
+      dlsym(m_libXBMC_gui, "GUI_control_release_rendering");
+    if (GUI_control_release_rendering == NULL) { fprintf(stderr, "Unable to assign function %s\n", dlerror()); return false; }
 
 
     m_Callbacks = GUI_register_me(m_Handle);
@@ -224,6 +249,16 @@ public:
     return GUI_ListItem_destroy(p);
   }
 
+  CAddonGUIRenderingControl* Control_getRendering(CAddonGUIWindow *window, int controlId)
+  {
+    return GUI_control_get_rendering(m_Handle, m_Callbacks, window, controlId);
+  }
+
+  void Control_releaseRendering(CAddonGUIRenderingControl* p)
+  {
+    return GUI_control_release_rendering(p);
+  }
+
 protected:
   void* (*GUI_register_me)(void *HANDLE);
   void (*GUI_unregister_me)(void *HANDLE, void* CB);
@@ -242,6 +277,8 @@ protected:
   void (*GUI_control_release_progress)(CAddonGUIProgressControl* p);
   CAddonListItem* (*GUI_ListItem_create)(void *HANDLE, void* CB, const char *label, const char *label2, const char *iconImage, const char *thumbnailImage, const char *path);
   void (*GUI_ListItem_destroy)(CAddonListItem* p);
+  CAddonGUIRenderingControl* (*GUI_control_get_rendering)(void *HANDLE, void* CB, CAddonGUIWindow *window, int controlId);
+  void (*GUI_control_release_rendering)(CAddonGUIRenderingControl* p);
 
 private:
   void *m_libXBMC_gui;
@@ -345,6 +382,7 @@ class CAddonGUIWindow
 friend class CAddonGUISpinControl;
 friend class CAddonGUIRadioButton;
 friend class CAddonGUIProgressControl;
+friend class CAddonGUIRenderingControl;
 
 public:
   CAddonGUIWindow(void *hdl, void *cb, const char *xmlFilename, const char *defaultSkin, bool forceFallback, bool asDialog);
@@ -375,6 +413,7 @@ public:
   virtual void         SetCurrentListPosition(int listPos);
   virtual int          GetCurrentListPosition();
   virtual void         SetControlLabel(int controlId, const char *label);
+  virtual void         MarkDirtyRegion();
 
   virtual bool         OnClick(int controlId);
   virtual bool         OnFocus(int controlId);
@@ -389,6 +428,32 @@ public:
 
 protected:
   GUIHANDLE m_WindowHandle;
+  void *m_Handle;
+  void *m_cb;
+};
+
+class CAddonGUIRenderingControl
+{
+public:
+  CAddonGUIRenderingControl(void *hdl, void *cb, CAddonGUIWindow *window, int controlId);
+  virtual ~CAddonGUIRenderingControl();
+  virtual void Init();
+
+  virtual bool Create(int x, int y, int w, int h, void *device);
+  virtual void Render();
+  virtual void Stop();
+  virtual bool Dirty();
+
+  GUIHANDLE m_cbhdl;
+  bool (*CBCreate)(GUIHANDLE cbhdl, int x, int y, int w, int h, void *device);
+  void (*CBRender)(GUIHANDLE cbhdl);
+  void (*CBStop)(GUIHANDLE cbhdl);
+  bool (*CBDirty)(GUIHANDLE cbhdl);
+
+private:
+  CAddonGUIWindow *m_Window;
+  int         m_ControlId;
+  GUIHANDLE   m_RenderingHandle;
   void *m_Handle;
   void *m_cb;
 };

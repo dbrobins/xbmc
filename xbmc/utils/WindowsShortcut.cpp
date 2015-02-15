@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -42,6 +42,9 @@ static char THIS_FILE[] = __FILE__;
 
 #define VOLUME_LOCAL        1
 #define VOLUME_NETWORK      2
+
+using namespace std;
+
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -96,7 +99,7 @@ bool CWindowsShortcut::GetShortcut(const string& strFileName, string& strFileOrD
   strFileOrDir = "smb:";
   // share name
   iPos += dwOffsetNetworkVolumeInfo + 0x14;
-  while (byHeader[iPos] != 0 && iPos < iBytesRead)
+  while (iPos < iBytesRead && byHeader[iPos] != 0)
   {
     if (byHeader[iPos] == '\\') byHeader[iPos] = '/';
     strFileOrDir += (char)byHeader[iPos];
@@ -105,7 +108,7 @@ bool CWindowsShortcut::GetShortcut(const string& strFileName, string& strFileOrD
   iPos++;
   // file/folder name
   strFileOrDir += '/';
-  while (byHeader[iPos] != 0 && iPos < iBytesRead)
+  while (iPos < iBytesRead && byHeader[iPos] != 0)
   {
     if (byHeader[iPos] == '\\') byHeader[iPos] = '/';
     strFileOrDir += (char)byHeader[iPos];

@@ -6,8 +6,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,19 +25,18 @@
  *
  */
 
-#include "GUIControl.h"
+#include "IGUIContainer.h"
 #include "GUIListItemLayout.h"
-#include "boost/shared_ptr.hpp"
 #include "utils/Stopwatch.h"
-
-typedef boost::shared_ptr<CGUIListItem> CGUIListItemPtr;
 
 /*!
  \ingroup controls
  \brief
  */
 
-class CGUIBaseContainer : public CGUIControl
+class IListProvider;
+
+class CGUIBaseContainer : public IGUIContainer
 {
 public:
   CGUIBaseContainer(int parentID, int controlID, float posX, float posY, float width, float height, ORIENTATION orientation, const CScroller& scroller, int preloadItems);
@@ -63,7 +62,7 @@ public:
 
   void SetPageControl(int id);
 
-  virtual CStdString GetDescription() const;
+  virtual std::string GetDescription() const;
   virtual void SaveStates(std::vector<CControlState> &states);
   virtual int GetSelectedItem() const;
 
@@ -71,27 +70,28 @@ public:
   virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
 
   void LoadLayout(TiXmlElement *layout);
-  void LoadContent(TiXmlElement *content);
-  void SetDefaultControl(int id, bool always) { m_staticDefaultItem = id; m_staticDefaultAlways = always; };
+  void LoadListProvider(TiXmlElement *content, int defaultItem, bool defaultAlways);
 
-  VIEW_TYPE GetType() const { return m_type; };
-  const CStdString &GetLabel() const { return m_label; };
-  void SetType(VIEW_TYPE type, const CStdString &label);
-
-  virtual bool IsContainer() const { return true; };
-  CGUIListItemPtr GetListItem(int offset, unsigned int flag = 0) const;
+  virtual CGUIListItemPtr GetListItem(int offset, unsigned int flag = 0) const;
 
   virtual bool GetCondition(int condition, int data) const;
-  CStdString GetLabel(int info) const;
+  virtual std::string GetLabel(int info) const;
 
-  void SetStaticContent(const std::vector<CGUIListItemPtr> &items, bool forceUpdate = true);
-  
+  /*! \brief Set the list provider for this container (for python).
+   \param provider the list provider to use for this container.
+   */
+  void SetListProvider(IListProvider *provider);
+
   /*! \brief Set the offset of the first item in the container from the container's position
    Useful for lists/panels where the focused item may be larger than the non-focused items and thus
    normally cut off from the clipping window defined by the container's position + size.
    \param offset CPoint holding the offset in skin coordinates.
    */
   void SetRenderOffset(const CPoint &offset);
+
+  void SetAutoScrolling(const TiXmlNode *node);
+  void ResetAutoScrolling();
+  void UpdateAutoScrolling(unsigned int currentTime);
 
 #ifdef _DEBUG
   virtual void DumpTextureUse();
@@ -115,7 +115,6 @@ protected:
   virtual void UpdatePageControl(int offset);
   virtual void CalculateLayout();
   virtual void SelectItem(int item) {};
-  void SelectStaticItemById(int id);
   virtual bool SelectItemFromPoint(const CPoint &point) { return false; };
   virtual int GetCursorFromPoint(const CPoint &point, CPoint *itemPoint = NULL) const { return -1; };
   virtual void Reset();
@@ -123,7 +122,7 @@ protected:
   virtual int GetCurrentPage() const;
   bool InsideLayout(const CGUIListItemLayout *layout, const CPoint &point) const;
   virtual void OnFocus();
-  void UpdateStaticItems(bool refreshItems = false);
+  void UpdateListProvider(bool forceRefresh = false);
 
   int ScrollCorrectionRange() const;
   inline float Size() const;
@@ -158,21 +157,15 @@ protected:
 
   CScroller m_scroller;
 
-  VIEW_TYPE m_type;
-  CStdString m_label;
+  IListProvider *m_listProvider;
 
-  bool m_staticContent;
-  bool m_staticDefaultAlways;
-  int  m_staticDefaultItem;
-  unsigned int m_staticUpdateTime;
-  std::vector<CGUIListItemPtr> m_staticItems;
   bool m_wasReset;  // true if we've received a Reset message until we've rendered once.  Allows
                     // us to make sure we don't tell the infomanager that we've been moving when
                     // the "movement" was simply due to the list being repopulated (thus cursor position
                     // changing around)
 
   void UpdateScrollByLetter();
-  void GetCacheOffsets(int &cacheBefore, int &cacheAfter);
+  void GetCacheOffsets(int &cacheBefore, int &cacheAfter) const;
   int GetCacheCount() const { return m_cacheItems; };
   bool ScrollingDown() const { return m_scroller.IsScrollingDown(); };
   bool ScrollingUp() const { return m_scroller.IsScrollingUp(); };
@@ -180,7 +173,7 @@ protected:
   void OnPrevLetter();
   void OnJumpLetter(char letter, bool skip = false);
   void OnJumpSMS(int letter);
-  std::vector< std::pair<int, CStdString> > m_letterOffsets;
+  std::vector< std::pair<int, std::string> > m_letterOffsets;
 
   /*! \brief Set the cursor position
    Should be used by all base classes rather than directly setting it, as
@@ -194,7 +187,24 @@ protected:
    this also marks the control as dirty (if needed)
    */
   void SetOffset(int offset);
+  /*! \brief Returns the index of the first visible row
+   returns the first row. This may be outside of the range of available items. Use GetItemOffset() to retrieve the first visible item in the list.
+   \sa GetItemOffset
+  */
   inline int GetOffset() const { return m_offset; };
+  /*! \brief Returns the index of the first visible item
+   returns the first visible item. This will always be in the range of available items. Use GetOffset() to retrieve the first visible row in the list.
+   \sa GetOffset
+  */
+  inline int GetItemOffset() const { return CorrectOffset(GetOffset(), 0); }
+
+  // autoscrolling
+  INFO::InfoPtr m_autoScrollCondition;
+  int           m_autoScrollMoveTime;   // time between to moves
+  unsigned int  m_autoScrollDelayTime;  // current offset into the delay
+  bool          m_autoScrollIsReversed; // scroll backwards
+
+  unsigned int m_lastRenderTime;
 
 private:
   int m_cursor;
@@ -206,7 +216,7 @@ private:
 
   // letter match searching
   CStopWatch m_matchTimer;
-  CStdString m_match;
+  std::string m_match;
   float m_scrollItemsPerFrame;
 
   static const int letter_match_timeout = 1000;

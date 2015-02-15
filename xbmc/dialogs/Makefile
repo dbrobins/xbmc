@@ -9,6 +9,7 @@ SRCS=GUIDialogBoxBase.cpp \
      GUIDialogGamepad.cpp \
      GUIDialogKaiToast.cpp \
      GUIDialogKeyboardGeneric.cpp \
+     GUIDialogMediaFilter.cpp \
      GUIDialogMediaSource.cpp \
      GUIDialogMuteBug.cpp \
      GUIDialogNumeric.cpp \
@@ -18,6 +19,7 @@ SRCS=GUIDialogBoxBase.cpp \
      GUIDialogProgress.cpp \
      GUIDialogSeekBar.cpp \
      GUIDialogSelect.cpp \
+     GUIDialogSimpleMenu.cpp \
      GUIDialogSlider.cpp \
      GUIDialogSmartPlaylistEditor.cpp \
      GUIDialogSmartPlaylistRule.cpp \

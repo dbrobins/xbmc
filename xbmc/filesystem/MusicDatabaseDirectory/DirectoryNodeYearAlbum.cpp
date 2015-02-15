@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 using namespace XFILE::MUSICDATABASEDIRECTORY;
 
-CDirectoryNodeYearAlbum::CDirectoryNodeYearAlbum(const CStdString& strName, CDirectoryNode* pParent)
+CDirectoryNodeYearAlbum::CDirectoryNodeYearAlbum(const std::string& strName, CDirectoryNode* pParent)
   : CDirectoryNode(NODE_TYPE_YEAR_ALBUM, strName, pParent)
 {
 
@@ -38,7 +38,7 @@ NODE_TYPE CDirectoryNodeYearAlbum::GetChildType() const
   return NODE_TYPE_SONG;
 }
 
-CStdString CDirectoryNodeYearAlbum::GetLocalizedName() const
+std::string CDirectoryNodeYearAlbum::GetLocalizedName() const
 {
   if (GetID() == -1)
     return g_localizeStrings.Get(15102); // All Albums

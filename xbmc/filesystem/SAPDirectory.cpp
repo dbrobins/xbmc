@@ -1,21 +1,24 @@
 /*
-* SAP-Announcement Support for XBMC
-* Copyright (c) 2008 elupus (Joakim Plate)
-*
-* This program is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program; if not, write to the Free Software
-* Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-*/
+ *  SAP-Announcement Support for XBMC
+ *      Copyright (c) 2008 elupus (Joakim Plate)
+ *      Copyright (C) 2008-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 
 #include "threads/SystemClock.h"
 #include "system.h" // WIN32INCLUDES - not sure why this is needed
@@ -27,11 +30,12 @@
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
+#include "utils/StringUtils.h"
 #include "URL.h"
 #if defined(TARGET_DARWIN)
-#include "OSXGNUReplacements.h" // strnlen
+#include "osx/OSXGNUReplacements.h" // strnlen
 #endif
-#ifdef __FreeBSD__
+#ifdef TARGET_FREEBSD
 #include "freebsd/FreeBSDGNUReplacements.h"
 #endif
 
@@ -275,7 +279,7 @@ namespace SDP
 using namespace SDP;
 
 
-CSAPSessions::CSAPSessions() : CThread("CSAPSessions")
+CSAPSessions::CSAPSessions() : CThread("SAPSessions")
 {
   m_socket = INVALID_SOCKET;
 }
@@ -328,7 +332,7 @@ bool CSAPSessions::ParseAnnounce(char* data, int len)
   }
 
   // check if we can find this session in our cache
-  for(std::vector<CSession>::iterator it = m_sessions.begin(); it != m_sessions.end(); it++)
+  for(std::vector<CSession>::iterator it = m_sessions.begin(); it != m_sessions.end(); ++it)
   {
     if(it->origin         == header.origin
     && it->msgid          == header.msgid
@@ -360,10 +364,9 @@ bool CSAPSessions::ParseAnnounce(char* data, int len)
   }
 
   // add a new session to our buffer
-  CStdString path, user;
-  user = origin.username;
-  CURL::Encode(user);
-  path.Format("sap://%s/%s/0x%x.sdp", header.origin.c_str(), desc.origin.c_str(), header.msgid);
+  std::string user = origin.username;
+  user = CURL::Encode(user);
+  std::string path = StringUtils::Format("sap://%s/%s/0x%x.sdp", header.origin.c_str(), desc.origin.c_str(), header.msgid);
   CSession session;
   session.path           = path;
   session.origin         = header.origin;
@@ -389,7 +392,7 @@ void CSAPSessions::Process()
   if(m_socket == INVALID_SOCKET)
     return;
 
-#ifdef _MSC_VER
+#ifdef TARGET_WINDOWS
   unsigned long nonblocking = 1;
   ioctlsocket(m_socket, FIONBIO, &nonblocking);
 #else
@@ -482,9 +485,9 @@ namespace XFILE
   {
   }
 
-  bool CSAPDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
+  bool CSAPDirectory::GetDirectory(const CURL& url, CFileItemList &items)
   {
-    if(strPath != "sap://")
+    if(!url.IsProtocol("sap"))
       return false;
 
     CSingleLock lock(g_sapsessions.m_section);
@@ -493,7 +496,7 @@ namespace XFILE
       g_sapsessions.Create();
 
     // check if we can find this session in our cache
-    for(std::vector<CSAPSessions::CSession>::iterator it = g_sapsessions.m_sessions.begin(); it != g_sapsessions.m_sessions.end(); it++)
+    for(std::vector<CSAPSessions::CSession>::iterator it = g_sapsessions.m_sessions.begin(); it != g_sapsessions.m_sessions.end(); ++it)
     {
 
       if(it->payload_type != "application/sdp")

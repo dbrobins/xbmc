@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
  *
  */
 
+#include <cstdlib>
 
 #include "MusicInfoTagLoaderSPC.h"
 #include "snesapu/Types.h"
@@ -40,27 +41,47 @@ SPC_ID666 *SPC_get_id666FP (CFile& file)
 
   file.Seek(0x23,SEEK_SET);
   char c;
-  file.Read(&c,1);
-  if (c == 27) {
+  if (file.Read(&c,1) != 1 || c == 27) 
+  {
       free(id);
       return NULL;
   }
 
   file.Seek(0x2E,SEEK_SET);
-  file.Read(id->songname,32);
+  if (file.Read(id->songname, 32) != 32)
+  {
+    free(id);
+    return NULL;
+  }
   id->songname[32] = '\0';
 
-  file.Read(id->gametitle,32);
+  if (file.Read(id->gametitle, 32) != 32)
+  {
+    free(id);
+    return NULL;
+  }
   id->gametitle[32] = '\0';
 
-  file.Read(id->dumper,16);
+  if (file.Read(id->dumper, 16) != 16)
+  {
+    free(id);
+    return NULL;
+  }
   id->dumper[16] = '\0';
 
-  file.Read(id->comments,32);
+  if (file.Read(id->comments, 32) != 32)
+  {
+    free(id);
+    return NULL;
+  }
   id->comments[32] = '\0';
 
   file.Seek(0xA9,SEEK_SET);
-  file.Read(playtime_str,3);
+  if (file.Read(playtime_str, 3) != 3)
+  {
+    free(id);
+    return NULL;
+  }
   playtime_str[3] = '\0';
   id->playtime = atoi((char*)playtime_str);
 
@@ -80,7 +101,11 @@ SPC_ID666 *SPC_get_id666FP (CFile& file)
   }
 
   file.Seek(0xB0,SEEK_SET);
-  file.Read(id->author,32);
+  if (file.Read(id->author, 32) != 32)
+  {
+    free(id);
+    return NULL;
+  }
   id->author[32] = '\0';
 
   return id;
@@ -94,7 +119,7 @@ CMusicInfoTagLoaderSPC::~CMusicInfoTagLoaderSPC()
 {
 }
 
-bool CMusicInfoTagLoaderSPC::Load(const CStdString& strFileName, CMusicInfoTag& tag, EmbeddedArt *art)
+bool CMusicInfoTagLoaderSPC::Load(const std::string& strFileName, CMusicInfoTag& tag, EmbeddedArt *art)
 {
   tag.SetLoaded(false);
 

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 #include "utils/log.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
 
-#if defined(WIN32)
+#if defined(TARGET_WINDOWS)
 #include <mmreg.h>
 #include <ks.h>
 #include <ksmedia.h>
@@ -53,7 +53,7 @@ WAVCodec::WAVCodec()
   m_iDataLen = 0;
   m_ChannelMask = 0;
   m_Bitrate = 0;
-  m_CodecName = "WAV";
+  m_CodecName = "wav";
 }
 
 WAVCodec::~WAVCodec()
@@ -61,7 +61,7 @@ WAVCodec::~WAVCodec()
   DeInit();
 }
 
-bool WAVCodec::Init(const CStdString &strFile, unsigned int filecache)
+bool WAVCodec::Init(const std::string &strFile, unsigned int filecache)
 {
   m_file.Close();
   if (!m_file.Open(strFile, READ_CACHED))
@@ -189,7 +189,7 @@ bool WAVCodec::Init(const CStdString &strFile, unsigned int filecache)
       // sanity check on the data length
       if (m_iDataLen > length - m_iDataStart)
       {
-        CLog::Log(LOGWARNING, "WAVCodec::Init - Wave has corrupt data length of %i when it can't be longer then %"PRId64"", m_iDataLen, length - m_iDataStart);
+        CLog::Log(LOGWARNING, "WAVCodec::Init - Wave has corrupt data length of %i when it can't be longer then %" PRId64"", m_iDataLen, length - m_iDataStart);
         m_iDataLen = (long)(length - m_iDataStart);
       }
 

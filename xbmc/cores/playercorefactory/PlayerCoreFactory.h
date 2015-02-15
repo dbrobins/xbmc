@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,14 +20,22 @@
  *
  */
 
-#include "../IPlayer.h"
+#include <vector>
+
+#include "system.h"
+#include "cores/IPlayerCallback.h"
+#include "settings/lib/ISettingsHandler.h"
+#include "threads/CriticalSection.h"
+#include <string>
 
 /*----------------------------------------------------------------------
 |   forward references
 +---------------------------------------------------------------------*/
 class TiXmlElement;
+class CFileItem;
 class CPlayerCoreConfig;
 class CPlayerSelectionRule;
+class IPlayer;
 
 // do not remove mplayer - will break scripts
 enum EPLAYERCORES
@@ -36,13 +44,8 @@ enum EPLAYERCORES
   EPC_DVDPLAYER,
   EPC_MPLAYER,
   EPC_PAPLAYER,
-#if defined(HAS_AMLPLAYER)
-  EPC_AMLPLAYER,
-#endif
-#if defined(HAS_OMXPLAYER)
-  EPC_OMXPLAYER,
-#endif
-  EPC_EXTPLAYER
+  EPC_EXTPLAYER,
+  EPC_UPNPPLAYER,
 };
 
 typedef unsigned int PLAYERCOREID;
@@ -51,38 +54,45 @@ const PLAYERCOREID PCID_NONE = EPC_NONE;
 const PLAYERCOREID PCID_DVDPLAYER = EPC_DVDPLAYER;
 const PLAYERCOREID PCID_MPLAYER = EPC_MPLAYER;
 const PLAYERCOREID PCID_PAPLAYER = EPC_PAPLAYER;
-#if defined(HAS_AMLPLAYER)
-const PLAYERCOREID PCID_AMLPLAYER = EPC_AMLPLAYER;
-#endif
-#if defined(HAS_OMXPLAYER)
-const PLAYERCOREID PCID_OMXPLAYER = EPC_OMXPLAYER;
-#endif
 
-class CPlayerCoreFactory
+class CPlayerCoreFactory : public ISettingsHandler
 {
 public:
+  static CPlayerCoreFactory& Get();
+
+  virtual void OnSettingsLoaded();
+
+  PLAYERCOREID GetPlayerCore(const std::string& strCoreName) const;
+  CPlayerCoreConfig* GetPlayerConfig(const std::string& strCoreName) const;
+  CPlayerCoreConfig* GetPlayerConfig(const PLAYERCOREID eCore) const;
+  std::string GetPlayerName(const PLAYERCOREID eCore) const;
+
+  IPlayer* CreatePlayer(const PLAYERCOREID eCore, IPlayerCallback& callback) const;
+  IPlayer* CreatePlayer(const std::string& strCore, IPlayerCallback& callback) const;
+  void GetPlayers( const CFileItem& item, VECPLAYERCORES &vecCores) const;   //Players supporting the specified file
+  void GetPlayers( VECPLAYERCORES &vecCores, bool audio, bool video ) const; //All audio players and/or video players
+  void GetPlayers( VECPLAYERCORES &vecCores ) const;                         //All players
+
+  void GetRemotePlayers( VECPLAYERCORES &vecCores ) const;                   //All remote players we can attach to
+
+  PLAYERCOREID GetDefaultPlayer( const CFileItem& item ) const;
+
+  PLAYERCOREID SelectPlayerDialog(const VECPLAYERCORES &vecCores, float posX = 0, float posY = 0) const;
+  PLAYERCOREID SelectPlayerDialog(float posX, float posY) const;
+
+  void OnPlayerDiscovered(const std::string& id, const std::string& name, EPLAYERCORES core);
+  void OnPlayerRemoved(const std::string& id);
+
+protected:
   CPlayerCoreFactory();
+  CPlayerCoreFactory(const CPlayerCoreFactory&);
+  CPlayerCoreFactory& operator=(CPlayerCoreFactory const&);
   virtual ~CPlayerCoreFactory();
 
-  IPlayer* CreatePlayer(const CStdString& strCore, IPlayerCallback& callback) const;
-
-  static PLAYERCOREID GetPlayerCore(const CStdString& strCoreName);
-  static CPlayerCoreConfig* GetPlayerConfig(const CStdString& strCoreName);
-  static CStdString GetPlayerName(const PLAYERCOREID eCore);
-
-  static IPlayer* CreatePlayer(const PLAYERCOREID eCore, IPlayerCallback& callback);
-  static void GetPlayers( const CFileItem& item, VECPLAYERCORES &vecCores);   //Players supporting the specified file
-  static void GetPlayers( VECPLAYERCORES &vecCores, bool audio, bool video ); //All audio players and/or video players
-  static void GetPlayers( VECPLAYERCORES &vecCores );                         //All players
-
-  static PLAYERCOREID GetDefaultPlayer( const CFileItem& item );
-
-  static PLAYERCOREID SelectPlayerDialog(VECPLAYERCORES &vecCores, float posX = 0, float posY = 0);
-  static PLAYERCOREID SelectPlayerDialog(float posX, float posY);
-
-  static bool LoadConfiguration(TiXmlElement* pConfig, bool clear);
-
 private:
-  static std::vector<CPlayerCoreConfig *> s_vecCoreConfigs;
-  static std::vector<CPlayerSelectionRule *> s_vecCoreSelectionRules;
+  bool LoadConfiguration(const std::string &file, bool clear);
+
+  std::vector<CPlayerCoreConfig *> m_vecCoreConfigs;
+  std::vector<CPlayerSelectionRule *> m_vecCoreSelectionRules;
+  CCriticalSection m_section;
 };

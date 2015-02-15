@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,11 +20,12 @@
  *
  */
 
-#include "utils/StdString.h"
 #include "filesystem/File.h"
 #include "music/tags/MusicInfoTag.h"
 
-#include "cores/AudioEngine/AEAudioFormat.h"
+#include "cores/AudioEngine/Utils/AEAudioFormat.h"
+
+#include <string>
 
 #define READ_EOF      -1
 #define READ_SUCCESS   0
@@ -39,10 +40,10 @@ public:
     m_SampleRate = 0;
     m_EncodedSampleRate = 0;
     m_BitsPerSample = 0;
+    m_BitsPerCodedSample = 0;
     m_DataFormat = AE_FMT_INVALID;
     m_Channels = 0;
     m_Bitrate = 0;
-    m_CodecName = "";
   };
   virtual ~ICodec() {};
 
@@ -56,7 +57,7 @@ public:
   // 2.  If it's using a filereader, initialize it with the appropriate cache size.
   // 3.  Load the file (or at least attempt to load it)
   // 4.  Fill in the m_TotalTime, m_SampleRate, m_BitsPerSample and m_Channels parameters.
-  virtual bool Init(const CStdString &strFile, unsigned int filecache)=0;
+  virtual bool Init(const std::string &strFile, unsigned int filecache)=0;
 
   // DeInit()
   // Should just cleanup anything as necessary.  No need to free buffers here if they
@@ -101,9 +102,10 @@ public:
   int m_SampleRate;
   int m_EncodedSampleRate;
   int m_BitsPerSample;
+  int m_BitsPerCodedSample;
   enum AEDataFormat m_DataFormat;
   int m_Bitrate;
-  CStdString m_CodecName;
+  std::string m_CodecName;
   MUSIC_INFO::CMusicInfoTag m_tag;
   XFILE::CFile m_file;
 

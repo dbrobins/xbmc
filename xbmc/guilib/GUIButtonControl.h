@@ -9,8 +9,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -63,19 +63,17 @@ public:
   void SetFocusActions(const CGUIAction& focusActions) { m_focusActions = focusActions; };
   void SetUnFocusActions(const CGUIAction& unfocusActions) { m_unfocusActions = unfocusActions; };
   const CLabelInfo& GetLabelInfo() const { return m_label.GetLabelInfo(); };
-  virtual CStdString GetLabel() const { return GetDescription(); };
-  virtual CStdString GetLabel2() const;
+  virtual std::string GetLabel() const { return GetDescription(); };
+  virtual std::string GetLabel2() const;
   void SetSelected(bool bSelected);
-  virtual CStdString GetDescription() const;
+  virtual std::string GetDescription() const;
   void SetAlpha(unsigned char alpha);
 
-  void PythonSetLabel(const CStdString &strFont, const std::string &strText, color_t textColor, color_t shadowColor, color_t focusedColor);
+  void PythonSetLabel(const std::string &strFont, const std::string &strText, color_t textColor, color_t shadowColor, color_t focusedColor);
   void PythonSetDisabledColor(color_t disabledColor);
 
-  void SettingsCategorySetTextAlign(uint32_t align);
-
   virtual void OnClick();
-  bool HasClickActions() { return m_clickActions.HasActionsMeetingCondition(); };
+  bool HasClickActions() const { return m_clickActions.HasActionsMeetingCondition(); };
 
   virtual bool UpdateColors();
 
@@ -88,7 +86,7 @@ protected:
   void OnUnFocus();
   virtual void ProcessText(unsigned int currentTime);
   virtual void RenderText();
-  CGUILabel::COLOR GetTextColor() const;
+  virtual CGUILabel::COLOR GetTextColor() const;
 
   CGUITexture m_imgFocus;
   CGUITexture m_imgNoFocus;

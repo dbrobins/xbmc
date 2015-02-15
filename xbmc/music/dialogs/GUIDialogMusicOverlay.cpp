@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 
 #include "GUIDialogMusicOverlay.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/Key.h"
 #include "input/MouseStat.h"
 
 #define CONTROL_LOGO_PIC    1
@@ -53,7 +54,7 @@ bool CGUIDialogMusicOverlay::OnMessage(CGUIMessage& message)
 
 EVENT_RESULT CGUIDialogMusicOverlay::OnMouseEvent(const CPoint &point, const CMouseEvent &event)
 {
-  CGUIControl *pControl = (CGUIControl *)GetControl(CONTROL_LOGO_PIC);
+  CGUIControl *pControl = GetControl(CONTROL_LOGO_PIC);
   if (pControl && pControl->HitTest(point))
   {
     // send highlight message

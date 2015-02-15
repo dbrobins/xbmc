@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@ namespace XFILE
     class CDirectoryNodeSongTop100 : public CDirectoryNode
     {
     public:
-      CDirectoryNodeSongTop100(const CStdString& strName, CDirectoryNode* pParent);
+      CDirectoryNodeSongTop100(const std::string& strName, CDirectoryNode* pParent);
     protected:
       virtual bool GetContent(CFileItemList& items) const;
     };

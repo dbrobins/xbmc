@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,11 +28,11 @@ namespace XFILE
     class CDirectoryNodeAlbum : public CDirectoryNode
     {
     public:
-      CDirectoryNodeAlbum(const CStdString& strName, CDirectoryNode* pParent);
+      CDirectoryNodeAlbum(const std::string& strName, CDirectoryNode* pParent);
     protected:
       virtual NODE_TYPE GetChildType() const;
       virtual bool GetContent(CFileItemList& items) const;
-      virtual CStdString GetLocalizedName() const;
+      virtual std::string GetLocalizedName() const;
     };
   }
 }

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,13 +31,14 @@
 #include "utils/URIUtils.h"
 
 using namespace std;
+using namespace VIDEO;
 
 #ifndef __GNUC__
 #pragma warning (disable:4018)
 #endif
 
 CVideoInfoDownloader::CVideoInfoDownloader(const ADDON::ScraperPtr &scraper) :
-  CThread("CVideoInfoDownloader"), m_state(DO_NOTHING), m_found(0), m_info(scraper)
+  CThread("VideoInfoDownloader"), m_state(DO_NOTHING), m_found(0), m_info(scraper)
 {
   m_http = new XFILE::CCurlFile;
 }
@@ -48,7 +49,7 @@ CVideoInfoDownloader::~CVideoInfoDownloader()
 }
 
 // return value: 0 = we failed, -1 = we failed and reported an error, 1 = success
-int CVideoInfoDownloader::InternalFindMovie(const CStdString &strMovie,
+int CVideoInfoDownloader::InternalFindMovie(const std::string &strMovie,
                                             MOVIELIST& movielist,
                                             bool cleanChars /* = true */)
 {
@@ -114,7 +115,7 @@ void CVideoInfoDownloader::Process()
   m_state = DO_NOTHING;
 }
 
-int CVideoInfoDownloader::FindMovie(const CStdString &strMovie,
+int CVideoInfoDownloader::FindMovie(const std::string &strMovie,
                                     MOVIELIST& movieList,
                                     CGUIDialogProgress *pProgress /* = NULL */)
 {

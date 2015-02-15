@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,8 +19,9 @@
  *
  */
 
-#include "Archive.h"
+#include "utils/IArchivable.h"
 #include "ISerializable.h"
+#include <string>
 #include <vector>
 
 class CStreamDetails;
@@ -58,7 +59,8 @@ public:
   int m_iHeight;
   float m_fAspect;
   int m_iDuration;
-  CStdString m_strCodec;
+  std::string m_strCodec;
+  std::string m_strStereoMode;
 };
 
 class CStreamDetailAudio : public CStreamDetail
@@ -70,19 +72,20 @@ public:
   virtual bool IsWorseThan(CStreamDetail *that);
 
   int m_iChannels;
-  CStdString m_strCodec;
-  CStdString m_strLanguage;
+  std::string m_strCodec;
+  std::string m_strLanguage;
 };
 
 class CStreamDetailSubtitle : public CStreamDetail
 {
 public:
   CStreamDetailSubtitle();
+  CStreamDetailSubtitle& operator=(const CStreamDetailSubtitle &that);
   virtual void Archive(CArchive& ar);
   virtual void Serialize(CVariant& value) const;
   virtual bool IsWorseThan(CStreamDetail *that);
 
-  CStdString m_strLanguage;
+  std::string m_strLanguage;
 };
 
 class CStreamDetails : public IArchivable, public ISerializable
@@ -92,9 +95,11 @@ public:
   CStreamDetails(const CStreamDetails &that);
   ~CStreamDetails() { Reset(); };
   CStreamDetails& operator=(const CStreamDetails &that);
+  bool operator ==(const CStreamDetails &that) const;
+  bool operator !=(const CStreamDetails &that) const;
 
-  static CStdString VideoDimsToResolutionDescription(int iWidth, int iHeight);
-  static CStdString VideoAspectToAspectDescription(float fAspect);
+  static std::string VideoDimsToResolutionDescription(int iWidth, int iHeight);
+  static std::string VideoAspectToAspectDescription(float fAspect);
 
   bool HasItems(void) const { return m_vecItems.size() > 0; };
   int GetStreamCount(CStreamDetail::StreamType type) const;
@@ -103,17 +108,19 @@ public:
   int GetSubtitleStreamCount(void) const;
   const CStreamDetail* GetNthStream(CStreamDetail::StreamType type, int idx) const;
 
-  CStdString GetVideoCodec(int idx = 0) const;
+  std::string GetVideoCodec(int idx = 0) const;
   float GetVideoAspect(int idx = 0) const;
   int GetVideoWidth(int idx = 0) const;
   int GetVideoHeight(int idx = 0) const;
   int GetVideoDuration(int idx = 0) const;
+  void SetVideoDuration(int idx, const int duration);
+  std::string GetStereoMode(int idx = 0) const;
 
-  CStdString GetAudioCodec(int idx = 0) const;
-  CStdString GetAudioLanguage(int idx = 0) const;
+  std::string GetAudioCodec(int idx = 0) const;
+  std::string GetAudioLanguage(int idx = 0) const;
   int GetAudioChannels(int idx = 0) const;
 
-  CStdString GetSubtitleLanguage(int idx = 0) const;
+  std::string GetSubtitleLanguage(int idx = 0) const;
 
   void AddStream(CStreamDetail *item);
   void Reset(void);
@@ -122,20 +129,10 @@ public:
   virtual void Archive(CArchive& ar);
   virtual void Serialize(CVariant& value) const;
 
-  // Language to use for "best" subtitle stream
-  CStdString m_strLanguage;
-
 private:
   CStreamDetail *NewStream(CStreamDetail::StreamType type);
   std::vector<CStreamDetail *> m_vecItems;
   CStreamDetailVideo *m_pBestVideo;
   CStreamDetailAudio *m_pBestAudio;
   CStreamDetailSubtitle *m_pBestSubtitle;
-};
-
-class IStreamDetailsObserver
-{
-public:
-  virtual ~IStreamDetailsObserver() {}
-  virtual void OnStreamDetails(const CStreamDetails &details, const CStdString &strFileName, long lFileId) = 0;
 };

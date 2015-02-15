@@ -1,6 +1,5 @@
-#pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
+ *      Copyright (C) 2012-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -18,7 +17,10 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-#include "PltMediaRenderer.h"
+#pragma once
+#include <Platinum/Source/Devices/MediaRenderer/PltMediaRenderer.h>
+
+#include "interfaces/IAnnouncer.h"
 
 namespace UPNP
 {
@@ -30,19 +32,23 @@ public:
 };
 
 class CUPnPRenderer : public PLT_MediaRenderer
+                    , public ANNOUNCEMENT::IAnnouncer
 {
 public:
     CUPnPRenderer(const char*  friendly_name,
                   bool         show_ip = false,
                   const char*  uuid = NULL,
-                  unsigned int port = 0) : PLT_MediaRenderer(friendly_name, show_ip, uuid, port) {}
+                  unsigned int port = 0);
 
+    virtual ~CUPnPRenderer();
+
+    virtual void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data);
     void UpdateState();
 
     // Http server handler
-    virtual NPT_Result ProcessHttpRequest(NPT_HttpRequest&              request,
-                                          const NPT_HttpRequestContext& context,
-                                          NPT_HttpResponse&             response);
+    virtual NPT_Result ProcessHttpGetRequest(NPT_HttpRequest&              request,
+                                             const NPT_HttpRequestContext& context,
+                                             NPT_HttpResponse&             response);
 
     // AVTransport methods
     virtual NPT_Result OnNext(PLT_ActionReference& action);
@@ -52,6 +58,7 @@ public:
     virtual NPT_Result OnStop(PLT_ActionReference& action);
     virtual NPT_Result OnSeek(PLT_ActionReference& action);
     virtual NPT_Result OnSetAVTransportURI(PLT_ActionReference& action);
+    virtual NPT_Result OnSetNextAVTransportURI(PLT_ActionReference& action);
 
     // RenderingControl methods
     virtual NPT_Result OnSetVolume(PLT_ActionReference& action);
@@ -59,9 +66,10 @@ public:
 
 private:
     NPT_Result SetupServices();
+    NPT_Result SetupIcons();
     NPT_Result GetMetadata(NPT_String& meta);
-    NPT_Result PlayMedia(const char* uri,
-                         const char* metadata = NULL,
+    NPT_Result PlayMedia(const NPT_String& uri,
+                         const NPT_String& meta,
                          PLT_Action* action = NULL);
     NPT_Mutex m_state;
 };

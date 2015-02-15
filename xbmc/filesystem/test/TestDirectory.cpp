@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 
 TEST(TestDirectory, General)
 {
-  CStdString tmppath1, tmppath2, tmppath3;
+  std::string tmppath1, tmppath2, tmppath3;
   CFileItemList items;
   CFileItemPtr itemptr;
   tmppath1 = CSpecialProtocol::TranslatePath("special://temp/");
@@ -45,7 +45,7 @@ TEST(TestDirectory, General)
   tmppath3 = tmppath2;
   URIUtils::AddSlashAtEnd(tmppath3);
   itemptr = items[0];
-  EXPECT_STREQ(tmppath3.c_str(), itemptr->GetPath());
+  EXPECT_STREQ(tmppath3.c_str(), itemptr->GetPath().c_str());
   EXPECT_TRUE(XFILE::CDirectory::Remove(tmppath2));
   EXPECT_FALSE(XFILE::CDirectory::Exists(tmppath2));
   EXPECT_TRUE(XFILE::CDirectory::Exists(tmppath1));

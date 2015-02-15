@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include "DllLoader.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
+#include <stdlib.h>
 
 #ifdef _cplusplus
 extern "C"
@@ -65,14 +66,14 @@ void tracker_dll_free(DllLoader* pDll)
       }
       // free all functions which where created at the time we loaded the dll
 	    DummyListIter dit = (*it)->dummyList.begin();
-	    while (dit != (*it)->dummyList.end()) { free((void*)*dit); dit++;	}
+	    while (dit != (*it)->dummyList.end()) { free((void*)*dit); ++dit;	}
 	    (*it)->dummyList.clear();
 	
       delete (*it);
       it = g_trackedDlls.erase(it);
     }
     else
-      it++;
+      ++it;
   }
 }
 
@@ -90,12 +91,12 @@ void tracker_dll_set_addr(DllLoader* pDll, uintptr_t min, uintptr_t max)
   }
 }
 
-char* tracker_getdllname(uintptr_t caller)
+const char* tracker_getdllname(uintptr_t caller)
 {
   DllTrackInfo *track = tracker_get_dlltrackinfo(caller);
   if(track)
     return track->pDll->GetFileName();
-  return (char*)"";
+  return "";
 }
 
 DllTrackInfo* tracker_get_dlltrackinfo(uintptr_t caller)

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,8 +25,6 @@
 using namespace std;
 using namespace INFO;
 
-#define DEFAULT_VALUE -1
-
 const CSkinVariableString* CSkinVariable::CreateFromXML(const TiXmlElement& node, int context)
 {
   const char* name = node.Attribute("name");
@@ -41,14 +39,13 @@ const CSkinVariableString* CSkinVariable::CreateFromXML(const TiXmlElement& node
       if (valuenode->FirstChild())
       {
         CSkinVariableString::ConditionLabelPair pair;
-        if (valuenode->Attribute("condition"))
-          pair.m_condition = g_infoManager.Register(valuenode->Attribute("condition"), context);
-        else
-          pair.m_condition = DEFAULT_VALUE;
+        const char *condition = valuenode->Attribute("condition");
+        if (condition)
+          pair.m_condition = g_infoManager.Register(condition, context);
 
-        pair.m_label = CGUIInfoLabel(valuenode->FirstChild()->Value());
+        pair.m_label = CGUIInfoLabel(valuenode->FirstChild()->ValueStr());
         tmp->m_conditionLabelPairs.push_back(pair);
-        if (pair.m_condition == DEFAULT_VALUE)
+        if (!pair.m_condition)
           break; // once we reach default value (without condition) break iterating
       }
       valuenode = valuenode->NextSiblingElement("value");
@@ -69,16 +66,16 @@ int CSkinVariableString::GetContext() const
   return m_context;
 }
 
-const CStdString& CSkinVariableString::GetName() const
+const std::string& CSkinVariableString::GetName() const
 {
   return m_name;
 }
 
-CStdString CSkinVariableString::GetValue(bool preferImage /* = false*/, const CGUIListItem *item /* = NULL */)
+std::string CSkinVariableString::GetValue(bool preferImage /* = false*/, const CGUIListItem *item /* = NULL */)
 {
-  for (VECCONDITIONLABELPAIR::const_iterator it = m_conditionLabelPairs.begin() ; it != m_conditionLabelPairs.end(); it++)
+  for (VECCONDITIONLABELPAIR::const_iterator it = m_conditionLabelPairs.begin() ; it != m_conditionLabelPairs.end(); ++it)
   {
-    if (it->m_condition == DEFAULT_VALUE || g_infoManager.GetBoolValue(it->m_condition, item))
+    if (!it->m_condition || it->m_condition->Get(item))
     {
       if (item)
         return it->m_label.GetItemLabel(item, preferImage);

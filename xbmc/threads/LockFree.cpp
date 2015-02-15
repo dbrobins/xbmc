@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -112,6 +112,8 @@ void lf_heap_grow(lf_heap* pHeap, size_t size /*= 0*/)
   // Allocate the first chunk from the general heap and link it into the chunk list
   long mallocSize = size +  sizeof(lf_heap_chunk);
   lf_heap_chunk* pChunk = (lf_heap_chunk*) malloc(mallocSize);
+  if (!pChunk)
+    return;
   pChunk->size = mallocSize;
   SPINLOCK_ACQUIRE(pHeap->alloc_lock); // Lock the chunk list. Contention here is VERY unlikely, so use the simplest possible sync mechanism.
   pChunk->next = pHeap->top_chunk;

@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2009-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2009-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ public:
   ModplugCodec();
   virtual ~ModplugCodec();
 
-  virtual bool Init(const CStdString &strFile, unsigned int filecache);
+  virtual bool Init(const std::string &strFile, unsigned int filecache);
   virtual void DeInit();
   virtual int64_t Seek(int64_t iSeekTime);
   virtual int ReadPCM(BYTE *pBuffer, int size, int *actualsize);

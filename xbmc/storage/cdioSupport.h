@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,8 +36,9 @@
 
 #include <cdio/cdio.h>
 #include "threads/CriticalSection.h"
-#include "utils/StdString.h"
+#include <memory>
 #include <map>
+#include <string>
 
 namespace MEDIA_DETECT
 {
@@ -97,7 +98,7 @@ typedef struct signature
 }
 signature_t;
 
-typedef std::map<cdtext_field_t, CStdString> xbmc_cdtext_t;
+typedef std::map<cdtext_field_t, std::string> xbmc_cdtext_t;
 
 typedef struct TRACKINFO
 {
@@ -133,9 +134,9 @@ public:
   int GetFirstDataTrack() { return m_nFirstData; }
   int GetDataTrackCount() { return m_nNumData; }
   int GetAudioTrackCount() { return m_nNumAudio; }
-  ULONG GetCddbDiscId() { return m_ulCddbDiscId; }
+  uint32_t GetCddbDiscId() { return m_ulCddbDiscId; }
   int GetDiscLength() { return m_nLength; }
-  CStdString GetDiscLabel(){ return m_strDiscLabel; }
+  std::string GetDiscLabel(){ return m_strDiscLabel; }
 
   // CD-ROM with ISO 9660 filesystem
   bool IsIso9660( int nTrack ) { return ((m_ti[nTrack - 1].nfsInfo & FS_MASK) == FS_ISO_9660); }
@@ -228,12 +229,12 @@ public:
   void SetTrackInformation( int nTrack, trackinfo nInfo ) { if ( nTrack > 0 && nTrack <= 99 ) m_ti[nTrack - 1] = nInfo; }
   void SetDiscCDTextInformation( xbmc_cdtext_t cdtext ) { m_cdtext = cdtext; }
 
-  void SetCddbDiscId( ULONG ulCddbDiscId ) { m_ulCddbDiscId = ulCddbDiscId; }
+  void SetCddbDiscId( uint32_t ulCddbDiscId ) { m_ulCddbDiscId = ulCddbDiscId; }
   void SetDiscLength( int nLength ) { m_nLength = nLength; }
   bool HasCDDBInfo() { return m_bHasCDDBInfo; }
   void SetNoCDDBInfo() { m_bHasCDDBInfo = false; }
 
-  void SetDiscLabel(const CStdString& strDiscLabel){ m_strDiscLabel = strDiscLabel; }
+  void SetDiscLabel(const std::string& strDiscLabel){ m_strDiscLabel = strDiscLabel; }
 
 private:
   int m_nFirstData;        /* # of first data track */
@@ -243,10 +244,10 @@ private:
   int m_nNumTrack;
   int m_nFirstTrack;
   trackinfo m_ti[100];
-  ULONG m_ulCddbDiscId;
+  uint32_t m_ulCddbDiscId;
   int m_nLength;   // Disclength can be used for cddb query, also see trackinfo.nFrames
   bool m_bHasCDDBInfo;
-  CStdString m_strDiscLabel;
+  std::string m_strDiscLabel;
   xbmc_cdtext_t m_cdtext;  //  CD-Text for this disc
 };
 
@@ -257,8 +258,8 @@ private:
 public:
   virtual ~CLibcdio();
 
-  static void RemoveInstance();
-  static CLibcdio* GetInstance();
+  static void ReleaseInstance();
+  static std::shared_ptr<CLibcdio> GetInstance();
 
   // libcdio is not thread safe so these are wrappers to libcdio routines
   CdIo_t* cdio_open(const char *psz_source, driver_id_t driver_id);
@@ -275,9 +276,9 @@ public:
   char* GetDeviceFileName();
 
 private:
-  static char* s_defaultDevice;
+  char* s_defaultDevice;
   CCriticalSection m_critSection;
-  static CLibcdio* m_pInstance;
+  static std::shared_ptr<CLibcdio> m_pInstance;
 };
 
 class CCdIoSupport
@@ -290,7 +291,7 @@ public:
   HRESULT CloseTray();
 
   HANDLE OpenCDROM();
-  HANDLE OpenIMAGE( CStdString& strFilename );
+  HANDLE OpenIMAGE( std::string& strFilename );
   INT ReadSector(HANDLE hDevice, DWORD dwSector, LPSTR lpczBuffer);
   INT ReadSectorMode2(HANDLE hDevice, DWORD dwSector, LPSTR lpczBuffer);
   INT ReadSectorCDDA(HANDLE hDevice, DWORD dwSector, LPSTR lpczBuffer);
@@ -312,7 +313,7 @@ protected:
   int GetJolietLevel( void );
   int GuessFilesystem(int start_session, track_t track_num);
 
-  ULONG CddbDiscId();
+  uint32_t CddbDiscId();
   int CddbDecDigitSum(int n);
   UINT MsfSeconds(msf_t *msf);
 
@@ -333,14 +334,14 @@ private:
   track_t m_nNumTracks;
   track_t m_nFirstTrackNum;
 
-  CStdString m_strDiscLabel;
+  std::string m_strDiscLabel;
 
   int m_nFirstData;        /* # of first data track */
   int m_nNumData;                /* # of data tracks */
   int m_nFirstAudio;      /* # of first audio track */
   int m_nNumAudio;              /* # of audio tracks */
 
-  CLibcdio* m_cdio;
+  std::shared_ptr<CLibcdio> m_cdio;
 };
 
 }

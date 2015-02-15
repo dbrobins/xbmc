@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,20 +20,63 @@
  *
  */
 
-#include "GUIViewState.h"
-#include "GUIWindowPVRCommon.h"
+#include "view/GUIViewState.h"
 
 namespace PVR
 {
   class CGUIViewStatePVR : public CGUIViewState
   {
   public:
-    CGUIViewStatePVR(const CFileItemList& items);
-    virtual ~CGUIViewStatePVR(void) {}
-    PVRWindow GetActiveView(void);
+    CGUIViewStatePVR(const int windowId, const CFileItemList& items) : CGUIViewState(items) { m_windowId = windowId; }
+
   protected:
-    bool AutoPlayNextItem(void) { return false; };
-    bool HideParentDirItems(void) { return true; }
-    void SaveViewState(void);
+    virtual bool HideParentDirItems(void) { return true; };
+    int m_windowId;
+  };
+
+  class CGUIViewStateWindowPVRChannels : public CGUIViewStatePVR
+  {
+  public:
+    CGUIViewStateWindowPVRChannels(const int windowId, const CFileItemList& items);
+
+  protected:
+    virtual void SaveViewState();
+  };
+
+  class CGUIViewStateWindowPVRRecordings : public CGUIViewStatePVR
+  {
+  public:
+    CGUIViewStateWindowPVRRecordings(const int windowId, const CFileItemList& items);
+
+  protected:
+    virtual void SaveViewState();
+    virtual bool HideParentDirItems(void);
+  };
+
+  class CGUIViewStateWindowPVRGuide : public CGUIViewStatePVR
+  {
+  public:
+    CGUIViewStateWindowPVRGuide(const int windowId, const CFileItemList& items);
+
+  protected:
+    virtual void SaveViewState();
+  };
+
+  class CGUIViewStateWindowPVRTimers : public CGUIViewStatePVR
+  {
+  public:
+    CGUIViewStateWindowPVRTimers(const int windowId, const CFileItemList& items);
+
+  protected:
+    virtual void SaveViewState();
+  };
+
+  class CGUIViewStateWindowPVRSearch : public CGUIViewStatePVR
+  {
+  public:
+    CGUIViewStateWindowPVRSearch(const int windowId, const CFileItemList& items);
+
+  protected:
+    virtual void SaveViewState();
   };
 }

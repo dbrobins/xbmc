@@ -1,4 +1,4 @@
-include @abs_top_srcdir@/tools/android/depends/Makefile.include
+include @abs_top_srcdir@/tools/depends/Makefile.include
 
 GLUEPATH   = $(NDKROOT)/sources/android/native_app_glue
 APP_GLUE   = android_native_app_glue.o
@@ -13,9 +13,9 @@ SRCS      += AndroidFeatures.cpp
 SRCS      += AndroidKey.cpp
 SRCS      += AndroidTouch.cpp
 SRCS      += AndroidMouse.cpp
+SRCS      += AndroidJoyStick.cpp
 SRCS      += GraphicBuffer.cpp
 SRCS      += EventLoop.cpp
-SRCS      += unzip.cpp
 SRCS      += XBMCApp.cpp
 
 OBJS      += $(APP_GLUE) $(CPU_OBJ)

@@ -9,8 +9,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,8 +28,6 @@
  *
  */
 
-#include "utils/StdString.h"
-
 #include <map>
 #include <string>
 
@@ -45,62 +43,95 @@ class CVariant;
 class CGUIListItem
 {
 public:
+  typedef std::map<std::string, std::string> ArtMap;
+
   enum GUIIconOverlay { ICON_OVERLAY_NONE = 0,
                         ICON_OVERLAY_RAR,
                         ICON_OVERLAY_ZIP,
                         ICON_OVERLAY_LOCKED,
-                        ICON_OVERLAY_HAS_TRAINER,
-                        ICON_OVERLAY_TRAINED,
                         ICON_OVERLAY_UNWATCHED,
                         ICON_OVERLAY_WATCHED,
                         ICON_OVERLAY_HD};
 
   CGUIListItem(void);
   CGUIListItem(const CGUIListItem& item);
-  CGUIListItem(const CStdString& strLabel);
+  CGUIListItem(const std::string& strLabel);
   virtual ~CGUIListItem(void);
   virtual CGUIListItem *Clone() const { return new CGUIListItem(*this); };
 
-  const CGUIListItem& operator =(const CGUIListItem& item);
+  CGUIListItem& operator =(const CGUIListItem& item);
 
-  virtual void SetLabel(const CStdString& strLabel);
-  const CStdString& GetLabel() const;
+  virtual void SetLabel(const std::string& strLabel);
+  const std::string& GetLabel() const;
 
-  void SetLabel2(const CStdString& strLabel);
-  const CStdString& GetLabel2() const;
+  void SetLabel2(const std::string& strLabel);
+  const std::string& GetLabel2() const;
 
-  void SetIconImage(const CStdString& strIcon);
-  const CStdString& GetIconImage() const;
-
-  void SetThumbnailImage(const CStdString& strThumbnail);
-  const CStdString& GetThumbnailImage() const;
+  void SetIconImage(const std::string& strIcon);
+  const std::string& GetIconImage() const;
 
   void SetOverlayImage(GUIIconOverlay icon, bool bOnOff=false);
-  CStdString GetOverlayImage() const;
+  std::string GetOverlayImage() const;
+
+  /*! \brief Set a particular art type for an item
+   \param type type of art to set.
+   \param url the url of the art.
+   */
+  void SetArt(const std::string &type, const std::string &url);
 
   /*! \brief set artwork for an item
-   Sets thumb and fanart image
-   \param map a type:url map for artwork
+   \param art a type:url map for artwork
    \sa GetArt
    */
-  void SetArt(const std::map<std::string, std::string> &art);
+  void SetArt(const ArtMap &art);
+
+  /*! \brief append artwork to an item
+   \param art a type:url map for artwork
+   \param prefix a prefix for the art, if applicable.
+   \sa GetArt
+   */
+  void AppendArt(const ArtMap &art, const std::string &prefix = "");
+
+  /*! \brief set a fallback image for art
+   \param from the type to fallback from
+   \param to the type to fallback to
+   \sa SetArt
+   */
+  void SetArtFallback(const std::string &from, const std::string &to);
+
+  /*! \brief clear art on an item
+   \sa SetArt
+   */
+  void ClearArt();
+
+  /*! \brief Get a particular art type for an item
+   \param type type of art to fetch.
+   \return the art URL, if available, else empty.
+   */
+  std::string GetArt(const std::string &type) const;
 
   /*! \brief get artwork for an item
    Retrieves artwork in a type:url map
    \return a type:url map for artwork
    \sa SetArt
    */
-  std::map<std::string, std::string> GetArt() const;
+  const ArtMap &GetArt() const;
 
-  void SetSortLabel(const CStdString &label);
-  void SetSortLabel(const CStdStringW &label);
-  const CStdStringW &GetSortLabel() const;
+  /*! \brief Check whether an item has a particular piece of art
+   Equivalent to !GetArt(type).empty()
+   \param type type of art to set.
+   \return true if the item has that art set, false otherwise.
+   */
+  bool HasArt(const std::string &type) const;
+
+  void SetSortLabel(const std::string &label);
+  void SetSortLabel(const std::wstring &label);
+  const std::wstring &GetSortLabel() const;
 
   void Select(bool bOnOff);
   bool IsSelected() const;
 
   bool HasIcon() const;
-  bool HasThumbnail() const;
   bool HasOverlay() const;
   virtual bool IsFileItem() const { return false; };
 
@@ -116,10 +147,10 @@ public:
 
   bool m_bIsFolder;     ///< is item a folder or a file
 
-  void SetProperty(const CStdString &strKey, const CVariant &value);
+  void SetProperty(const std::string &strKey, const CVariant &value);
 
-  void IncrementProperty(const CStdString &strKey, int nVal);
-  void IncrementProperty(const CStdString &strKey, double dVal);
+  void IncrementProperty(const std::string &strKey, int nVal);
+  void IncrementProperty(const std::string &strKey, double dVal);
 
   void ClearProperties();
 
@@ -133,16 +164,15 @@ public:
   void Archive(CArchive& ar);
   void Serialize(CVariant& value);
 
-  bool       HasProperty(const CStdString &strKey) const;
-  bool       HasProperties() const { return m_mapProperties.size() > 0; };
-  void       ClearProperty(const CStdString &strKey);
+  bool       HasProperty(const std::string &strKey) const;
+  bool       HasProperties() const { return !m_mapProperties.empty(); };
+  void       ClearProperty(const std::string &strKey);
 
-  CVariant   GetProperty(const CStdString &strKey) const;
+  CVariant   GetProperty(const std::string &strKey) const;
 
 protected:
-  CStdString m_strLabel2;     // text of column2
-  CStdString m_strThumbnailImage; // filename of thumbnail
-  CStdString m_strIcon;      // filename of icon
+  std::string m_strLabel2;     // text of column2
+  std::string m_strIcon;      // filename of icon
   GUIIconOverlay m_overlayIcon; // type of overlay icon
 
   CGUIListItemLayout *m_layout;
@@ -151,17 +181,17 @@ protected:
 
   struct icompare
   {
-    bool operator()(const CStdString &s1, const CStdString &s2) const
-    {
-      return s1.CompareNoCase(s2) < 0;
-    }
+    bool operator()(const std::string &s1, const std::string &s2) const;
   };
 
-  typedef std::map<CStdString, CVariant, icompare> PropertyMap;
+  typedef std::map<std::string, CVariant, icompare> PropertyMap;
   PropertyMap m_mapProperties;
 private:
-  CStdStringW m_sortLabel;    // text for sorting. Need to be UTF16 for proper sorting
-  CStdString m_strLabel;      // text of column1
+  std::wstring m_sortLabel;    // text for sorting. Need to be UTF16 for proper sorting
+  std::string m_strLabel;      // text of column1
+
+  ArtMap m_art;
+  ArtMap m_artFallbacks;
 };
 #endif
 

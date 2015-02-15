@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2011-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2011-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,24 +19,23 @@
  *
  */
 
-#include "IHTTPRequestHandler.h"
-#include "addons/IAddon.h"
+#include <string>
 
-class CHTTPWebinterfaceHandler : public IHTTPRequestHandler
+#include "addons/IAddon.h"
+#include "network/httprequesthandler/HTTPFileHandler.h"
+
+class CHTTPWebinterfaceHandler : public CHTTPFileHandler
 {
 public:
-  CHTTPWebinterfaceHandler() { };
+  CHTTPWebinterfaceHandler() { }
+  virtual ~CHTTPWebinterfaceHandler() { }
   
-  virtual IHTTPRequestHandler* GetInstance() { return new CHTTPWebinterfaceHandler(); }
-  virtual bool CheckHTTPRequest(const HTTPRequest &request);
-  virtual int HandleHTTPRequest(const HTTPRequest &request);
-
-  virtual std::string GetHTTPRedirectUrl() const { return m_url; }
-  virtual std::string GetHTTPResponseFile() const { return m_url; }
+  virtual IHTTPRequestHandler* Create(const HTTPRequest &request) { return new CHTTPWebinterfaceHandler(request); }
+  virtual bool CanHandleRequest(const HTTPRequest &request);
   
   static int ResolveUrl(const std::string &url, std::string &path);
   static int ResolveUrl(const std::string &url, std::string &path, ADDON::AddonPtr &addon);
 
-private:
-  std::string m_url;
+protected:
+  explicit CHTTPWebinterfaceHandler(const HTTPRequest &request);
 };

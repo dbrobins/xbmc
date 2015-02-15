@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -63,6 +63,8 @@ public:
   CVariant(const wchar_t *str, unsigned int length);
   CVariant(const std::wstring &str);
   CVariant(const std::vector<std::string> &strArray);
+  CVariant(const std::map<std::string, std::string> &strMap);
+  CVariant(const std::map<std::string, CVariant> &variantMap);
   CVariant(const CVariant &variant);
   ~CVariant();
 
@@ -93,6 +95,7 @@ public:
 
   CVariant &operator=(const CVariant &rhs);
   bool operator==(const CVariant &rhs) const;
+  bool operator!=(const CVariant &rhs) const { return !(*this == rhs); }
 
   void push_back(const CVariant &variant);
   void append(const CVariant &variant);

@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,15 +20,18 @@
  */
 
 #include "guilib/IMsgTargetCallback.h"
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #define PLAYLIST_NONE    -1
 #define PLAYLIST_MUSIC   0
 #define PLAYLIST_VIDEO   1
 #define PLAYLIST_PICTURE 2
 
-class CFileItem; typedef boost::shared_ptr<CFileItem> CFileItemPtr;
+class CAction;
+class CFileItem; typedef std::shared_ptr<CFileItem> CFileItemPtr;
 class CFileItemList;
+
+class CVariant;
 
 namespace PLAYLIST
 {
@@ -163,6 +166,10 @@ public:
   void Insert(int iPlaylist, CFileItemList& items, int iIndex);
   void Remove(int iPlaylist, int iPosition);
   void Swap(int iPlaylist, int indexItem1, int indexItem2);
+
+  bool IsSingleItemNonRepeatPlaylist() const;
+
+  bool OnAction(const CAction &action);
 protected:
   /*! \brief Returns true if the given is set to repeat all
    \param playlist Playlist to be query
@@ -177,6 +184,8 @@ protected:
   bool RepeatedOne(int playlist) const;
 
   void ReShuffle(int iPlaylist, int iPosition);
+
+  void AnnouncePropertyChanged(int iPlaylist, const std::string &strProperty, const CVariant &value);
 
   bool m_bPlayedFirstFile;
   bool m_bPlaybackStarted;

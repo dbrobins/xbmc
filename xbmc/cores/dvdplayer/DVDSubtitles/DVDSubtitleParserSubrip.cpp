@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 #include "DVDSubtitleParserSubrip.h"
 #include "DVDCodecs/Overlay/DVDOverlayText.h"
 #include "DVDClock.h"
-#include "utils/StdString.h"
+#include "utils/StringUtils.h"
 #include "DVDSubtitleTagSami.h"
 
 using namespace std;
@@ -46,12 +46,12 @@ bool CDVDSubtitleParserSubrip::Open(CDVDStreamInfo &hints)
     return false;
 
   char line[1024];
-  CStdString strLine;
+  std::string strLine;
 
   while (m_pStream->ReadLine(line, sizeof(line)))
   {
     strLine = line;
-    strLine.Trim();
+    StringUtils::Trim(strLine);
 
     if (strLine.length() > 0)
     {
@@ -76,7 +76,7 @@ bool CDVDSubtitleParserSubrip::Open(CDVDStreamInfo &hints)
         while (m_pStream->ReadLine(line, sizeof(line)))
         {
           strLine = line;
-          strLine.Trim();
+          StringUtils::Trim(strLine);
 
           // empty line, next subtitle is about to start
           if (strLine.length() <= 0) break;

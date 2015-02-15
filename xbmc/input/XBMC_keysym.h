@@ -12,9 +12,9 @@
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
     Lesser General Public License for more details.
 
-    You should have received a copy of the GNU Lesser General Public
-    License along with this library; if not, write to the Free Software
-    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+    You should have received a copy of the GNU General Public License
+    along with XBMC; see the file COPYING.  If not, see
+    <http://www.gnu.org/licenses/>.
 
     Sam Lantinga
     slouken@libsdl.org
@@ -140,6 +140,8 @@ typedef enum {
   XBMCK_LAUNCH_APP2          = 0xB7,
   XBMCK_LAUNCH_FILE_BROWSER  = 0xB8,
   XBMCK_LAUNCH_MEDIA_CENTER  = 0xB9,
+  XBMCK_MEDIA_REWIND         = 0xBA,
+  XBMCK_MEDIA_FASTFORWARD    = 0xBB,
 
   // Numeric keypad
   XBMCK_KP0         = 0x100,
@@ -214,6 +216,14 @@ typedef enum {
   XBMCK_POWER       = 0x140,    // Power Macintosh power key
   XBMCK_EURO        = 0x141,    // Some european keyboards
   XBMCK_UNDO        = 0x142,    // Atari keyboard has Undo
+  XBMCK_SLEEP       = 0x143,    // Sleep button on Nyxboard remote (and others?)
+  XBMCK_GUIDE       = 0x144,
+  XBMCK_SETTINGS    = 0x145,
+  XBMCK_INFO        = 0x146,
+  XBMCK_RED         = 0x147,
+  XBMCK_GREEN       = 0x148,
+  XBMCK_YELLOW      = 0x149,
+  XBMCK_BLUE        = 0x14a,
 
   // Add any other keys here
 

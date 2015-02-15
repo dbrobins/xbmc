@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 #include "log.h"
 #include "Util.h"
 #include "URIUtils.h"
+#include "utils/StringUtils.h"
 #include "URL.h"
 #include "guilib/LocalizeStrings.h"
 #include "guilib/GUIWindowManager.h"
@@ -42,12 +43,15 @@ using namespace XFILE;
 
 CFileOperationJob::CFileOperationJob()
 {
+  m_action = ActionCopy;
+  m_heading = 0;
+  m_line = 0;
   m_handle = NULL;
   m_displayProgress = false;
 }
 
 CFileOperationJob::CFileOperationJob(FileAction action, CFileItemList & items,
-                                    const CStdString& strDestFile,
+                                    const std::string& strDestFile,
                                     bool displayProgress,
                                     int heading, int line)
 {
@@ -58,7 +62,7 @@ CFileOperationJob::CFileOperationJob(FileAction action, CFileItemList & items,
   SetFileOperation(action, items, strDestFile);
 }
 
-void CFileOperationJob::SetFileOperation(FileAction action, CFileItemList &items, const CStdString &strDestFile)
+void CFileOperationJob::SetFileOperation(FileAction action, CFileItemList &items, const std::string &strDestFile)
 {
   m_action = action;
   m_strDestFile = strDestFile;
@@ -96,7 +100,7 @@ bool CFileOperationJob::DoWork()
   return success;
 }
 
-bool CFileOperationJob::DoProcessFile(FileAction action, const CStdString& strFileA, const CStdString& strFileB, FileOperationList &fileOperations, double &totalTime)
+bool CFileOperationJob::DoProcessFile(FileAction action, const std::string& strFileA, const std::string& strFileB, FileOperationList &fileOperations, double &totalTime)
 {
   int64_t time = 1;
 
@@ -114,11 +118,11 @@ bool CFileOperationJob::DoProcessFile(FileAction action, const CStdString& strFi
   return true;
 }
 
-bool CFileOperationJob::DoProcessFolder(FileAction action, const CStdString& strPath, const CStdString& strDestFile, FileOperationList &fileOperations, double &totalTime)
+bool CFileOperationJob::DoProcessFolder(FileAction action, const std::string& strPath, const std::string& strDestFile, FileOperationList &fileOperations, double &totalTime)
 {
   // check whether this folder is a filedirectory - if so, we don't process it's contents
   CFileItem item(strPath, false);
-  IFileDirectory *file = CFileDirectoryFactory::Create(strPath, &item);
+  IFileDirectory *file = CFileDirectoryFactory::Create(item.GetURL(), &item);
   if (file)
   {
     delete file;
@@ -146,21 +150,16 @@ bool CFileOperationJob::DoProcessFolder(FileAction action, const CStdString& str
   return true;
 }
 
-bool CFileOperationJob::DoProcess(FileAction action, CFileItemList & items, const CStdString& strDestFile, FileOperationList &fileOperations, double &totalTime)
+bool CFileOperationJob::DoProcess(FileAction action, CFileItemList & items, const std::string& strDestFile, FileOperationList &fileOperations, double &totalTime)
 {
   for (int iItem = 0; iItem < items.Size(); ++iItem)
   {
     CFileItemPtr pItem = items[iItem];
     if (pItem->IsSelected())
     {
-      CStdString strNoSlash = pItem->GetPath();
+      std::string strNoSlash = pItem->GetPath();
       URIUtils::RemoveSlashAtEnd(strNoSlash);
-      CStdString strFileName = URIUtils::GetFileName(strNoSlash);
-
-      // URL Decode for cases where source uses URL encoding and target does not 
-      if ( URIUtils::ProtocolHasEncodedFilename(CURL(pItem->GetPath()).GetProtocol() )
-       && !URIUtils::ProtocolHasEncodedFilename(CURL(strDestFile).GetProtocol() ) )
-        CURL::Decode(strFileName);
+      std::string strFileName = URIUtils::GetFileName(strNoSlash);
 
       // special case for upnp
       if (URIUtils::IsUPnP(items.GetPath()) || URIUtils::IsUPnP(pItem->GetPath()))
@@ -168,7 +167,7 @@ bool CFileOperationJob::DoProcess(FileAction action, CFileItemList & items, cons
         // get filename from label instead of path
         strFileName = pItem->GetLabel();
 
-        if(!pItem->m_bIsFolder && URIUtils::GetExtension(strFileName).length() == 0)
+        if(!pItem->m_bIsFolder && !URIUtils::HasExtension(strFileName))
         {
           // FIXME: for now we only work well if the url has the extension
           // we should map the content type to the extension otherwise
@@ -178,9 +177,9 @@ bool CFileOperationJob::DoProcess(FileAction action, CFileItemList & items, cons
         strFileName = CUtil::MakeLegalFileName(strFileName);
       }
 
-      CStdString strnewDestFile;
-      if(!strDestFile.IsEmpty()) // only do this if we have a destination
-        URIUtils::AddFileToFolder(strDestFile, strFileName, strnewDestFile);
+      std::string strnewDestFile;
+      if(!strDestFile.empty()) // only do this if we have a destination
+        strnewDestFile = URIUtils::ChangeBasePath(pItem->GetPath(), strFileName, strDestFile); // Convert (URL) encoding + slashes (if source / target differ)
 
       if (pItem->m_bIsFolder)
       {
@@ -205,7 +204,7 @@ bool CFileOperationJob::DoProcess(FileAction action, CFileItemList & items, cons
   return true;
 }
 
-CFileOperationJob::CFileOperation::CFileOperation(FileAction action, const CStdString &strFileA, const CStdString &strFileB, int64_t time) : m_action(action), m_strFileA(strFileA), m_strFileB(strFileB), m_time(time)
+CFileOperationJob::CFileOperation::CFileOperation(FileAction action, const std::string &strFileA, const std::string &strFileB, int64_t time) : m_action(action), m_strFileA(strFileA), m_strFileB(strFileB), m_time(time)
 {
 }
 
@@ -216,9 +215,9 @@ struct DataHolder
   double opWeight;
 };
 
-CStdString CFileOperationJob::GetActionString(FileAction action)
+std::string CFileOperationJob::GetActionString(FileAction action)
 {
-  CStdString result;
+  std::string result;
   switch (action)
   {
     case ActionCopy:
@@ -255,7 +254,7 @@ bool CFileOperationJob::CFileOperation::ExecuteOperation(CFileOperationJob *base
   if (base->m_handle)
   {
     base->m_handle->SetText(base->GetCurrentFile());
-    base->m_handle->SetPercentage(current);
+    base->m_handle->SetPercentage((float)current);
   }
 
   DataHolder data = {base, current, opWeight};
@@ -267,7 +266,7 @@ bool CFileOperationJob::CFileOperation::ExecuteOperation(CFileOperationJob *base
     {
       CLog::Log(LOGDEBUG,"FileManager: copy %s -> %s\n", m_strFileA.c_str(), m_strFileB.c_str());
 
-      bResult = CFile::Cache(m_strFileA, m_strFileB, this, &data);
+      bResult = CFile::Copy(m_strFileA, m_strFileB, this, &data);
     }
     break;
     case ActionMove:
@@ -276,7 +275,7 @@ bool CFileOperationJob::CFileOperation::ExecuteOperation(CFileOperationJob *base
 
       if (CanBeRenamed(m_strFileA, m_strFileB))
         bResult = CFile::Rename(m_strFileA, m_strFileB);
-      else if (CFile::Cache(m_strFileA, m_strFileB, this, &data))
+      else if (CFile::Copy(m_strFileA, m_strFileB, this, &data))
         bResult = CFile::Delete(m_strFileA);
       else
         bResult = false;
@@ -310,9 +309,9 @@ bool CFileOperationJob::CFileOperation::ExecuteOperation(CFileOperationJob *base
   return bResult;
 }
 
-inline bool CFileOperationJob::CanBeRenamed(const CStdString &strFileA, const CStdString &strFileB)
+inline bool CFileOperationJob::CanBeRenamed(const std::string &strFileA, const std::string &strFileB)
 {
-#ifndef _LINUX
+#ifndef TARGET_POSIX
   if (strFileA[1] == ':' && strFileA[0] == strFileB[0])
     return true;
 #else
@@ -333,17 +332,18 @@ bool CFileOperationJob::CFileOperation::OnFileCallback(void* pContext, int iperc
   double current = data->current + ((double)ipercent * data->opWeight * (double)m_time)/ 100.0;
 
   if (avgSpeed > 1000000.0f)
-    data->base->m_avgSpeed.Format("%.1f MB/s", avgSpeed / 1000000.0f);
+    data->base->m_avgSpeed = StringUtils::Format("%.1f MB/s", avgSpeed / 1000000.0f);
   else
-    data->base->m_avgSpeed.Format("%.1f KB/s", avgSpeed / 1000.0f);
+    data->base->m_avgSpeed = StringUtils::Format("%.1f KB/s", avgSpeed / 1000.0f);
 
   if (data->base->m_handle)
   {
-    CStdString line;
-    line.Format("%s (%s)", data->base->GetCurrentFile().c_str(),
-                           data->base->GetAverageSpeed().c_str());
+    std::string line;
+    line = StringUtils::Format("%s (%s)",
+                               data->base->GetCurrentFile().c_str(),
+                               data->base->GetAverageSpeed().c_str());
     data->base->m_handle->SetText(line);
-    data->base->m_handle->SetPercentage(current);
+    data->base->m_handle->SetPercentage((float)current);
   }
 
   return !data->base->ShouldCancel((unsigned)current, 100);

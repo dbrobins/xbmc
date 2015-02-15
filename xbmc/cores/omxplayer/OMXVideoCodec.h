@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -89,8 +89,8 @@ struct DVDVideoPicture
   unsigned int extended_format;
   int iGroupId;
 
-  int8_t* qscale_table; // Quantization parameters, primarily used by filters
-  int qscale_stride;
+  int8_t* qp_table; // Quantization parameters, primarily used by filters
+  int qstride;
   int qscale_type;
 
   unsigned int iWidth;

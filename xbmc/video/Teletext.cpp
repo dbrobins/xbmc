@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,14 +32,29 @@
 #include "utils/TimeUtils.h"
 #include "filesystem/SpecialProtocol.h"
 #include "guilib/GraphicContext.h"
+#include "cores/IPlayer.h"
 
-#ifdef HAS_SDL
+#if SDL_VERSION == 1
 #include <SDL/SDL_stdinc.h>
+#elif SDL_VERSION == 2
+#include <SDL2/SDL_stdinc.h>
 #else
-#define SDL_memset4(dst, val, len) memset(dst, val, (len)*4)
-#define SDL_memcpy4(dst, src, len) memcpy(dst, src, (len)*4)
-#define SDL_memcpy4(dst, src, len) memcpy(dst, src, (len)*4)
-#define SDL_memset4(dst, val, len) memset(dst, val, (len)*4)
+#define SDL_memset4(dst, val, len)		\
+do {						\
+	uint32_t _count = (len);		\
+	uint32_t _n = (_count + 3) / 4;		\
+	uint32_t *_p = static_cast<uint32_t *>(dst);	\
+	uint32_t _val = (val);			\
+	if (len == 0) break;			\
+        switch (_count % 4) {			\
+        case 0: do {    *_p++ = _val;		\
+        case 3:         *_p++ = _val;		\
+        case 2:         *_p++ = _val;		\
+        case 1:         *_p++ = _val;		\
+		} while ( --_n );		\
+	}					\
+} while(0)
+#define SDL_memcpy4(dst, src, len) memcpy(dst, src, (len) << 2)
 #endif
 
 using namespace std;
@@ -420,7 +435,7 @@ CTeletextDecoder::CTeletextDecoder()
   m_Manager                      = NULL;
   m_Library                      = NULL;
   m_RenderInfo.ShowFlof          = true;
-  m_RenderInfo.Show39            = true;
+  m_RenderInfo.Show39            = false;
   m_RenderInfo.Showl25           = true;
   m_RenderInfo.Prev_100          = 0x100;
   m_RenderInfo.Prev_10           = 0x100;
@@ -1439,6 +1454,8 @@ void CTeletextDecoder::DoRenderPage(int startrow, int national_subset_bak)
       break;
     }
   }
+  m_RenderInfo.FontWidth_Normal = m_RenderInfo.Width / (m_RenderInfo.nofirst ? 39 : 40);
+  SetFontWidth(m_RenderInfo.FontWidth_Normal);
 
   if (m_RenderInfo.TranspMode || m_RenderInfo.Boxed)
   {
@@ -1517,12 +1534,12 @@ void CTeletextDecoder::DoRenderPage(int startrow, int national_subset_bak)
     {
       RenderCharBB(m_RenderInfo.PageChar[index + col], &m_RenderInfo.PageAtrb[index + col]);
 
-      if (m_RenderInfo.PageAtrb[index + col].doubleh && m_RenderInfo.PageChar[index + col] != 0xff)  /* disable lower char in case of doubleh setting in l25 objects */
+      if (m_RenderInfo.PageAtrb[index + col].doubleh && m_RenderInfo.PageChar[index + col] != 0xff && row < 24-1)  /* disable lower char in case of doubleh setting in l25 objects */
         m_RenderInfo.PageChar[index + col + 40] = 0xff;
-      if (m_RenderInfo.PageAtrb[index + col].doublew)  /* skip next column if double width */
+      if (m_RenderInfo.PageAtrb[index + col].doublew && col < 40-1)  /* skip next column if double width */
       {
         col++;
-        if (m_RenderInfo.PageAtrb[index + col-1].doubleh && m_RenderInfo.PageChar[index + col] != 0xff)  /* disable lower char in case of doubleh setting in l25 objects */
+        if (m_RenderInfo.PageAtrb[index + col - 1].doubleh && m_RenderInfo.PageChar[index + col] != 0xff && row < 24-1)  /* disable lower char in case of doubleh setting in l25 objects */
           m_RenderInfo.PageChar[index + col + 40] = 0xff;
       }
     }
@@ -2717,8 +2734,6 @@ int CTeletextDecoder::RenderChar(color_t *buffer,    // pointer to render buffer
     case 0xF2:
     case 0xF3:
     case 0xF4:
-    case 0xF5:
-    case 0xF6:
       Char = arrowtable[Char - 0xED];
       break;
     default:

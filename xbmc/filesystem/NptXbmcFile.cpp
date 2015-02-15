@@ -32,18 +32,19 @@
 /*----------------------------------------------------------------------
 |   includes
 +---------------------------------------------------------------------*/
+#include <limits>
+#include <Neptune/Source/Core/NptDebug.h>
+#include <Neptune/Source/Core/NptFile.h>
+#include <Neptune/Source/Core/NptInterfaces.h>
+#include <Neptune/Source/Core/NptStrings.h>
+#include <Neptune/Source/Core/NptThreads.h>
+#include <Neptune/Source/Core/NptUtils.h>
+
 #include "File.h"
 #include "FileFactory.h"
 #include "utils/log.h"
 #include "Util.h"
 #include "URL.h"
-#include <limits>
-#include "NptUtils.h"
-#include "NptFile.h"
-#include "NptThreads.h"
-#include "NptInterfaces.h"
-#include "NptStrings.h"
-#include "NptDebug.h"
 
 #ifdef TARGET_WINDOWS
 #define S_IWUSR _S_IWRITE
@@ -321,13 +322,6 @@ NPT_XbmcFile::Open(NPT_File::OpenMode mode)
 
         bool result;
         CURL* url = new CURL(name);
-        /* path is not fully qualified so assume it's relative to home dir */
-        if (url->GetFileName().IsEmpty()) {
-            delete url;
-            CStdString homepath;
-            CUtil::GetHomePath(homepath);
-            url = new CURL(homepath + "/" + name);
-        }
 
         // compute mode
         if (mode & NPT_FILE_OPEN_MODE_WRITE) {

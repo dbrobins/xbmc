@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,8 +28,8 @@ class CPlayListPLS :
 public:
   CPlayListPLS(void);
   virtual ~CPlayListPLS(void);
-  virtual bool Load(const CStdString& strFileName);
-  virtual void Save(const CStdString& strFileName) const;
+  virtual bool Load(const std::string& strFileName);
+  virtual void Save(const std::string& strFileName) const;
   virtual bool Resize(std::vector<int>::size_type newSize);
 };
 

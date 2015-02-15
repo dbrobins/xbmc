@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 
 #include "StreamUtils.h"
 
-int StreamUtils::GetCodecPriority(const CStdString &codec)
+int StreamUtils::GetCodecPriority(const std::string &codec)
 {
   /*
    * Technically flac, truehd, and dtshd_ma are equivalently good as they're all lossless. However,

@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,25 +15,28 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, write to
- *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
- *  http://www.gnu.org/copyleft/gpl.html
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
-#include "XBPyThread.h"
-#include "cores/IPlayer.h"
+#include "cores/IPlayerCallback.h"
 #include "threads/CriticalSection.h"
+#include "threads/Event.h"
+#include "threads/Thread.h"
 #include "interfaces/IAnnouncer.h"
+#include "interfaces/generic/ILanguageInvocationHandler.h"
 #include "addons/IAddon.h"
 
+#include <memory>
 #include <vector>
+
+class CPythonInvoker;
 
 typedef struct {
   int id;
   bool bDone;
-  std::string strFile;
-  XBPyThread *pyThread;
+  CPythonInvoker* pyThread;
 }PyElem;
 
 class LibraryLoader;
@@ -46,14 +49,18 @@ namespace XBMCAddon
   }
 }
 
-typedef std::vector<PyElem> PyList;
-typedef std::vector<PVOID> PlayerCallbackList;
-typedef std::vector<XBMCAddon::xbmc::Monitor*> MonitorCallbackList;
+template <class T> struct LockableType : public T, public CCriticalSection
+{ bool hadSomethingRemoved; };
+
+typedef LockableType<std::vector<void*> > PlayerCallbackList;
+typedef LockableType<std::vector<XBMCAddon::xbmc::Monitor*> > MonitorCallbackList;
+typedef LockableType<std::vector<PyElem> > PyList;
 typedef std::vector<LibraryLoader*> PythonExtensionLibraries;
 
-class XBPython : 
+class XBPython :
   public IPlayerCallback,
-  public ANNOUNCEMENT::IAnnouncer
+  public ANNOUNCEMENT::IAnnouncer,
+  public ILanguageInvocationHandler
 {
 public:
   XBPython();
@@ -73,64 +80,39 @@ public:
   void UnregisterPythonPlayerCallBack(IPlayerCallback* pCallback);
   void RegisterPythonMonitorCallBack(XBMCAddon::xbmc::Monitor* pCallback);
   void UnregisterPythonMonitorCallBack(XBMCAddon::xbmc::Monitor* pCallback);
-  void OnSettingsChanged(const CStdString &strings);
+  void OnSettingsChanged(const std::string &strings);
   void OnScreensaverActivated();
   void OnScreensaverDeactivated();
-  void OnDatabaseUpdated(const std::string &database);
-  void OnAbortRequested(const CStdString &ID="");
-  void Initialize();
-  void Finalize();
-  void FinalizeScript();
-  void FreeResources();
-  void Process();
+  void OnDPMSActivated();
+  void OnDPMSDeactivated();
+  void OnScanStarted(const std::string &library);
+  void OnScanFinished(const std::string &library);
+  void OnCleanStarted(const std::string &library);
+  void OnCleanFinished(const std::string &library);
+  void OnNotification(const std::string &sender, const std::string &method, const std::string &data);
 
-  void PulseGlobalEvent();
-  void WaitForEvent(CEvent& hEvent);
+  virtual void Process();
+  virtual void PulseGlobalEvent();
+  virtual void Uninitialize();
+  virtual bool OnScriptInitialized(ILanguageInvoker *invoker);
+  virtual void OnScriptStarted(ILanguageInvoker *invoker);
+  virtual void OnScriptAbortRequested(ILanguageInvoker *invoker);
+  virtual void OnScriptEnded(ILanguageInvoker *invoker);
+  virtual void OnScriptFinalized(ILanguageInvoker *invoker);
+  virtual ILanguageInvoker* CreateInvoker();
 
-  int ScriptsSize();
-  int GetPythonScriptId(int scriptPosition);
-  int evalFile(const CStdString &src, ADDON::AddonPtr addon);
-  int evalFile(const CStdString &src, const std::vector<CStdString> &argv, ADDON::AddonPtr addon);
-  int evalString(const CStdString &src, const std::vector<CStdString> &argv);
-
-  bool isRunning(int scriptId);
-  bool isStopping(int scriptId);
-  void setDone(int id);
-  
-  /*! \brief Stop a script if it's running
-   \param path path to the script
-   \return true if the script was running and is now stopped, false otherwise
-   */
-  bool StopScript(const CStdString &path);
-
-  // inject xbmc stuff into the interpreter.
-  // should be called for every new interpreter
-  void InitializeInterpreter(ADDON::AddonPtr addon);
-
-  // remove modules and references when interpreter done
-  void DeInitializeInterpreter();
+  bool WaitForEvent(CEvent& hEvent, unsigned int milliseconds);
 
   void RegisterExtensionLib(LibraryLoader *pLib);
   void UnregisterExtensionLib(LibraryLoader *pLib);
   void UnloadExtensionLibs();
 
-  //only should be called from thread which is running the script
-  void  stopScript(int scriptId);
-
-  // returns NULL if script doesn't exist or if script doesn't have a filename
-  const char* getFileName(int scriptId);
-
-  // returns -1 if no scripts exist with specified filename
-  int getScriptId(const CStdString &strFile);
-
-  void* getMainThreadState();
-
-  bool m_bLogin;
-  CCriticalSection    m_critSection;
 private:
+  void Finalize();
+
+  CCriticalSection    m_critSection;
   bool              FileExist(const char* strFile);
 
-  int               m_nextid;
   void*             m_mainThreadState;
   ThreadIdentifier  m_ThreadId;
   bool              m_bInitialized;

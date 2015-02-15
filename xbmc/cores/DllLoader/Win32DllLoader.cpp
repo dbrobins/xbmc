@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,9 +22,9 @@
 #include "Win32DllLoader.h"
 #include "DllLoader.h"
 #include "DllLoaderContainer.h"
-#include "utils/StdString.h"
 #include "Util.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 #include "filesystem/SpecialProtocol.h"
 #include "utils/CharsetConverter.h"
 
@@ -135,7 +135,7 @@ Export win32_exports[] =
   { NULL,                          -1, NULL,                                NULL }
 };
 
-Win32DllLoader::Win32DllLoader(const char *dll) : LibraryLoader(dll)
+Win32DllLoader::Win32DllLoader(const std::string& dll) : LibraryLoader(dll)
 {
   m_dllHandle = NULL;
   bIsSystemDll = false;
@@ -154,18 +154,28 @@ bool Win32DllLoader::Load()
   if (m_dllHandle != NULL)
     return true;
 
-  CStdString strFileName = GetFileName();
+  std::string strFileName = GetFileName();
 
-  CStdStringW strDllW;
-  g_charsetConverter.utf8ToW(CSpecialProtocol::TranslatePath(strFileName), strDllW);
+  std::wstring strDllW;
+  g_charsetConverter.utf8ToW(CSpecialProtocol::TranslatePath(strFileName), strDllW, false, false, false);
   m_dllHandle = LoadLibraryExW(strDllW.c_str(), NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
   if (!m_dllHandle)
   {
-    LPVOID lpMsgBuf;
     DWORD dw = GetLastError(); 
+    wchar_t* lpMsgBuf = NULL;
+    DWORD strLen = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dw, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), (LPWSTR)&lpMsgBuf, 0, NULL);
+    if (strLen == 0)
+      strLen = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dw, MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), (LPWSTR)&lpMsgBuf, 0, NULL);
 
-    FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dw, 0, (LPTSTR) &lpMsgBuf, 0, NULL );
-    CLog::Log(LOGERROR, "%s: Failed to load %s with error %d:%s", __FUNCTION__, CSpecialProtocol::TranslatePath(strFileName).c_str(), dw, lpMsgBuf);
+    if (strLen != 0)
+    {
+      std::string strMessage;
+      g_charsetConverter.wToUTF8(std::wstring(lpMsgBuf, strLen), strMessage);
+      CLog::Log(LOGERROR, "%s: Failed to load \"%s\" with error %lu: \"%s\"", __FUNCTION__, CSpecialProtocol::TranslatePath(strFileName).c_str(), dw, strMessage.c_str());
+    }
+    else
+      CLog::Log(LOGERROR, "%s: Failed to load \"%s\" with error %lu", __FUNCTION__, CSpecialProtocol::TranslatePath(strFileName).c_str(), dw);
+    
     LocalFree(lpMsgBuf);
     return false;
   }
@@ -230,9 +240,9 @@ bool Win32DllLoader::HasSymbols()
   return false;
 }
 
-void Win32DllLoader::OverrideImports(const CStdString &dll)
+void Win32DllLoader::OverrideImports(const std::string &dll)
 {
-  CStdStringW strdllW;
+  std::wstring strdllW;
   g_charsetConverter.utf8ToW(CSpecialProtocol::TranslatePath(dll), strdllW, false);
   BYTE* image_base = (BYTE*)GetModuleHandleW(strdllW.c_str());
 
@@ -327,7 +337,7 @@ bool Win32DllLoader::NeedsHooking(const char *dllName)
         return false;
     }
   }
-  CStdStringW strdllNameW;
+  std::wstring strdllNameW;
   g_charsetConverter.utf8ToW(CSpecialProtocol::TranslatePath(dllName), strdllNameW, false);
   HMODULE hModule = GetModuleHandleW(strdllNameW.c_str());
   if (hModule == NULL)
@@ -335,16 +345,16 @@ bool Win32DllLoader::NeedsHooking(const char *dllName)
 
   wchar_t filepathW[MAX_PATH];
   GetModuleFileNameW(hModule, filepathW, MAX_PATH);
-  CStdString dllPath;
+  std::string dllPath;
   g_charsetConverter.wToUTF8(filepathW, dllPath);
 
   // compare this filepath with some special directories
-  CStdString xbmcPath = CSpecialProtocol::TranslatePath("special://xbmc");
-  CStdString homePath = CSpecialProtocol::TranslatePath("special://home");
-  CStdString tempPath = CSpecialProtocol::TranslatePath("special://temp");
-  return ((strncmp(xbmcPath.c_str(), dllPath.c_str(), xbmcPath.GetLength()) == 0) ||
-    (strncmp(homePath.c_str(), dllPath.c_str(), homePath.GetLength()) == 0) ||
-    (strncmp(tempPath.c_str(), dllPath.c_str(), tempPath.GetLength()) == 0));
+  std::string xbmcPath = CSpecialProtocol::TranslatePath("special://xbmc");
+  std::string homePath = CSpecialProtocol::TranslatePath("special://home");
+  std::string tempPath = CSpecialProtocol::TranslatePath("special://temp");
+  return (StringUtils::StartsWith(dllPath, xbmcPath) ||
+          StringUtils::StartsWith(dllPath, homePath) ||
+          StringUtils::StartsWith(dllPath, tempPath));
 }
 
 void Win32DllLoader::RestoreImports()
@@ -392,7 +402,6 @@ bool FunctionNeedsWrapping(Export *exports, const char *functionName, void **fix
 
 bool Win32DllLoader::ResolveImport(const char *dllName, const char *functionName, void **fixup)
 {
-  char *dll = GetName();
   return FunctionNeedsWrapping(win32_exports, functionName, fixup);
 }
 

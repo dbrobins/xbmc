@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2011-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2011-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,23 +19,21 @@
  *
  */
 
-#include "IHTTPRequestHandler.h"
+#include <string>
 
-#include "utils/StdString.h"
+#include "network/httprequesthandler/HTTPFileHandler.h"
 
-class CHTTPVfsHandler : public IHTTPRequestHandler
+class CHTTPVfsHandler : public CHTTPFileHandler
 {
 public:
-  CHTTPVfsHandler() { };
+  CHTTPVfsHandler() { }
+  virtual ~CHTTPVfsHandler() { }
   
-  virtual IHTTPRequestHandler* GetInstance() { return new CHTTPVfsHandler(); }
-  virtual bool CheckHTTPRequest(const HTTPRequest &request);
-  virtual int HandleHTTPRequest(const HTTPRequest &request);
-
-  virtual std::string GetHTTPResponseFile() const { return m_path; }
+  virtual IHTTPRequestHandler* Create(const HTTPRequest &request) { return new CHTTPVfsHandler(request); }
+  virtual bool CanHandleRequest(const HTTPRequest &request);
 
   virtual int GetPriority() const { return 2; }
 
-private:
-  CStdString m_path;
+protected:
+  explicit CHTTPVfsHandler(const HTTPRequest &request);
 };

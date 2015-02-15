@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 
 #include <vector>
 #include <map>
-#include "utils/StdString.h"
+#include <string>
 #include "XBTF.h"
 
 class CXBTFReader
@@ -31,19 +31,19 @@ class CXBTFReader
 public:
   CXBTFReader();
   bool IsOpen() const;
-  bool Open(const CStdString& fileName);
+  bool Open(const std::string& fileName);
   void Close();
   time_t GetLastModificationTimestamp();
-  bool Exists(const CStdString& name);
-  CXBTFFile* Find(const CStdString& name);
+  bool Exists(const std::string& name);
+  CXBTFFile* Find(const std::string& name);
   bool Load(const CXBTFFrame& frame, unsigned char* buffer);
   std::vector<CXBTFFile>&  GetFiles();
 
 private:
   CXBTF      m_xbtf;
-  CStdString m_fileName;
+  std::string m_fileName;
   FILE*      m_file;
-  std::map<CStdString, CXBTFFile> m_filesMap;
+  std::map<std::string, CXBTFFile> m_filesMap;
 };
 
 #endif

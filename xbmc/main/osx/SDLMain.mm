@@ -15,17 +15,17 @@
 #import <sys/param.h> /* for MAXPATHLEN */
 #import <unistd.h>
 
-#import "CocoaInterface.h"
+#import "osx/CocoaInterface.h"
 //hack around problem with xbmc's typedef int BOOL
 // and obj-c's typedef unsigned char BOOL
 #define BOOL XBMC_BOOL 
-#import "utils/StdString.h"
 #import "PlatformDefs.h"
 #import "ApplicationMessenger.h"
 #import "storage/osx/DarwinStorageProvider.h"
 #undef BOOL
 
-#import "HotKeyController.h"
+#import "osx/HotKeyController.h"
+#import "osx/DarwinUtils.h"
 
 // For some reaon, Apple removed setAppleMenu from the headers in 10.4,
 // but the method still is there and works. To avoid warnings, we declare
@@ -417,7 +417,7 @@ static void setupWindowMenu(void)
   [pool release];
 }
 
-#define VK_SLEEP            0x5F
+#define VK_SLEEP            0x143
 #define VK_VOLUME_MUTE      0xAD
 #define VK_VOLUME_DOWN      0xAE
 #define VK_VOLUME_UP        0xAF
@@ -428,7 +428,7 @@ static void setupWindowMenu(void)
 #define VK_REWIND           0x9D
 #define VK_FAST_FWD         0x9E
 
-- (void)MediaKeyPower
+- (void)powerKeyNotification
 {
   SDL_Event event;
   memset(&event, 0, sizeof(event));
@@ -542,6 +542,14 @@ int main(int argc, char *argv[])
         gArgv[i] = argv[i];
     gFinderLaunch = NO;
   }
+
+  // fix open with document/movie - autostart
+  // on mavericks we are not called with "-psn" anymore
+  // as the whole ProcessSerialNumber approach is deprecated
+  // in that case assume finder launch - else
+  // we wouldn't handle documents/movies someone dragged on the app icon
+  if (CDarwinUtils::IsMavericks())
+    gFinderLaunch = TRUE;
 
   // Ensure the application object is initialised
   [XBMCApplication sharedApplication];

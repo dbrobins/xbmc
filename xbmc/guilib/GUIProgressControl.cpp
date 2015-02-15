@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #include "GUIListItem.h"
 #include "GUIWindowManager.h"
 #include "FileItem.h"
+#include "utils/StringUtils.h"
 
 CGUIProgressControl::CGUIProgressControl(int parentID, int controlID,
                                          float posX, float posY, float width,
@@ -81,7 +82,7 @@ void CGUIProgressControl::Render()
   {
     m_guiBackground.Render();
 
-    if (m_guiLeft.GetFileName().IsEmpty() && m_guiRight.GetFileName().IsEmpty())
+    if (m_guiLeft.GetFileName().empty() && m_guiRight.GetFileName().empty())
     {
       if (m_bReveal && !m_guiMidClipRect.IsEmpty())
       {
@@ -125,11 +126,17 @@ bool CGUIProgressControl::CanFocus() const
 
 bool CGUIProgressControl::OnMessage(CGUIMessage& message)
 {
+  if (message.GetMessage() == GUI_MSG_ITEM_SELECT)
+  {
+    SetPercentage((float)message.GetParam1());
+    return true;
+  }
   return CGUIControl::OnMessage(message);
 }
 
 void CGUIProgressControl::SetPercentage(float fPercent)
 {
+  fPercent = std::max(0.0f, std::min(fPercent, 100.0f));
   if (m_fPercent != fPercent)
     SetInvalid();
   m_fPercent = fPercent;
@@ -202,11 +209,9 @@ bool CGUIProgressControl::UpdateColors()
   return changed;
 }
 
-CStdString CGUIProgressControl::GetDescription() const
+std::string CGUIProgressControl::GetDescription() const
 {
-  CStdString percent;
-  percent.Format("%2.f", m_fPercent);
-  return percent;
+  return StringUtils::Format("%2.f", m_fPercent);
 }
 
 bool CGUIProgressControl::UpdateLayout(void)
@@ -228,7 +233,7 @@ bool CGUIProgressControl::UpdateLayout(void)
   float posX = m_guiBackground.GetXPosition();
   float posY = m_guiBackground.GetYPosition();
 
-  if (m_guiLeft.GetFileName().IsEmpty() && m_guiRight.GetFileName().IsEmpty())
+  if (m_guiLeft.GetFileName().empty() && m_guiRight.GetFileName().empty())
   { // rendering without left and right image - fill the mid image completely
     float width = m_fPercent * m_width * 0.01f;
     float offset = fabs(fScaleY * 0.5f * (m_guiMid.GetTextureHeight() - m_guiBackground.GetTextureHeight()));
@@ -241,7 +246,12 @@ bool CGUIProgressControl::UpdateLayout(void)
     {
       bChanged |= m_guiMid.SetWidth(m_width);
       float x = posX, y = posY + offset, w = width, h = fScaleY * m_guiMid.GetTextureHeight();
-      m_guiMidClipRect = CRect(x, y, x + w, y + h);
+      CRect rect(x, y, x + w, y + h);
+      if (rect != m_guiMidClipRect)
+      {
+        m_guiMidClipRect = rect;
+        bChanged = true;
+      }
     }
     else
     {
@@ -275,7 +285,12 @@ bool CGUIProgressControl::UpdateLayout(void)
     {
       bChanged |= m_guiMid.SetWidth(fScaleX * fFullWidth);
       float x = posX, y = posY + offset, w =  fScaleX * fWidth, h = fScaleY * m_guiMid.GetTextureHeight();
-      m_guiMidClipRect = CRect(x, y, x + w, y + h);
+      CRect rect(x, y, x + w, y + h);
+      if (rect != m_guiMidClipRect)
+      {
+        m_guiMidClipRect = rect;
+        bChanged = true;
+      }
     }
     else
     {

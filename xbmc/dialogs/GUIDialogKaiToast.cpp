@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
  */
 
 #include "GUIDialogKaiToast.h"
-#include "guilib/GUIImage.h"
 #include "guilib/GUIAudioManager.h"
 #include "guilib/GUIWindowManager.h"
 #include "threads/SingleLock.h"
@@ -32,10 +31,12 @@
 #define POPUP_ICON_WARNING        404
 #define POPUP_ICON_ERROR          405
 
+CGUIDialogKaiToast::TOASTQUEUE CGUIDialogKaiToast::m_notifications;
+CCriticalSection CGUIDialogKaiToast::m_critical;
+
 CGUIDialogKaiToast::CGUIDialogKaiToast(void)
 : CGUIDialog(WINDOW_DIALOG_KAI_TOAST, "DialogKaiToast.xml")
 {
-  m_defaultIcon = "";
   m_loadType = LOAD_ON_GUI_INIT;
   m_timer = 0;
   m_toastDisplayTime = 0;
@@ -69,53 +70,31 @@ bool CGUIDialogKaiToast::OnMessage(CGUIMessage& message)
 void CGUIDialogKaiToast::OnWindowLoaded()
 {
   CGUIDialog::OnWindowLoaded();
-  CGUIImage *image = (CGUIImage *)GetControl(POPUP_ICON);
-  if (image)
-    m_defaultIcon = image->GetFileName();
+  CGUIMessage msg(GUI_MSG_GET_FILENAME, GetID(), POPUP_ICON);
+  m_defaultIcon = msg.GetLabel();
 }
 
-void CGUIDialogKaiToast::QueueNotification(eMessageType eType, const CStdString& aCaption, const CStdString& aDescription, unsigned int displayTime /*= TOAST_DISPLAY_TIME*/, bool withSound /*= true*/, unsigned int messageTime /*= TOAST_MESSAGE_TIME*/)
+void CGUIDialogKaiToast::QueueNotification(eMessageType eType, const std::string& aCaption, const std::string& aDescription, unsigned int displayTime /*= TOAST_DISPLAY_TIME*/, bool withSound /*= true*/, unsigned int messageTime /*= TOAST_MESSAGE_TIME*/)
 {
-  CGUIDialogKaiToast *toast = (CGUIDialogKaiToast *)g_windowManager.GetWindow(WINDOW_DIALOG_KAI_TOAST);
-  if (toast)
-    toast->AddToQueue(eType, aCaption, aDescription, displayTime, withSound, messageTime);
+  AddToQueue("", eType, aCaption, aDescription, displayTime, withSound, messageTime);
 }
 
-void CGUIDialogKaiToast::QueueNotification(const CStdString& aCaption, const CStdString& aDescription)
+void CGUIDialogKaiToast::QueueNotification(const std::string& aCaption, const std::string& aDescription)
 {
   QueueNotification("", aCaption, aDescription);
 }
 
-void CGUIDialogKaiToast::QueueNotification(const CStdString& aImageFile, const CStdString& aCaption, const CStdString& aDescription, unsigned int displayTime /*= TOAST_DISPLAY_TIME*/, bool withSound /*= true*/, unsigned int messageTime /*= TOAST_MESSAGE_TIME*/)
+void CGUIDialogKaiToast::QueueNotification(const std::string& aImageFile, const std::string& aCaption, const std::string& aDescription, unsigned int displayTime /*= TOAST_DISPLAY_TIME*/, bool withSound /*= true*/, unsigned int messageTime /*= TOAST_MESSAGE_TIME*/)
 {
-  CGUIDialogKaiToast *toast = (CGUIDialogKaiToast *)g_windowManager.GetWindow(WINDOW_DIALOG_KAI_TOAST);
-  if (toast)
-    toast->AddToQueue(aImageFile, aCaption, aDescription, displayTime, withSound, messageTime);
+  AddToQueue(aImageFile, Default, aCaption, aDescription, displayTime, withSound, messageTime);
 }
 
-void CGUIDialogKaiToast::AddToQueue(eMessageType eType, const CStdString& aCaption, const CStdString& aDescription, unsigned int displayTime /*= TOAST_DISPLAY_TIME*/, bool withSound /*= true*/, unsigned int messageTime /*= TOAST_MESSAGE_TIME*/)
-{
-  CGUIImage *image    = NULL;
-  
-  if (eType == Info)
-    image = (CGUIImage *)GetControl(POPUP_ICON_INFO);
-  else if (eType == Warning)
-    image = (CGUIImage *)GetControl(POPUP_ICON_WARNING);
-  else if (eType == Error)
-    image = (CGUIImage *)GetControl(POPUP_ICON_ERROR);
-  
-  CStdString strImage;
-  if (image)
-    strImage = image->GetFileName();
-  
-  AddToQueue(strImage, aCaption, aDescription, displayTime, withSound, messageTime);
-}
-
-void CGUIDialogKaiToast::AddToQueue(const CStdString& aImageFile, const CStdString& aCaption, const CStdString& aDescription, unsigned int displayTime /*= TOAST_DISPLAY_TIME*/, bool withSound /*= true*/, unsigned int messageTime /*= TOAST_MESSAGE_TIME*/)
+void CGUIDialogKaiToast::AddToQueue(const std::string& aImageFile, const eMessageType eType, const std::string& aCaption, const std::string& aDescription, unsigned int displayTime /*= TOAST_DISPLAY_TIME*/, bool withSound /*= true*/, unsigned int messageTime /*= TOAST_MESSAGE_TIME*/)
 {
   CSingleLock lock(m_critical);
 
   Notification toast;
+  toast.eType = eType;
   toast.imagefile = aImageFile;
   toast.caption = aCaption;
   toast.description = aDescription;
@@ -130,7 +109,7 @@ bool CGUIDialogKaiToast::DoWork()
 {
   CSingleLock lock(m_critical);
 
-  if (m_notifications.size() > 0 &&
+  if (!m_notifications.empty() &&
       CTimeUtils::GetFrameTime() - m_timer > m_toastMessageTime)
   {
     Notification toast = m_notifications.front();
@@ -149,13 +128,29 @@ bool CGUIDialogKaiToast::DoWork()
 
     SET_CONTROL_LABEL(POPUP_NOTIFICATION_BUTTON, toast.description);
 
-    CGUIImage *image = (CGUIImage *)GetControl(POPUP_ICON);
-    if (image)
+    // set the appropriate icon
     {
-      if (!toast.imagefile.IsEmpty())
-        image->SetFileName(toast.imagefile);
-      else
-        image->SetFileName(m_defaultIcon);
+      std::string strTypeImage = toast.imagefile;
+
+      if (strTypeImage.empty())
+      {
+        int imageControl = POPUP_ICON;
+
+        if (toast.eType == Info)
+          imageControl = POPUP_ICON_INFO;
+        else if (toast.eType == Warning)
+          imageControl = POPUP_ICON_WARNING;
+        else if (toast.eType == Error)
+          imageControl = POPUP_ICON_ERROR;
+
+        CGUIMessage msg(GUI_MSG_GET_FILENAME, GetID(), imageControl);
+        if (OnMessage(msg))
+          strTypeImage = msg.GetLabel();
+        else
+          strTypeImage = m_defaultIcon;
+      }
+
+      SET_CONTROL_FILENAME(POPUP_ICON, strTypeImage);
     }
 
     //  Play the window specific init sound for each notification queued

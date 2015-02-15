@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@
 #define _OSX_INTERFACE_H_
 
 #include <string>
-#include "utils/StdString.h"
 #include "AutoPool.h"
 
 #ifdef __cplusplus
@@ -47,7 +46,7 @@ extern "C"
   // Devices
   //
   char* Cocoa_MountPoint2DeviceName(char *path);
-  bool Cocoa_GetVolumeNameFromMountPoint(const char *mountPoint, CStdString &volumeName);
+  bool Cocoa_GetVolumeNameFromMountPoint(const std::string &mountPoint, std::string &volumeName);
 
   // Mouse.
   //
@@ -57,8 +56,6 @@ extern "C"
 
   // Version.
   //
-  const char* Cocoa_GetAppVersion();
-  bool Cocoa_HasVDADecoder();
   bool Cocoa_GPUForDisplayIsNvidiaPureVideo3();
   int Cocoa_GetOSVersion();
 

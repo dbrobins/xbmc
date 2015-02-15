@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,12 +23,12 @@
 */
 #pragma once
 
-#include "utils/StdString.h"
 #include "utils/ISerializable.h"
 #include "XBDateTime.h"
 #include "music/tags/MusicInfoTag.h" // for EmbeddedArt
-
+#include "Artist.h"
 #include <map>
+#include <string>
 #include <vector>
 
 /*!
@@ -41,9 +41,10 @@ class CGenre
 {
 public:
   long idGenre;
-  CStdString strGenre;
+  std::string strGenre;
 };
 
+class CFileItem;
 
 /*!
  \ingroup music
@@ -54,9 +55,10 @@ class CSong: public ISerializable
 {
 public:
   CSong() ;
-  CSong(MUSIC_INFO::CMusicInfoTag& tag);
+  CSong(CFileItem& item);
   virtual ~CSong(){};
   void Clear() ;
+  void MergeScrapedSong(const CSong& source, bool override);
   virtual void Serialize(CVariant& value) const;
 
   bool operator<(const CSong &song) const
@@ -78,20 +80,19 @@ public:
   bool ArtMatches(const CSong &right) const;
 
   long idSong;
-  CStdString strFileName;
-  CStdString strTitle;
+  int idAlbum;
+  std::string strFileName;
+  std::string strTitle;
   std::vector<std::string> artist;
-  CStdString strAlbum;
+  VECARTISTCREDITS artistCredits;
+  std::string strAlbum;
   std::vector<std::string> albumArtist;
   std::vector<std::string> genre;
-  CStdString strThumb;
+  std::string strThumb;
   MUSIC_INFO::EmbeddedArtInfo embeddedArt;
-  CStdString strMusicBrainzTrackID;
-  CStdString strMusicBrainzArtistID;
-  CStdString strMusicBrainzAlbumID;
-  CStdString strMusicBrainzAlbumArtistID;
-  CStdString strMusicBrainzTRMID;
-  CStdString strComment;
+  std::string strMusicBrainzTrackID;
+  std::string strComment;
+  std::string strCueSheet;
   char rating;
   int iTrack;
   int iDuration;
@@ -100,12 +101,11 @@ public:
   CDateTime lastPlayed;
   int iStartOffset;
   int iEndOffset;
-  int iAlbumId;
   bool bCompilation;
 
   // Karaoke-specific information
   long       iKaraokeNumber;        //! Karaoke song number to "select by number". 0 for non-karaoke
-  CStdString strKaraokeLyrEncoding; //! Karaoke song lyrics encoding if known. Empty if unknown.
+  std::string strKaraokeLyrEncoding; //! Karaoke song lyrics encoding if known. Empty if unknown.
   int        iKaraokeDelay;         //! Karaoke song lyrics-music delay in 1/10 seconds.
 };
 
@@ -113,21 +113,7 @@ public:
  \ingroup music
  \brief A map of CSong objects, used for CMusicDatabase
  */
-class CSongMap
-{
-public:
-  CSongMap();
-
-  std::map<CStdString, CSong>::const_iterator Begin();
-  std::map<CStdString, CSong>::const_iterator End();
-  CSong *Find(const CStdString &file);
-  void Add(const CStdString &file, const CSong &song);
-  void Clear();
-  int Size();
-
-private:
-  std::map<CStdString, CSong> m_map;
-};
+typedef std::map<std::string, CSong> MAPSONGS;
 
 /*!
  \ingroup music
@@ -138,7 +124,7 @@ typedef std::vector<CSong> VECSONGS;
 
 /*!
  \ingroup music
- \brief A vector of CStdString objects, used for CMusicDatabase
+ \brief A vector of std::string objects, used for CMusicDatabase
  \sa CMusicDatabase
  */
 typedef std::vector<CGenre> VECGENRES;

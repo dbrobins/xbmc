@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2009-2010 Team XBMC
+ *  Copyright (C) 2009-2013 Team XBMC
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 #include "stdafx.h"
 #include "Xbox360Controller.h"
 #include "../../lib/c++/xbmcclient.h"
-#pragma comment(lib, "wsock32.lib")      // needed for xmbclient.h?
+#pragma comment(lib, "wsock32.lib")      // needed for xbmclient.h?
 
 // You can have up to 4 xbox360 controllers on a system
 #define MAX_NUM_CONTROLLERS 4

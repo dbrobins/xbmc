@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,23 +19,33 @@
  *
  */
 
+#include <stdint.h>
 #include "cores/dvdplayer/DVDDemuxers/DVDDemuxUtils.h"
 #include "addons/include/xbmc_pvr_types.h"
-#include "../../addons/library.xbmc.addon/libXBMC_addon.h"
+#include "addons/include/xbmc_codec_types.h"
 #include "../../addons/library.xbmc.gui/libXBMC_gui.h"
+
+#ifdef TARGET_WINDOWS
+#ifndef _SSIZE_T_DEFINED
+typedef intptr_t ssize_t;
+#define _SSIZE_T_DEFINED
+#endif // !_SSIZE_T_DEFINED
+#endif // TARGET_WINDOWS
 
 typedef void (*AddOnLogCallback)(void *addonData, const ADDON::addon_log_t loglevel, const char *msg);
 typedef void (*AddOnQueueNotification)(void *addonData, const ADDON::queue_msg_t type, const char *msg);
+typedef bool (*AddOnWakeOnLan)(const char* mac);
 typedef bool (*AddOnGetSetting)(void *addonData, const char *settingName, void *settingValue);
 typedef char* (*AddOnUnknownToUTF8)(const char *sourceDest);
-typedef const char* (*AddOnGetLocalizedString)(const void* addonData, long dwCode);
-typedef const char* (*AddOnGetDVDMenuLanguage)(const void* addonData);
+typedef char* (*AddOnGetLocalizedString)(const void* addonData, long dwCode);
+typedef char* (*AddOnGetDVDMenuLanguage)(const void* addonData);
+typedef void (*AddOnFreeString)(const void* addonData, char* str);
 
 typedef void* (*AddOnOpenFile)(const void* addonData, const char* strFileName, unsigned int flags);
 typedef void* (*AddOnOpenFileForWrite)(const void* addonData, const char* strFileName, bool bOverWrite);
-typedef unsigned int (*AddOnReadFile)(const void* addonData, void* file, void* lpBuf, int64_t uiBufSize);
+typedef ssize_t (*AddOnReadFile)(const void* addonData, void* file, void* lpBuf, size_t uiBufSize);
 typedef bool (*AddOnReadFileString)(const void* addonData, void* file, char *szLine, int iLineLength);
-typedef int (*AddOnWriteFile)(const void* addonData, void* file, const void* lpBuf, int64_t uiBufSize);
+typedef ssize_t (*AddOnWriteFile)(const void* addonData, void* file, const void* lpBuf, size_t uiBufSize);
 typedef void (*AddOnFlushFile)(const void* addonData, void* file);
 typedef int64_t (*AddOnSeekFile)(const void* addonData, void* file, int64_t iFilePosition, int iWhence);
 typedef int (*AddOnTruncateFile)(const void* addonData, void* file, int64_t iSize);
@@ -55,10 +65,12 @@ typedef struct CB_AddOn
 {
   AddOnLogCallback        Log;
   AddOnQueueNotification  QueueNotification;
+  AddOnWakeOnLan          WakeOnLan;
   AddOnGetSetting         GetSetting;
   AddOnUnknownToUTF8      UnknownToUTF8;
   AddOnGetLocalizedString GetLocalizedString;
   AddOnGetDVDMenuLanguage GetDVDMenuLanguage;
+  AddOnFreeString         FreeString;
 
   AddOnOpenFile           OpenFile;
   AddOnOpenFileForWrite   OpenFileForWrite;
@@ -80,6 +92,13 @@ typedef struct CB_AddOn
   AddOnDirectoryExists    DirectoryExists;
   AddOnRemoveDirectory    RemoveDirectory;
 } CB_AddOnLib;
+
+typedef xbmc_codec_t (*CODECGetCodecByName)(const void* addonData, const char* strCodecName);
+
+typedef struct CB_CODEC
+{
+  CODECGetCodecByName   GetCodecByName;
+} CB_CODECLib;
 
 typedef void (*GUILock)();
 typedef void (*GUIUnlock)();
@@ -117,7 +136,9 @@ typedef GUIHANDLE   (*GUIWindow_GetControl_Button)(void *addonData, GUIHANDLE ha
 typedef GUIHANDLE   (*GUIWindow_GetControl_RadioButton)(void *addonData, GUIHANDLE handle, int controlId);
 typedef GUIHANDLE   (*GUIWindow_GetControl_Edit)(void *addonData, GUIHANDLE handle, int controlId);
 typedef GUIHANDLE   (*GUIWindow_GetControl_Progress)(void *addonData, GUIHANDLE handle, int controlId);
+typedef GUIHANDLE   (*GUIWindow_GetControl_RenderAddon)(void *addonData, GUIHANDLE handle, int controlId);
 typedef void        (*GUIWindow_SetControlLabel)(void *addonData, GUIHANDLE handle, int controlId, const char *label);
+typedef void        (*GUIWindow_MarkDirtyRegion)(void *addonData, GUIHANDLE handle);
 typedef void        (*GUIControl_Spin_SetVisible)(void *addonData, GUIHANDLE spinhandle, bool yesNo);
 typedef void        (*GUIControl_Spin_SetText)(void *addonData, GUIHANDLE spinhandle, const char *label);
 typedef void        (*GUIControl_Spin_Clear)(void *addonData, GUIHANDLE spinhandle);
@@ -144,6 +165,9 @@ typedef void        (*GUIListItem_SetInfo)(void *addonData, GUIHANDLE handle, co
 typedef void        (*GUIListItem_SetProperty)(void *addonData, GUIHANDLE handle, const char *key, const char *value);
 typedef const char* (*GUIListItem_GetProperty)(void *addonData, GUIHANDLE handle, const char *key);
 typedef void        (*GUIListItem_SetPath)(void *addonData, GUIHANDLE handle, const char *path);
+typedef void        (*GUIRenderAddon_SetCallbacks)(void *addonData, GUIHANDLE handle, GUIHANDLE clienthandle, bool (*createCB)(GUIHANDLE,int,int,int,int,void*), void (*renderCB)(GUIHANDLE), void (*stopCB)(GUIHANDLE), bool (*dirtyCB)(GUIHANDLE));
+typedef void        (*GUIRenderAddon_Delete)(void *addonData, GUIHANDLE handle);
+typedef void        (*GUIRenderAddon_MarkDirty)(void *addonData, GUIHANDLE handle);
 
 typedef struct CB_GUILib
 {
@@ -183,7 +207,9 @@ typedef struct CB_GUILib
   GUIWindow_GetControl_RadioButton    Window_GetControl_RadioButton;
   GUIWindow_GetControl_Edit           Window_GetControl_Edit;
   GUIWindow_GetControl_Progress       Window_GetControl_Progress;
+  GUIWindow_GetControl_RenderAddon    Window_GetControl_RenderAddon;
   GUIWindow_SetControlLabel           Window_SetControlLabel;
+  GUIWindow_MarkDirtyRegion           Window_MarkDirtyRegion;
   GUIControl_Spin_SetVisible          Control_Spin_SetVisible;
   GUIControl_Spin_SetText             Control_Spin_SetText;
   GUIControl_Spin_Clear               Control_Spin_Clear;
@@ -210,6 +236,8 @@ typedef struct CB_GUILib
   GUIListItem_SetProperty             ListItem_SetProperty;
   GUIListItem_GetProperty             ListItem_GetProperty;
   GUIListItem_SetPath                 ListItem_SetPath;
+  GUIRenderAddon_SetCallbacks         RenderAddon_SetCallbacks;
+  GUIRenderAddon_Delete               RenderAddon_Delete;
 
 } CB_GUILib;
 
@@ -223,6 +251,7 @@ typedef void (*PVRTriggerChannelUpdate)(void *addonData);
 typedef void (*PVRTriggerTimerUpdate)(void *addonData);
 typedef void (*PVRTriggerRecordingUpdate)(void *addonData);
 typedef void (*PVRTriggerChannelGroupsUpdate)(void *addonData);
+typedef void (*PVRTriggerEpgUpdate)(void *addonData, unsigned int iChannelUid);
 
 typedef void (*PVRTransferChannelGroup)(void *addonData, const ADDON_HANDLE handle, const PVR_CHANNEL_GROUP *group);
 typedef void (*PVRTransferChannelGroupMember)(void *addonData, const ADDON_HANDLE handle, const PVR_CHANNEL_GROUP_MEMBER *member);
@@ -242,6 +271,7 @@ typedef struct CB_PVRLib
   PVRTriggerTimerUpdate         TriggerTimerUpdate;
   PVRTriggerRecordingUpdate     TriggerRecordingUpdate;
   PVRTriggerChannelGroupsUpdate TriggerChannelGroupsUpdate;
+  PVRTriggerEpgUpdate           TriggerEpgUpdate;
   PVRFreeDemuxPacket            FreeDemuxPacket;
   PVRAllocateDemuxPacket        AllocateDemuxPacket;
   PVRTransferChannelGroup       TransferChannelGroup;
@@ -252,6 +282,8 @@ typedef struct CB_PVRLib
 
 typedef CB_AddOnLib* (*XBMCAddOnLib_RegisterMe)(void *addonData);
 typedef void (*XBMCAddOnLib_UnRegisterMe)(void *addonData, CB_AddOnLib *cbTable);
+typedef CB_CODECLib* (*XBMCCODECLib_RegisterMe)(void *addonData);
+typedef void (*XBMCCODECLib_UnRegisterMe)(void *addonData, CB_CODECLib *cbTable);
 typedef CB_GUILib* (*XBMCGUILib_RegisterMe)(void *addonData);
 typedef void (*XBMCGUILib_UnRegisterMe)(void *addonData, CB_GUILib *cbTable);
 typedef CB_PVRLib* (*XBMCPVRLib_RegisterMe)(void *addonData);
@@ -263,6 +295,8 @@ typedef struct AddonCB
   void                      *addonData;
   XBMCAddOnLib_RegisterMe    AddOnLib_RegisterMe;
   XBMCAddOnLib_UnRegisterMe  AddOnLib_UnRegisterMe;
+  XBMCCODECLib_RegisterMe    CODECLib_RegisterMe;
+  XBMCCODECLib_UnRegisterMe  CODECLib_UnRegisterMe;
   XBMCGUILib_RegisterMe      GUILib_RegisterMe;
   XBMCGUILib_UnRegisterMe    GUILib_UnRegisterMe;
   XBMCPVRLib_RegisterMe      PVRLib_RegisterMe;
@@ -275,6 +309,7 @@ namespace ADDON
 
 class CAddon;
 class CAddonCallbacksAddon;
+class CAddonCallbacksCodec;
 class CAddonCallbacksGUI;
 class CAddonCallbacksPVR;
 
@@ -287,12 +322,15 @@ public:
 
   static CB_AddOnLib* AddOnLib_RegisterMe(void *addonData);
   static void AddOnLib_UnRegisterMe(void *addonData, CB_AddOnLib *cbTable);
+  static CB_CODECLib* CODECLib_RegisterMe(void *addonData);
+  static void CODECLib_UnRegisterMe(void *addonData, CB_CODECLib *cbTable);
   static CB_GUILib* GUILib_RegisterMe(void *addonData);
   static void GUILib_UnRegisterMe(void *addonData, CB_GUILib *cbTable);
   static CB_PVRLib* PVRLib_RegisterMe(void *addonData);
   static void PVRLib_UnRegisterMe(void *addonData, CB_PVRLib *cbTable);
 
   CAddonCallbacksAddon *GetHelperAddon() { return m_helperAddon; }
+  CAddonCallbacksCodec *GetHelperCodec() { return m_helperCODEC; }
   CAddonCallbacksGUI *GetHelperGUI() { return m_helperGUI; }
   CAddonCallbacksPVR *GetHelperPVR() { return m_helperPVR; }
 
@@ -300,6 +338,7 @@ private:
   AddonCB             *m_callbacks;
   CAddon              *m_addon;
   CAddonCallbacksAddon *m_helperAddon;
+  CAddonCallbacksCodec *m_helperCODEC;
   CAddonCallbacksGUI   *m_helperGUI;
   CAddonCallbacksPVR   *m_helperPVR;
 };

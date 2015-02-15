@@ -2,8 +2,8 @@
 #define __XBMC_ADDON_TYPES_H__
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,7 +32,8 @@ enum ADDON_STATUS
   ADDON_STATUS_NEED_RESTART,
   ADDON_STATUS_NEED_SETTINGS,
   ADDON_STATUS_UNKNOWN,
-  ADDON_STATUS_NEED_SAVEDSETTINGS
+  ADDON_STATUS_NEED_SAVEDSETTINGS,
+  ADDON_STATUS_PERMANENT_FAILURE   /**< permanent failure, like failing to resolve methods */
 };
 
 typedef struct

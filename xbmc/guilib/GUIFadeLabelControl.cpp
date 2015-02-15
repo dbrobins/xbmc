@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,35 +19,32 @@
  */
 
 #include "GUIFadeLabelControl.h"
-#include "utils/CharsetConverter.h"
 
 using namespace std;
 
 CGUIFadeLabelControl::CGUIFadeLabelControl(int parentID, int controlID, float posX, float posY, float width, float height, const CLabelInfo& labelInfo, bool scrollOut, unsigned int timeToDelayAtEnd, bool resetOnLabelChange)
-    : CGUIControl(parentID, controlID, posX, posY, width, height), m_scrollInfo(50, labelInfo.offsetX, labelInfo.scrollSpeed)
+    : CGUIControl(parentID, controlID, posX, posY, width, height), m_label(labelInfo), m_scrollInfo(50, labelInfo.offsetX, labelInfo.scrollSpeed)
     , m_textLayout(labelInfo.font, false)
+    , m_fadeAnim(CAnimation::CreateFader(100, 0, timeToDelayAtEnd, 200))
 {
-  m_label = labelInfo;
   m_currentLabel = 0;
   ControlType = GUICONTROL_FADELABEL;
   m_scrollOut = scrollOut;
-  m_fadeAnim = CAnimation::CreateFader(100, 0, timeToDelayAtEnd, 200);
   m_fadeAnim.ApplyAnimation();
   m_lastLabel = -1;
   m_scrollSpeed = labelInfo.scrollSpeed;  // save it for later
   m_resetOnLabelChange = resetOnLabelChange;
-  m_shortText = false;
+  m_shortText = true;
 }
 
 CGUIFadeLabelControl::CGUIFadeLabelControl(const CGUIFadeLabelControl &from)
-: CGUIControl(from), m_infoLabels(from.m_infoLabels), m_scrollInfo(from.m_scrollInfo), m_textLayout(from.m_textLayout)
+: CGUIControl(from), m_infoLabels(from.m_infoLabels), m_label(from.m_label), m_scrollInfo(from.m_scrollInfo), m_textLayout(from.m_textLayout), 
+  m_fadeAnim(from.m_fadeAnim)
 {
-  m_label = from.m_label;
   m_scrollOut = from.m_scrollOut;
   m_scrollSpeed = from.m_scrollSpeed;
   m_resetOnLabelChange = from.m_resetOnLabelChange;
 
-  m_fadeAnim = from.m_fadeAnim;
   m_fadeAnim.ApplyAnimation();
   m_currentLabel = 0;
   m_lastLabel = -1;
@@ -112,18 +109,14 @@ void CGUIFadeLabelControl::Process(unsigned int currentTime, CDirtyRegionList &d
     bool moveToNextLabel = false;
     if (!m_scrollOut)
     {
-      vecText text;
-      m_textLayout.GetFirstText(text);
-      if (m_scrollInfo.characterPos && m_scrollInfo.characterPos < text.size())
-        text.erase(text.begin(), text.begin() + min((int)m_scrollInfo.characterPos - 1, (int)text.size()));
-      if (m_label.font->GetTextWidth(text) < m_width)
+      if (m_scrollInfo.pixelPos + m_width > m_scrollInfo.m_textWidth)
       {
         if (m_fadeAnim.GetProcess() != ANIM_PROCESS_NORMAL)
           m_fadeAnim.QueueAnimation(ANIM_PROCESS_NORMAL);
         moveToNextLabel = true;
       }
     }
-    else if (m_scrollInfo.characterPos > m_textLayout.GetTextLength())
+    else if (m_scrollInfo.pixelPos > m_scrollInfo.m_textWidth)
       moveToNextLabel = true;
     
     // apply the fading animation
@@ -147,6 +140,9 @@ void CGUIFadeLabelControl::Process(unsigned int currentTime, CDirtyRegionList &d
         m_fadeAnim.QueueAnimation(ANIM_PROCESS_REVERSE);
       }
     }
+
+    m_textLayout.UpdateScrollinfo(m_scrollInfo);
+
     g_graphicsContext.RemoveTransform();
   }
 
@@ -236,19 +232,19 @@ bool CGUIFadeLabelControl::OnMessage(CGUIMessage& message)
   return CGUIControl::OnMessage(message);
 }
 
-CStdString CGUIFadeLabelControl::GetDescription() const
+std::string CGUIFadeLabelControl::GetDescription() const
 {
   return (m_currentLabel < m_infoLabels.size()) ?  m_infoLabels[m_currentLabel].GetLabel(m_parentID) : "";
 }
 
-CStdString CGUIFadeLabelControl::GetLabel()
+std::string CGUIFadeLabelControl::GetLabel()
 {
   if (m_currentLabel > m_infoLabels.size())
     m_currentLabel = 0;
 
   unsigned int numTries = 0;
-  CStdString label(m_infoLabels[m_currentLabel].GetLabel(m_parentID));
-  while (label.IsEmpty() && ++numTries < m_infoLabels.size())
+  std::string label(m_infoLabels[m_currentLabel].GetLabel(m_parentID));
+  while (label.empty() && ++numTries < m_infoLabels.size())
   {
     if (++m_currentLabel >= m_infoLabels.size())
       m_currentLabel = 0;

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "utils/log.h"
 #include "playlists/PlayListFactory.h"
 #include "File.h"
+#include "URL.h"
 #include "playlists/PlayList.h"
 
 using namespace std;
@@ -37,13 +38,14 @@ namespace XFILE
   {
   }
 
-  bool CPlaylistFileDirectory::GetDirectory(const CStdString& strPath, CFileItemList& items)
+  bool CPlaylistFileDirectory::GetDirectory(const CURL& url, CFileItemList& items)
   {
-    auto_ptr<CPlayList> pPlayList (CPlayListFactory::Create(strPath));
+    const std::string pathToUrl = url.Get();
+    unique_ptr<CPlayList> pPlayList (CPlayListFactory::Create(pathToUrl));
     if ( NULL != pPlayList.get())
     {
       // load it
-      if (!pPlayList->Load(strPath))
+      if (!pPlayList->Load(pathToUrl))
         return false; //hmmm unable to load playlist?
 
       CPlayList playlist = *pPlayList;
@@ -58,13 +60,14 @@ namespace XFILE
     return true;
   }
 
-  bool CPlaylistFileDirectory::ContainsFiles(const CStdString& strPath)
+  bool CPlaylistFileDirectory::ContainsFiles(const CURL& url)
   {
-    auto_ptr<CPlayList> pPlayList (CPlayListFactory::Create(strPath));
+    const std::string pathToUrl = url.Get();
+    unique_ptr<CPlayList> pPlayList (CPlayListFactory::Create(pathToUrl));
     if ( NULL != pPlayList.get())
     {
       // load it
-      if (!pPlayList->Load(strPath))
+      if (!pPlayList->Load(pathToUrl))
         return false; //hmmm unable to load playlist?
 
       return (pPlayList->size() > 1);
@@ -72,9 +75,9 @@ namespace XFILE
     return false;
   }
 
-  bool CPlaylistFileDirectory::Remove(const char *strPath)
+  bool CPlaylistFileDirectory::Remove(const CURL& url)
   {
-    return XFILE::CFile::Delete(strPath);
+    return XFILE::CFile::Delete(url);
   }
 }
 

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -13,7 +13,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
-  *  along with XBMC; see the file COPYING.  If not, see
+ *  along with XBMC; see the file COPYING.  If not, see
  *  <http://www.gnu.org/licenses/>.
  *
  */
@@ -22,10 +22,9 @@
 
 #include "Timer.h"
 #include "SystemClock.h"
-#include "utils/log.h"
 
 CTimer::CTimer(ITimerCallback *callback)
-  : CThread("CTimer"),
+  : CThread("Timer"),
     m_callback(callback),
     m_timeout(0),
     m_interval(false),
@@ -40,15 +39,11 @@ CTimer::~CTimer()
 bool CTimer::Start(uint32_t timeout, bool interval /* = false */)
 {
   if (m_callback == NULL || timeout == 0 || IsRunning())
-  {
-    CLog::Log(LOGWARNING, "CTimer: can't start timer");
     return false;
-  }
 
   m_timeout = timeout;
   m_interval = interval;
 
-  CLog::Log(LOGDEBUG, "CTimer: starting for %d ms %s", m_timeout, m_interval ? "(interval)" : "");
   Create();
   return true;
 }
@@ -58,12 +53,20 @@ bool CTimer::Stop(bool wait /* = false */)
   if (!IsRunning())
     return false;
 
-  CLog::Log(LOGDEBUG, "CTimer: stopping %s", wait ? "(wait)" : "");
   m_bStop = true;
   m_eventTimeout.Set();
   StopThread(wait);
 
   return true;
+}
+
+bool CTimer::Restart()
+{
+  if (!IsRunning())
+    return false;
+
+  Stop(true);
+  return Start(m_timeout, m_interval);
 }
 
 float CTimer::GetElapsedSeconds() const
@@ -92,7 +95,6 @@ void CTimer::Process()
       currentTime = XbmcThreads::SystemClockMillis();
       if (m_endTime <= currentTime)
       {
-        CLog::Log(LOGDEBUG, "CTimer: timeout");
         // execute OnTimeout() callback
         m_callback->OnTimeout();
 
@@ -100,11 +102,8 @@ void CTimer::Process()
         if (!m_interval)
           break;
 
-        CLog::Log(LOGDEBUG, "CTimer: restart");
         m_endTime = currentTime + m_timeout;
       }
     }
   }
-
-  CLog::Log(LOGDEBUG, "CTimer: finished");
 }

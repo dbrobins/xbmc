@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,8 @@
 #include "XBDateTime.h"
 #include "threads/Thread.h"
 #include "utils/Observer.h"
-#include "ThumbLoader.h"
+#include "video/VideoThumbLoader.h"
+#include "video/VideoDatabase.h"
 
 #define PVR_ALL_RECORDINGS_PATH_EXTENSION "-1"
 
@@ -32,32 +33,38 @@ namespace PVR
   class CPVRRecordings : public Observable
   {
   private:
+    typedef std::map<CPVRRecordingUid, CPVRRecordingPtr> PVR_RECORDINGMAP;
+    typedef PVR_RECORDINGMAP::const_iterator             PVR_RECORDINGMAP_CITR;
+
     CCriticalSection             m_critSection;
     bool                         m_bIsUpdating;
-    CStdString                   m_strDirectoryHistory;
-    CVideoThumbLoader            m_thumbLoader;
-    std::vector<CPVRRecording *> m_recordings;
+    PVR_RECORDINGMAP             m_recordings;
+    unsigned int                 m_iLastId;
+    bool                         m_bGroupItems;
+    CVideoDatabase               m_database;
 
     virtual void UpdateFromClients(void);
-    virtual CStdString TrimSlashes(const CStdString &strOrig) const;
-    virtual const CStdString GetDirectoryFromPath(const CStdString &strPath, const CStdString &strBase) const;
-    virtual bool IsDirectoryMember(const CStdString &strDirectory, const CStdString &strEntryDirectory, bool bDirectMember = true) const;
-    virtual void GetContents(const CStdString &strDirectory, CFileItemList *results);
-    virtual void GetSubDirectories(const CStdString &strBase, CFileItemList *results, bool bAutoSkip = true);
+    virtual std::string TrimSlashes(const std::string &strOrig) const;
+    virtual const std::string GetDirectoryFromPath(const std::string &strPath, const std::string &strBase) const;
+    virtual bool IsDirectoryMember(const std::string &strDirectory, const std::string &strEntryDirectory) const;
+    virtual void GetSubDirectories(const std::string &strBase, CFileItemList *results);
 
-    bool HasAllRecordingsPathExtension(const CStdString &strDirectory);
-    CStdString AddAllRecordingsPathExtension(const CStdString &strDirectory);
-    CStdString RemoveAllRecordingsPathExtension(const CStdString &strDirectory);
+    /**
+     * @brief recursively deletes all recordings in the specified directory
+     * @param item the directory
+     * @return true if all recordings were deleted
+     */
+    bool DeleteDirectory(const CFileItem &item);
+    bool DeleteRecording(const CFileItem &item);
 
   public:
     CPVRRecordings(void);
-    virtual ~CPVRRecordings(void) { Clear(); };
+    virtual ~CPVRRecordings(void);
 
     int Load();
     void Unload();
     void Clear();
-    void UpdateEntry(const CPVRRecording &tag);
-    void UpdateFromClient(const CPVRRecording &tag) { UpdateEntry(tag); }
+    void UpdateFromClient(const CPVRRecordingPtr &tag);
 
     /**
      * @brief refresh the recordings list from the clients.
@@ -66,13 +73,23 @@ namespace PVR
 
     int GetNumRecordings();
     int GetRecordings(CFileItemList* results);
-    bool DeleteRecording(const CFileItem &item);
-    bool RenameRecording(CFileItem &item, CStdString &strNewName);
+    
+    /**
+     * Deletes the item in question, be it a directory or a file
+     * @param item the item to delete
+     * @return whether the item was deleted successfully
+     */
+    bool Delete(const CFileItem &item);
+    bool RenameRecording(CFileItem &item, std::string &strNewName);
     bool SetRecordingsPlayCount(const CFileItemPtr &item, int count);
 
-    bool GetDirectory(const CStdString& strPath, CFileItemList &items);
-    CFileItemPtr GetByPath(const CStdString &path);
-    void SetPlayCount(const CFileItem &item, int iPlayCount);
+    bool GetDirectory(const std::string& strPath, CFileItemList &items);
+    CFileItemPtr GetByPath(const std::string &path);
+    CPVRRecordingPtr GetById(int iClientId, const std::string &strRecordingId) const;
     void GetAll(CFileItemList &items);
+    CFileItemPtr GetById(unsigned int iId) const;
+
+    void SetGroupItems(bool value) { m_bGroupItems = value; };
+    bool IsGroupItems() const { return m_bGroupItems; };
   };
 }

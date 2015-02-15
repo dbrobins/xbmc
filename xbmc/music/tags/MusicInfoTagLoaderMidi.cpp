@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -43,11 +43,11 @@ CMusicInfoTagLoaderMidi::~CMusicInfoTagLoaderMidi()
 // A good intention of creating a pattern-based artist/song recognition engine failed greatly. Simple formats
 // like %A-%T fail greatly with artists like A-HA and songs like "Ob-la-Di ob-la-Da.mid". So if anyone has
 // a good idea which would include cases from above, I'd be happy to hear about it.
-bool CMusicInfoTagLoaderMidi::Load(const CStdString & strFileName, CMusicInfoTag & tag, EmbeddedArt *art)
+bool CMusicInfoTagLoaderMidi::Load(const std::string & strFileName, CMusicInfoTag & tag, EmbeddedArt *art)
 {
   tag.SetURL(strFileName);
 
-  CStdString path, title;
+  std::string path, title;
   URIUtils::Split( strFileName, path, title);
   URIUtils::RemoveExtension( title );
 
@@ -55,10 +55,10 @@ bool CMusicInfoTagLoaderMidi::Load(const CStdString & strFileName, CMusicInfoTag
 
   URIUtils::RemoveSlashAtEnd(path );
 
-  if ( !path.IsEmpty() )
+  if ( !path.empty() )
   {
-    CStdString artist = URIUtils::GetFileName( path );
-    if ( !artist.IsEmpty() )
+    std::string artist = URIUtils::GetFileName( path );
+    if ( !artist.empty() )
       tag.SetArtist( artist );
   }
 

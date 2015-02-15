@@ -1,8 +1,7 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
- *
  *      Initial code sponsored by: Voddler Inc (voddler.com)
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +18,7 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+
 #include "system.h"
 #include "OverlayRenderer.h"
 #include "OverlayRendererUtil.h"
@@ -27,8 +27,8 @@
   #include "LinuxRendererGL.h"
 #elif HAS_GLES == 2
   #include "LinuxRendererGLES.h"
-  #include "guilib/MatrixGLES.h"
 #endif
+#include "guilib/MatrixGLES.h"
 #include "RenderManager.h"
 #include "cores/dvdplayer/DVDCodecs/Overlay/DVDOverlayImage.h"
 #include "cores/dvdplayer/DVDCodecs/Overlay/DVDOverlaySpu.h"
@@ -54,18 +54,58 @@ using namespace OVERLAY;
 static void LoadTexture(GLenum target
                       , GLsizei width, GLsizei height, GLsizei stride
                       , GLfloat* u, GLfloat* v
-                      , GLenum internalFormat, GLenum externalFormat, const GLvoid* pixels)
+                      , bool alpha, const GLvoid* pixels)
 {
-  int width2  = NP2(width);
-  int height2 = NP2(height);
+  int width2  = width;
+  int height2 = height;
   char *pixelVector = NULL;
   const GLvoid *pixelData = pixels;
 
+  GLenum internalFormat = alpha ? GL_ALPHA : GL_RGBA;
+#ifdef HAS_GLES
+  /** OpenGL ES does not support BGR so use RGB and swap later **/
+  GLenum externalFormat = alpha ? GL_ALPHA : GL_RGBA;
+#else
+  GLenum externalFormat = alpha ? GL_ALPHA : GL_BGRA;
+#endif
   int bytesPerPixel = glFormatElementByteCount(externalFormat);
 
+  if (!g_Windowing.SupportsNPOT(0))
+  {
+    width2  = NP2(width);
+    height2 = NP2(height);
+  }
+
 #ifdef HAS_GLES
+
+  /** OpenGL ES does not support BGR **/
+  if (!alpha)
+  {
+    int bytesPerLine = bytesPerPixel * width;
+
+    pixelVector = (char *)malloc(bytesPerLine * height);
+
+    const char *src = (const char*)pixels;
+    char *dst = pixelVector;
+    for (int y = 0;y < height;++y)
+    {
+      src = (const char*)pixels + y * stride;
+      dst = pixelVector + y * bytesPerLine;
+
+      for (unsigned int i = 0; i < width; i++, src+=4, dst+=4)
+      {
+        dst[0] = src[2];
+        dst[1] = src[1];
+        dst[2] = src[0];
+        dst[3] = src[3];
+      }
+    }
+
+    pixelData = pixelVector;
+    stride = width;
+  }
   /** OpenGL ES does not support strided texture input. Make a copy without stride **/
-  if (stride != width)
+  else if (stride != width)
   {
     int bytesPerLine = bytesPerPixel * width;
 
@@ -124,7 +164,20 @@ COverlayTextureGL::COverlayTextureGL(CDVDOverlayImage* o)
 {
   m_texture = 0;
 
-  uint32_t* rgba = convert_rgba(o, USE_PREMULTIPLIED_ALPHA);
+  uint32_t* rgba;
+  int stride;
+  if(o->palette)
+  {
+    m_pma  = !!USE_PREMULTIPLIED_ALPHA;
+    rgba   = convert_rgba(o, m_pma);
+    stride = o->width * 4;
+  }
+  else
+  {
+    m_pma  = false;
+    rgba   = (uint32_t*)o->data;
+    stride = o->linesize;
+  }
 
   if(!rgba)
   {
@@ -144,16 +197,12 @@ COverlayTextureGL::COverlayTextureGL(CDVDOverlayImage* o)
   LoadTexture(GL_TEXTURE_2D
             , o->width
             , o->height
-            , o->width * 4
+            , stride
             , &m_u, &m_v
-            , GL_RGBA
-#ifdef HAS_GLES
-            , GL_RGBA
-#else
-            , GL_BGRA
-#endif
+            , false
             , rgba);
-  free(rgba);
+  if((BYTE*)rgba != o->data)
+    free(rgba);
 
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_TEXTURE_2D);
@@ -224,12 +273,7 @@ COverlayTextureGL::COverlayTextureGL(CDVDOverlaySpu* o)
             , max_y - min_y
             , o->width * 4
             , &m_u, &m_v
-            , GL_RGBA
-#ifdef HAS_GLES
-            , GL_RGBA
-#else
-            , GL_BGRA
-#endif
+            , false
             , rgba + min_x + min_y * o->width);
 
   free(rgba);
@@ -243,6 +287,7 @@ COverlayTextureGL::COverlayTextureGL(CDVDOverlaySpu* o)
   m_y      = (float)(min_y + o->y);
   m_width  = (float)(max_x - min_x);
   m_height = (float)(max_y - min_y);
+  m_pma    = !!USE_PREMULTIPLIED_ALPHA;
 }
 
 COverlayGlyphGL::COverlayGlyphGL(ASS_Image* images, int width, int height)
@@ -269,8 +314,7 @@ COverlayGlyphGL::COverlayGlyphGL(ASS_Image* images, int width, int height)
             , quads.size_y
             , quads.size_x
             , &m_u, &m_v
-            , GL_ALPHA
-            , GL_ALPHA
+            , true
             , quads.data);
 
 
@@ -359,7 +403,7 @@ COverlayGlyphGL::~COverlayGlyphGL()
 
 void COverlayGlyphGL::Render(SRenderState& state)
 {
-  if (m_texture == 0)
+  if ((m_texture == 0) || (m_count == 0))
     return;
 
   glEnable(GL_TEXTURE_2D);
@@ -372,6 +416,11 @@ void COverlayGlyphGL::Render(SRenderState& state)
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+  glMatrixModview.Push();
+  glMatrixModview->Translatef(state.x, state.y, 0.0f);
+  glMatrixModview->Scalef(state.width, state.height, 1.0f);
+  glMatrixModview.Load();
 
 #ifdef HAS_GL
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -386,11 +435,6 @@ void COverlayGlyphGL::Render(SRenderState& state)
   glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
   glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
 
-  glMatrixMode(GL_MODELVIEW);
-  glPushMatrix();
-  glTranslatef(state.x    , state.y     , 0.0f);
-  glScalef    (state.width, state.height, 1.0f);
-
   VerifyGLState();
 
   glPushClientAttrib(GL_CLIENT_VERTEX_ARRAY_BIT);
@@ -404,35 +448,39 @@ void COverlayGlyphGL::Render(SRenderState& state)
   glDrawArrays(GL_QUADS, 0, m_count * 4);
   glPopClientAttrib();
 
-  glPopMatrix();
 #else
-  g_matrices.MatrixMode(MM_MODELVIEW);
-  g_matrices.PushMatrix();
-  g_matrices.Translatef(state.x, state.y, 0.0f);
-  g_matrices.Scalef(state.width, state.height, 1.0f);
-  VerifyGLState();
-
   g_Windowing.EnableGUIShader(SM_FONTS);
 
   GLint posLoc  = g_Windowing.GUIShaderGetPos();
   GLint colLoc  = g_Windowing.GUIShaderGetCol();
   GLint tex0Loc = g_Windowing.GUIShaderGetCoord0();
 
-  glVertexAttribPointer(posLoc,  3, GL_FLOAT,         GL_FALSE, sizeof(VERTEX), (char*)m_vertex + offsetof(VERTEX, x));
-  glVertexAttribPointer(colLoc,  4, GL_UNSIGNED_BYTE, GL_TRUE,  sizeof(VERTEX), (char*)m_vertex + offsetof(VERTEX, r));
-  glVertexAttribPointer(tex0Loc, 2, GL_FLOAT,         GL_FALSE, sizeof(VERTEX), (char*)m_vertex + offsetof(VERTEX, u));
+  // stack object until VBOs will be used
+  std::vector<VERTEX> vecVertices( 6 * m_count);
+  VERTEX *vertices = &vecVertices[0];
+
+  for (int i=0; i<m_count*4; i+=4)
+  {
+    *vertices++ = m_vertex[i];
+    *vertices++ = m_vertex[i+1];
+    *vertices++ = m_vertex[i+2];
+
+    *vertices++ = m_vertex[i+1];
+    *vertices++ = m_vertex[i+3];
+    *vertices++ = m_vertex[i+2];
+  }
+
+  vertices = &vecVertices[0];
+
+  glVertexAttribPointer(posLoc,  3, GL_FLOAT,         GL_FALSE, sizeof(VERTEX), (char*)vertices + offsetof(VERTEX, x));
+  glVertexAttribPointer(colLoc,  4, GL_UNSIGNED_BYTE, GL_TRUE,  sizeof(VERTEX), (char*)vertices + offsetof(VERTEX, r));
+  glVertexAttribPointer(tex0Loc, 2, GL_FLOAT,         GL_FALSE, sizeof(VERTEX), (char*)vertices + offsetof(VERTEX, u));
 
   glEnableVertexAttribArray(posLoc);
   glEnableVertexAttribArray(colLoc);
   glEnableVertexAttribArray(tex0Loc);
 
-  // GLES2 version
-  // As using triangle strips, have to do in sets of 4.
-  // This is due to limitations of ES, in that tex/col has to be same size as ver!
-  for (int i=0; i<(m_count*4); i+=4)
-  {
-    glDrawArrays(GL_TRIANGLE_STRIP, i, 4);
-  }
+  glDrawArrays(GL_TRIANGLES, 0, vecVertices.size());
 
   glDisableVertexAttribArray(posLoc);
   glDisableVertexAttribArray(colLoc);
@@ -440,8 +488,9 @@ void COverlayGlyphGL::Render(SRenderState& state)
 
   g_Windowing.DisableGUIShader();
 
-  g_matrices.PopMatrix();
 #endif
+
+  glMatrixModview.PopLoad();
 
   glDisable(GL_BLEND);
   glDisable(GL_TEXTURE_2D);
@@ -461,11 +510,10 @@ void COverlayTextureGL::Render(SRenderState& state)
   glEnable(GL_BLEND);
 
   glBindTexture(GL_TEXTURE_2D, m_texture);
-#if USE_PREMULTIPLIED_ALPHA
-  glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-#else
-  glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-#endif
+  if(m_pma)
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+  else
+    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -513,7 +561,7 @@ void COverlayTextureGL::Render(SRenderState& state)
 #else
   g_Windowing.EnableGUIShader(SM_TEXTURE);
 
-  GLfloat col[4][4];
+  GLfloat col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
   GLfloat ver[4][2];
   GLfloat tex[4][2];
   GLubyte idx[4] = {0, 1, 3, 2};        //determines order of triangle strip
@@ -521,6 +569,7 @@ void COverlayTextureGL::Render(SRenderState& state)
   GLint posLoc  = g_Windowing.GUIShaderGetPos();
   GLint colLoc  = g_Windowing.GUIShaderGetCol();
   GLint tex0Loc = g_Windowing.GUIShaderGetCoord0();
+  GLint uniColLoc= g_Windowing.GUIShaderGetUniCol();
 
   glVertexAttribPointer(posLoc,  2, GL_FLOAT, 0, 0, ver);
   glVertexAttribPointer(colLoc,  4, GL_FLOAT, 0, 0, col);
@@ -530,12 +579,7 @@ void COverlayTextureGL::Render(SRenderState& state)
   glEnableVertexAttribArray(colLoc);
   glEnableVertexAttribArray(tex0Loc);
 
-  for (int i=0; i<4; i++)
-  {
-    // Setup Colours
-    col[i][0] = col[i][1] = col[i][2] = col[i][3] = 1.0f;
-  }
-
+  glUniform4f(uniColLoc,(col[0]), (col[1]), (col[2]), (col[3]));
   // Setup vertex position values
   ver[0][0] = ver[3][0] = rd.left;
   ver[0][1] = ver[1][1] = rd.top;

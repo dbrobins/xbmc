@@ -2,8 +2,8 @@
 #define KARAOKELYRICSTEXTLRC_H
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 class CKaraokeLyricsTextLRC : public CKaraokeLyricsText
 {
   public:
-    CKaraokeLyricsTextLRC( const CStdString & lyricsFile );
+    CKaraokeLyricsTextLRC( const std::string & lyricsFile );
     ~CKaraokeLyricsTextLRC();
 
     //! Parses the lyrics or song file, and loads the lyrics into memory. Returns true if the
@@ -42,7 +42,7 @@ class CKaraokeLyricsTextLRC : public CKaraokeLyricsText
     bool ParserNormal(char *lyricData, unsigned int lyricSize, int timing_correction);
     bool ParserMultiTime(char *lyricData, unsigned int lyricSize, int timing_correction);
 
-    CStdString     m_lyricsFile;
+    std::string     m_lyricsFile;
 };
 
 #endif

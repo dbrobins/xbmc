@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,14 +19,13 @@
  */
 
 #include "system.h"
-#include "settings/AppParamParser.h"
+#include "AppParamParser.h"
 #include "settings/AdvancedSettings.h"
 #include "FileItem.h"
-#include "Application.h"
 #include "PlayListPlayer.h"
 #include "utils/log.h"
 #include "xbmc.h"
-#ifdef _LINUX
+#ifdef TARGET_POSIX
 #include <sys/resource.h>
 #include <signal.h>
 #endif
@@ -36,6 +35,7 @@
   #ifdef HAS_SDL
     #include <SDL/SDL.h>
   #endif
+#include <locale.h>
 #endif
 #ifdef HAS_LIRC
 #include "input/linux/LIRC.h"
@@ -59,25 +59,18 @@ int main(int argc, char* argv[])
 #endif
   CLog::SetLogLevel(g_advancedSettings.m_logLevel);
 
-#ifdef _LINUX
+#ifdef TARGET_POSIX
 #if defined(DEBUG)
   struct rlimit rlim;
   rlim.rlim_cur = rlim.rlim_max = RLIM_INFINITY;
   if (setrlimit(RLIMIT_CORE, &rlim) == -1)
     CLog::Log(LOGDEBUG, "Failed to set core size limit (%s)", strerror(errno));
 #endif
-  // Prevent child processes from becoming zombies on exit if not waited upon. See also Util::Command
-  struct sigaction sa;
-  memset(&sa, 0, sizeof(sa));
-
-  sa.sa_flags = SA_NOCLDWAIT;
-  sa.sa_handler = SIG_IGN;
-  sigaction(SIGCHLD, &sa, NULL);
 #endif
   setlocale(LC_NUMERIC, "C");
   g_advancedSettings.Initialize();
 
-#ifndef _WIN32
+#ifndef TARGET_WINDOWS
   CAppParamParser appParamParser;
   appParamParser.Parse((const char **)argv, argc);
 #endif

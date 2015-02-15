@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2010 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,10 @@
 #include <stdarg.h>
 
 #ifdef _WIN32                   // windows
+#ifndef _SSIZE_T_DEFINED
+typedef intptr_t      ssize_t;
+#define _SSIZE_T_DEFINED
+#endif // !_SSIZE_T_DEFINED
 #include "dlfcn-win32.h"
 #define ADDON_DLL               "\\library.xbmc.addon\\libXBMC_addon" ADDON_HELPER_EXT
 #define ADDON_HELPER_EXT        ".dll"
@@ -51,15 +55,19 @@
 #define ADDON_HELPER_ARCH       "powerpc64-linux"
 #elif defined(__ARMEL__)
 #define ADDON_HELPER_ARCH       "arm"
-#elif defined(_MIPSEL)
-#define ADDON_HELPER_ARCH       "mipsel-linux"
+#elif defined(__mips__)
+#define ADDON_HELPER_ARCH       "mips"
 #else
 #define ADDON_HELPER_ARCH       "i486-linux"
 #endif
 #endif
 #include <dlfcn.h>              // linux+osx
 #define ADDON_HELPER_EXT        ".so"
-#define ADDON_DLL "/library.xbmc.addon/libXBMC_addon-" ADDON_HELPER_ARCH ADDON_HELPER_EXT
+#define ADDON_DLL_NAME "libXBMC_addon-" ADDON_HELPER_ARCH ADDON_HELPER_EXT
+#define ADDON_DLL "/library.xbmc.addon/" ADDON_DLL_NAME
+#endif
+#if defined(ANDROID)
+#include <sys/stat.h>
 #endif
 
 #ifdef LOG_DEBUG
@@ -118,6 +126,15 @@ namespace ADDON
       libBasePath  = ((cb_array*)m_Handle)->libPath;
       libBasePath += ADDON_DLL;
 
+#if defined(ANDROID)
+      struct stat st;
+      if(stat(libBasePath.c_str(),&st) != 0)
+      {
+        std::string tempbin = getenv("XBMC_ANDROID_LIBS");
+        libBasePath = tempbin + "/" + ADDON_DLL_NAME;
+      }
+#endif
+
       m_libXBMC_addon = dlopen(libBasePath.c_str(), RTLD_LAZY);
       if (m_libXBMC_addon == NULL)
       {
@@ -145,15 +162,23 @@ namespace ADDON
         dlsym(m_libXBMC_addon, "XBMC_queue_notification");
       if (XBMC_queue_notification == NULL) { fprintf(stderr, "Unable to assign function %s\n", dlerror()); return false; }
 
-      XBMC_unknown_to_utf8 = (void (*)(void* HANDLE, void* CB, std::string &str))
+      XBMC_wake_on_lan = (bool (*)(void* HANDLE, void *CB, const char *mac))
+        dlsym(m_libXBMC_addon, "XBMC_wake_on_lan");
+      if (XBMC_wake_on_lan == NULL) { fprintf(stderr, "Unable to assign function %s\n", dlerror()); return false; }
+
+      XBMC_unknown_to_utf8 = (char* (*)(void* HANDLE, void* CB, const char* str))
         dlsym(m_libXBMC_addon, "XBMC_unknown_to_utf8");
       if (XBMC_unknown_to_utf8 == NULL) { fprintf(stderr, "Unable to assign function %s\n", dlerror()); return false; }
 
-      XBMC_get_localized_string = (const char* (*)(void* HANDLE, void* CB, int dwCode))
+      XBMC_get_localized_string = (char* (*)(void* HANDLE, void* CB, int dwCode))
         dlsym(m_libXBMC_addon, "XBMC_get_localized_string");
       if (XBMC_get_localized_string == NULL) { fprintf(stderr, "Unable to assign function %s\n", dlerror()); return false; }
 
-      XBMC_get_dvd_menu_language = (const char* (*)(void* HANDLE, void* CB))
+      XBMC_free_string = (void (*)(void* HANDLE, void* CB, char* str))
+        dlsym(m_libXBMC_addon, "XBMC_free_string");
+      if (XBMC_free_string == NULL) { fprintf(stderr, "Unable to assign function %s\n", dlerror()); return false; }
+
+      XBMC_get_dvd_menu_language = (char* (*)(void* HANDLE, void* CB))
         dlsym(m_libXBMC_addon, "XBMC_get_dvd_menu_language");
       if (XBMC_get_dvd_menu_language == NULL) { fprintf(stderr, "Unable to assign function %s\n", dlerror()); return false; }
 
@@ -165,7 +190,7 @@ namespace ADDON
         dlsym(m_libXBMC_addon, "XBMC_open_file_for_write");
       if (XBMC_open_file_for_write == NULL) { fprintf(stderr, "Unable to assign function %s\n", dlerror()); return false; }
 
-      XBMC_read_file = (unsigned int (*)(void* HANDLE, void* CB, void* file, void* lpBuf, int64_t uiBufSize))
+      XBMC_read_file = (ssize_t (*)(void* HANDLE, void* CB, void* file, void* lpBuf, size_t uiBufSize))
         dlsym(m_libXBMC_addon, "XBMC_read_file");
       if (XBMC_read_file == NULL) { fprintf(stderr, "Unable to assign function %s\n", dlerror()); return false; }
 
@@ -173,7 +198,7 @@ namespace ADDON
         dlsym(m_libXBMC_addon, "XBMC_read_file_string");
       if (XBMC_read_file_string == NULL) { fprintf(stderr, "Unable to assign function %s\n", dlerror()); return false; }
 
-      XBMC_write_file = (int (*)(void* HANDLE, void* CB, void* file, const void* lpBuf, int64_t uiBufSize))
+      XBMC_write_file = (ssize_t (*)(void* HANDLE, void* CB, void* file, const void* lpBuf, size_t uiBufSize))
         dlsym(m_libXBMC_addon, "XBMC_write_file");
       if (XBMC_write_file == NULL) { fprintf(stderr, "Unable to assign function %s\n", dlerror()); return false; }
 
@@ -279,10 +304,21 @@ namespace ADDON
     }
 
     /*!
-     * @brief Translate a string with an unknown encoding to UTF8.
-     * @param sourceDest The string to translate.
+     * @brief Send WakeOnLan magic packet.
+     * @param mac Network address of the host to wake.
+     * @return True if the magic packet was successfully sent, false otherwise.
      */
-    void UnknownToUTF8(std::string &str)
+    bool WakeOnLan(const char* mac)
+    {
+      return XBMC_wake_on_lan(m_Handle, m_Callbacks, mac);
+    }
+
+    /*!
+     * @brief Translate a string with an unknown encoding to UTF8.
+     * @param str The string to translate.
+     * @return The string translated to UTF8. Must be freed by calling FreeString() when done.
+     */
+    char* UnknownToUTF8(const char* str)
     {
       return XBMC_unknown_to_utf8(m_Handle, m_Callbacks, str);
     }
@@ -290,9 +326,9 @@ namespace ADDON
     /*!
      * @brief Get a localised message.
      * @param dwCode The code of the message to get.
-     * @return The message. Needs to be freed when done.
+     * @return The message. Must be freed by calling FreeString() when done.
      */
-    const char* GetLocalizedString(int dwCode)
+    char* GetLocalizedString(int dwCode)
     {
       return XBMC_get_localized_string(m_Handle, m_Callbacks, dwCode);
     }
@@ -300,11 +336,20 @@ namespace ADDON
 
     /*!
      * @brief Get the DVD menu language.
-     * @return The language. Needs to be freed when done.
+     * @return The language. Must be freed by calling FreeString() when done.
      */
-    const char* GetDVDMenuLanguage()
+    char* GetDVDMenuLanguage()
     {
       return XBMC_get_dvd_menu_language(m_Handle, m_Callbacks);
+    }
+
+    /*!
+     * @brief Free the memory used by str
+     * @param str The string to free
+     */
+    void FreeString(char* str)
+    {
+      return XBMC_free_string(m_Handle, m_Callbacks, str);
     }
 
     /*!
@@ -334,9 +379,11 @@ namespace ADDON
      * @param file The file handle to read from.
      * @param lpBuf The buffer to store the data in.
      * @param uiBufSize The size of the buffer.
-     * @return Number of bytes read.
+     * @return number of successfully read bytes if any bytes were read and stored in
+     *         buffer, zero if no bytes are available to read (end of file was reached)
+     *         or undetectable error occur, -1 in case of any explicit error
      */
-    unsigned int ReadFile(void* file, void* lpBuf, int64_t uiBufSize)
+    ssize_t ReadFile(void* file, void* lpBuf, size_t uiBufSize)
     {
       return XBMC_read_file(m_Handle, m_Callbacks, file, lpBuf, uiBufSize);
     }
@@ -358,9 +405,11 @@ namespace ADDON
      * @param file The file handle to write to.
      * @param lpBuf The data to write.
      * @param uiBufSize Size of the data to write.
-     * @return The number of bytes read.
+     * @return number of successfully written bytes if any bytes were written,
+     *         zero if no bytes were written and no detectable error occur,
+     *         -1 in case of any explicit error
      */
-    int WriteFile(void* file, const void* lpBuf, int64_t uiBufSize)
+    ssize_t WriteFile(void* file, const void* lpBuf, size_t uiBufSize)
     {
       return XBMC_write_file(m_Handle, m_Callbacks, file, lpBuf, uiBufSize);
     }
@@ -514,14 +563,16 @@ namespace ADDON
     void (*XBMC_log)(void *HANDLE, void* CB, const addon_log_t loglevel, const char *msg);
     bool (*XBMC_get_setting)(void *HANDLE, void* CB, const char* settingName, void *settingValue);
     void (*XBMC_queue_notification)(void *HANDLE, void* CB, const queue_msg_t type, const char *msg);
-    void (*XBMC_unknown_to_utf8)(void *HANDLE, void* CB, std::string &str);
-    const char* (*XBMC_get_localized_string)(void *HANDLE, void* CB, int dwCode);
-    const char* (*XBMC_get_dvd_menu_language)(void *HANDLE, void* CB);
+    bool (*XBMC_wake_on_lan)(void *HANDLE, void* CB, const char* mac);
+    char* (*XBMC_unknown_to_utf8)(void *HANDLE, void* CB, const char* str);
+    char* (*XBMC_get_localized_string)(void *HANDLE, void* CB, int dwCode);
+    char* (*XBMC_get_dvd_menu_language)(void *HANDLE, void* CB);
+    void (*XBMC_free_string)(void *HANDLE, void* CB, char* str);
     void* (*XBMC_open_file)(void *HANDLE, void* CB, const char* strFileName, unsigned int flags);
     void* (*XBMC_open_file_for_write)(void *HANDLE, void* CB, const char* strFileName, bool bOverWrite);
-    unsigned int (*XBMC_read_file)(void *HANDLE, void* CB, void* file, void* lpBuf, int64_t uiBufSize);
+    ssize_t (*XBMC_read_file)(void *HANDLE, void* CB, void* file, void* lpBuf, size_t uiBufSize);
     bool (*XBMC_read_file_string)(void *HANDLE, void* CB, void* file, char *szLine, int iLineLength);
-    int (*XBMC_write_file)(void *HANDLE, void* CB, void* file, const void* lpBuf, int64_t uiBufSize);
+    ssize_t(*XBMC_write_file)(void *HANDLE, void* CB, void* file, const void* lpBuf, size_t uiBufSize);
     void (*XBMC_flush_file)(void *HANDLE, void* CB, void* file);
     int64_t (*XBMC_seek_file)(void *HANDLE, void* CB, void* file, int64_t iFilePosition, int iWhence);
     int (*XBMC_truncate_file)(void *HANDLE, void* CB, void* file, int64_t iSize);

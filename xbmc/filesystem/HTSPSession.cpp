@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,9 @@
 #include "FileItem.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
+#include "utils/SystemInfo.h"
 #include "settings/AdvancedSettings.h"
+#include "Util.h"
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -159,7 +161,7 @@ using namespace HTSP;
 string CHTSPSession::GetGenre(unsigned type)
 {
   // look for full content
-  for(unsigned int i = 0; i < sizeof(g_dvb_content_type) / sizeof(g_dvb_content_type[0]); i++)
+  for(unsigned int i = 0; i < ARRAY_SIZE(g_dvb_content_type); i++)
   {
     if(g_dvb_content_type[i].id == type)
       return g_dvb_content_type[i].genre;
@@ -167,7 +169,7 @@ string CHTSPSession::GetGenre(unsigned type)
 
   // look for group
   type = (type >> 4) & 0xf;
-  for(unsigned int i = 0; i < sizeof(g_dvb_content_group) / sizeof(g_dvb_content_group[0]); i++)
+  for(unsigned int i = 0; i < ARRAY_SIZE(g_dvb_content_group); i++)
   {
     if(g_dvb_content_group[i].id == type)
       return g_dvb_content_group[i].genre;
@@ -238,7 +240,9 @@ bool CHTSPSession::Connect(const std::string& hostname, int port)
   // send hello
   m = htsmsg_create_map();
   htsmsg_add_str(m, "method", "hello");
-  htsmsg_add_str(m, "clientname", "XBMC Media Center");
+  std::string fullAppName = CSysInfo::GetAppName();
+  fullAppName += " Media Center";
+  htsmsg_add_str(m, "clientname", fullAppName.c_str());
   htsmsg_add_u32(m, "htspversion", 1);
 
   // read welcome
@@ -621,10 +625,8 @@ bool CHTSPSession::ParseItem(const SChannel& channel, int tagid, const SEvent& e
 {
   CVideoInfoTag* tag = item.GetVideoInfoTag();
 
-  CStdString temp;
-
   CURL url(item.GetPath());
-  temp.Format("tags/%d/%d.ts", tagid, channel.id);
+  std::string temp = StringUtils::Format("tags/%d/%d.ts", tagid, channel.id);
   url.SetFileName(temp);
 
   tag->m_iSeason  = 0;
@@ -642,7 +644,7 @@ bool CHTSPSession::ParseItem(const SChannel& channel, int tagid, const SEvent& e
 
   item.SetPath(url.Get());
   item.m_strTitle = tag->m_strTitle;
-  item.SetThumbnailImage(channel.icon);
+  item.SetArt("thumb", channel.icon);
   item.SetMimeType("video/X-htsp");
   return true;
 }

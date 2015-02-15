@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,8 @@
 #include "utils/log.h"
 #include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
+#include "utils/StringUtils.h"
+#include "CompileInfo.h"
 
 TEST(TestRegExp, RegFind)
 {
@@ -45,7 +47,7 @@ TEST(TestRegExp, GetReplaceString)
 
   EXPECT_TRUE(regex.RegComp("^(Test)\\s*(.*)\\."));
   EXPECT_EQ(0, regex.RegFind("Test string."));
-  EXPECT_STREQ("string", regex.GetReplaceString("\\2"));
+  EXPECT_STREQ("string", regex.GetReplaceString("\\2").c_str());
 }
 
 TEST(TestRegExp, GetFindLen)
@@ -138,24 +140,22 @@ protected:
   TestRegExpLog(){}
   ~TestRegExpLog()
   {
-    /* Reset globals used by CLog after each test. */
-    g_log_globalsRef->m_file = NULL;
-    g_log_globalsRef->m_repeatCount = 0;
-    g_log_globalsRef->m_repeatLogLevel = -1;
-    g_log_globalsRef->m_logLevel = LOG_LEVEL_DEBUG;
+    CLog::Close();
   }
 };
 
 TEST_F(TestRegExpLog, DumpOvector)
 {
   CRegExp regex;
-  CStdString logfile, logstring;
+  std::string logfile, logstring;
   char buf[100];
   unsigned int bytesread;
   XFILE::CFile file;
 
-  logfile = CSpecialProtocol::TranslatePath("special://temp/") + "xbmc.log";
-  EXPECT_TRUE(CLog::Init(CSpecialProtocol::TranslatePath("special://temp/")));
+  std::string appName = CCompileInfo::GetAppName();
+  StringUtils::ToLower(appName);
+  logfile = CSpecialProtocol::TranslatePath("special://temp/") + appName + ".log";
+  EXPECT_TRUE(CLog::Init(CSpecialProtocol::TranslatePath("special://temp/").c_str()));
   EXPECT_TRUE(XFILE::CFile::Exists(logfile));
 
   EXPECT_TRUE(regex.RegComp("^(?<first>Test)\\s*(?<second>.*)\\."));

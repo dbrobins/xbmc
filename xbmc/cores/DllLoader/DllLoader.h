@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 #include "coffldr.h"
 #include "LibraryLoader.h"
 
-#if defined(__linux__) && !defined(__powerpc__) && !defined(__arm__)
+#if defined(__linux__) && !defined(__powerpc__) && !defined(__arm__) && !defined(__mips__)
 #define USE_LDT_KEEPER
 #include "ldt_keeper.h"
 #endif
@@ -101,10 +101,10 @@ protected:
   void PrintImportTable(ImportDirTable_t *ImportDirTable);
   void PrintExportTable(ExportDirTable_t *ExportDirTable);
 
-  int ResolveOrdinal(char*, unsigned long, void**);
-  int ResolveName(char*, char*, void **);
-  char* ResolveReferencedDll(char* dll);
+  int ResolveOrdinal(const char*, unsigned long, void**);
+  int ResolveName(const char*, char*, void **);
+  const char* ResolveReferencedDll(const char* dll);
   int LoadExports();
   void LoadSymbols();
-  void UnloadSymbols();
+  static void UnloadSymbols();
 };

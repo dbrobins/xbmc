@@ -6,8 +6,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -42,6 +42,7 @@ public:
 
   virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
   virtual void Render();
+  virtual void RenderEx();
   virtual bool OnAction(const CAction &action);
   virtual bool OnMessage(CGUIMessage& message);
   virtual bool SendControlMessage(CGUIMessage& message);
@@ -68,6 +69,7 @@ public:
   int GetFocusedControlID() const;
   CGUIControl *GetFocusedControl() const;
   const CGUIControl *GetControl(int id) const;
+  CGUIControl *GetControl(int id);
   virtual CGUIControl *GetFirstFocusableControl(int id);
   void GetContainers(std::vector<CGUIControl *> &containers) const;
 
@@ -106,7 +108,7 @@ protected:
   typedef std::multimap<int, CGUIControl *> LookupMap;
   void AddLookup(CGUIControl *control);
   void RemoveLookup(CGUIControl *control);
-  const LookupMap &GetLookup() { return m_lookup; };
+  const LookupMap &GetLookup() const { return m_lookup; };
   LookupMap m_lookup;
 
   int  m_defaultControl;

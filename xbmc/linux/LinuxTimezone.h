@@ -2,8 +2,8 @@
 #define LINUX_TIMEZONE_
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,29 +21,42 @@
  *
  */
 
-#include "utils/StdString.h"
+#include "settings/lib/ISettingCallback.h"
+#include "settings/lib/ISettingsHandler.h"
+#include <string>
 #include <vector>
 #include <map>
 
-class CLinuxTimezone
+class CSetting;
+
+class CLinuxTimezone : public ISettingCallback, public ISettingsHandler
 {
 public:
    CLinuxTimezone();
-   CStdString GetOSConfiguredTimezone();
 
-   std::vector<CStdString> GetCounties();
-   std::vector<CStdString> GetTimezonesByCountry(const CStdString country);
-   CStdString GetCountryByTimezone(const CStdString timezone);
+   virtual void OnSettingChanged(const CSetting *setting);
 
-   void SetTimezone(CStdString timezone);
+   virtual void OnSettingsLoaded();
+
+   std::string GetOSConfiguredTimezone();
+
+   std::vector<std::string> GetCounties();
+   std::vector<std::string> GetTimezonesByCountry(const std::string& country);
+   std::string GetCountryByTimezone(const std::string& timezone);
+
+   void SetTimezone(std::string timezone);
    int m_IsDST;
-private:
-   std::vector<CStdString> m_counties;
-   std::map<CStdString, CStdString> m_countryByCode;
-   std::map<CStdString, CStdString> m_countryByName;
 
-   std::map<CStdString, std::vector<CStdString> > m_timezonesByCountryCode;
-   std::map<CStdString, CStdString> m_countriesByTimezoneName;
+   static void SettingOptionsTimezoneCountriesFiller(const CSetting *setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
+   static void SettingOptionsTimezonesFiller(const CSetting *setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
+
+private:
+   std::vector<std::string> m_counties;
+   std::map<std::string, std::string> m_countryByCode;
+   std::map<std::string, std::string> m_countryByName;
+
+   std::map<std::string, std::vector<std::string> > m_timezonesByCountryCode;
+   std::map<std::string, std::string> m_countriesByTimezoneName;
 };
 
 extern CLinuxTimezone g_timezone;

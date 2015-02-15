@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,10 +21,8 @@
  */
 
 #include "DVDOverlay.h"
-#ifdef _LINUX
-#include "utils/CharsetConverter.h"
-#endif
-#include <string.h>
+#include <stdlib.h>
+#include <string>
 
 class CDVDOverlayText : public CDVDOverlay
 {
@@ -46,6 +44,12 @@ public:
       m_type = type;
     }
 
+    CElement(CElement& src)
+    {
+      pNext  = NULL;
+      m_type = src.m_type;
+    }
+
     virtual ~CElement()
     {
     }
@@ -58,33 +62,53 @@ public:
 
   class CElementText : public CElement
   {
+  private:
+    std::string m_text;
   public:
     CElementText(const char* strText, int size = -1) : CElement(ELEMENT_TYPE_TEXT)
     {
-      if(size == -1)
-        m_text = strdup(strText);
+      if (!strText)
+        return;
+      if (size == -1)
+        m_text.assign(strText);
       else
-      {
-        m_text = (char*)malloc(size+1);
-        memcpy(m_text, strText, size);
-        m_text[size] = '\0';
-      }
+        m_text.assign(strText, size);
     }
+    CElementText(const std::string& text) : CElement(ELEMENT_TYPE_TEXT),
+      m_text(text)
+    {
+    }
+
+    CElementText(CElementText& src)
+     : CElement(src),
+       m_text(src.m_text)
+    {
+    }
+
+    const std::string& GetText()
+    { return m_text; }
+    const char* GetTextPtr()
+    { return m_text.c_str(); }
 
     virtual ~CElementText()
-    {
-      if (m_text) free(m_text);
-    }
+    {  }
 
-    char* m_text;
   };
 
   class CElementProperty : public CElement
   {
+  public:
     CElementProperty() : CElement(ELEMENT_TYPE_PROPERTY)
     {
       bItalic = false;
       bBold = false;
+    }
+
+    CElementProperty(CElementProperty& src)
+    : CElement(src)
+    {
+      bItalic = src.bItalic;
+      bBold   = src.bBold;
     }
 
   public:
@@ -99,15 +123,35 @@ public:
     m_pEnd = NULL;
   }
 
+  CDVDOverlayText(CDVDOverlayText& src)
+    : CDVDOverlay(src)
+  {
+    m_pHead = NULL;
+    m_pEnd = NULL;
+    for(CElement* e = src.m_pHead; e; e = e->pNext)
+    {
+      if(e->IsElementType(ELEMENT_TYPE_TEXT))
+        AddElement(new CElementText(*static_cast<CElementText*>(e)));
+      else if(e->IsElementType(ELEMENT_TYPE_PROPERTY))
+        AddElement(new CElementProperty(*static_cast<CElementProperty*>(e)));
+      else
+        AddElement(new CElement(*static_cast<CElement*>(e)));
+    }
+  }
+
   virtual ~CDVDOverlayText()
   {
-    CElement* pTemp;
     while (m_pHead)
     {
-      pTemp = m_pHead;
+      CElement* pTemp = m_pHead;
       m_pHead = m_pHead->pNext;
       delete pTemp;
     }
+  }
+
+  virtual CDVDOverlayText* Clone()
+  {
+    return new CDVDOverlayText(*this);
   }
 
   void AddElement(CDVDOverlayText::CElement* pElement)

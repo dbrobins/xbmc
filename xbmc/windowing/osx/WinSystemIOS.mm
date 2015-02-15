@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2010-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2010-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,8 +30,13 @@
 #include "WinSystemIOS.h"
 #include "utils/log.h"
 #include "filesystem/SpecialProtocol.h"
-#include "settings/Settings.h"
+#include "settings/DisplaySettings.h"
+#include "guilib/GraphicContext.h"
 #include "guilib/Texture.h"
+#include "utils/StringUtils.h"
+#include "guilib/DispResource.h"
+#include "threads/SingleLock.h"
+#include "video/videosync/VideoSyncCocoa.h"
 #include <vector>
 #undef BOOL
 
@@ -39,10 +44,11 @@
 #import <OpenGLES/ES2/gl.h>
 #import <OpenGLES/ES2/glext.h>
 #if defined(TARGET_DARWIN_IOS_ATV2)
-#import "atv2/XBMCController.h"
+#import "atv2/KodiController.h"
 #else
 #import "ios/XBMCController.h"
 #endif
+#import "osx/IOSScreenManager.h"
 #include "osx/DarwinUtils.h"
 #import <dlfcn.h>
 
@@ -51,6 +57,8 @@ CWinSystemIOS::CWinSystemIOS() : CWinSystemBase()
   m_eWindowSystem = WINDOW_SYSTEM_IOS;
 
   m_iVSyncErrors = 0;
+  m_bIsBackgrounded = false;
+  m_VideoSync = NULL;
 }
 
 CWinSystemIOS::~CWinSystemIOS()
@@ -67,7 +75,7 @@ bool CWinSystemIOS::DestroyWindowSystem()
   return true;
 }
 
-bool CWinSystemIOS::CreateNewWindow(const CStdString& name, bool fullScreen, RESOLUTION_INFO& res, PHANDLE_EVENT_FUNC userFunction)
+bool CWinSystemIOS::CreateNewWindow(const std::string& name, bool fullScreen, RESOLUTION_INFO& res, PHANDLE_EVENT_FUNC userFunction)
 {
   //NSLog(@"%s", __PRETTY_FUNCTION__);
 	
@@ -123,7 +131,7 @@ bool CWinSystemIOS::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
   return true;
 }
 
-UIScreenMode *getModeForResolution(int width, int height, int screenIdx)
+UIScreenMode *getModeForResolution(int width, int height, unsigned int screenIdx)
 {
   if( screenIdx >= [[UIScreen screens] count])
     return NULL;
@@ -167,6 +175,16 @@ int CWinSystemIOS::GetNumScreens()
   return [[UIScreen screens] count];
 }
 
+int CWinSystemIOS::GetCurrentScreen()
+{
+  int idx = 0;
+  if ([[IOSScreenManager sharedInstance] isExternalScreen])
+  {
+    idx = 1;
+  }
+  return idx;
+}
+
 bool CWinSystemIOS::GetScreenResolution(int* w, int* h, double* fps, int screenIdx)
 {
   // Figure out the screen size. (default to main screen)
@@ -208,12 +226,12 @@ void CWinSystemIOS::UpdateResolutions()
   //first screen goes into the current desktop mode
   if(GetScreenResolution(&w, &h, &fps, 0))
   {
-    UpdateDesktopResolution(g_settings.m_ResInfo[RES_DESKTOP], 0, w, h, fps);
+    UpdateDesktopResolution(CDisplaySettings::Get().GetResolutionInfo(RES_DESKTOP), 0, w, h, fps);
   }
 
 #ifndef TARGET_DARWIN_IOS_ATV2
   //see resolution.h enum RESOLUTION for how the resolutions
-  //have to appear in the g_settings.m_ResInfo vector
+  //have to appear in the resolution info vector in CDisplaySettings
   //add the desktop resolutions of the other screens
   for(int i = 1; i < GetNumScreens(); i++)
   {
@@ -222,12 +240,12 @@ void CWinSystemIOS::UpdateResolutions()
     if(GetScreenResolution(&w, &h, &fps, i))
     {
       UpdateDesktopResolution(res, i, w, h, fps);
-      g_settings.m_ResInfo.push_back(res);
+      CDisplaySettings::Get().AddResolutionInfo(res);
     }
   }
   
   //now just fill in the possible reolutions for the attached screens
-  //and push to the m_ResInfo vector
+  //and push to the resolution info vector
   FillInVideoModes();
 #endif //TARGET_DARWIN_IOS_ATV2
 }
@@ -266,9 +284,9 @@ void CWinSystemIOS::FillInVideoModes()
       //mode str by doing it without appending "Full Screen".
       //this is what linux does - though it feels that there shouldn't be
       //the same resolution twice... - thats why i add a FIXME here.
-      res.strMode.Format("%dx%d @ %.2f", w, h, refreshrate);
+      res.strMode = StringUtils::Format("%dx%d @ %.2f", w, h, refreshrate);
       g_graphicsContext.ResetOverscan(res);
-      g_settings.m_ResInfo.push_back(res);
+      CDisplaySettings::Get().AddResolutionInfo(res);
     }
   }
 }
@@ -278,13 +296,13 @@ bool CWinSystemIOS::IsExtSupported(const char* extension)
   if(strncmp(extension, "EGL_", 4) != 0)
     return CRenderSystemGLES::IsExtSupported(extension);
 
-  CStdString name;
+  std::string name;
 
   name  = " ";
   name += extension;
   name += " ";
 
-  return m_eglext.find(name) != string::npos;
+  return m_eglext.find(name) != std::string::npos;
 }
 
 bool CWinSystemIOS::BeginRender()
@@ -305,8 +323,38 @@ bool CWinSystemIOS::EndRender()
   return rtn;
 }
 
-void CWinSystemIOS::InitDisplayLink(void)
+void CWinSystemIOS::Register(IDispResource *resource)
 {
+  CSingleLock lock(m_resourceSection);
+  m_resources.push_back(resource);
+}
+
+void CWinSystemIOS::Unregister(IDispResource* resource)
+{
+  CSingleLock lock(m_resourceSection);
+  std::vector<IDispResource*>::iterator i = find(m_resources.begin(), m_resources.end(), resource);
+  if (i != m_resources.end())
+    m_resources.erase(i);
+}
+
+void CWinSystemIOS::OnAppFocusChange(bool focus)
+{
+  CSingleLock lock(m_resourceSection);
+  m_bIsBackgrounded = !focus;
+  CLog::Log(LOGDEBUG, "CWinSystemIOS::OnAppFocusChange: %d", focus ? 1 : 0);
+  for (std::vector<IDispResource *>::iterator i = m_resources.begin(); i != m_resources.end(); i++)
+    (*i)->OnAppFocusChange(focus);
+}
+
+void CWinSystemIOS::VblankHandler(int64_t nowtime, double fps)
+{
+  if (m_VideoSync)
+    m_VideoSync->VblankHandler(nowtime, fps);
+}
+
+void CWinSystemIOS::InitDisplayLink(CVideoSyncCocoa *syncImpl)
+{
+  m_VideoSync = syncImpl;
 }
 void CWinSystemIOS::DeinitDisplayLink(void)
 {
@@ -346,7 +394,7 @@ void CWinSystemIOS::ShowOSMouse(bool show)
 
 bool CWinSystemIOS::HasCursor()
 {
-  if( DarwinIsAppleTV2() )
+  if( CDarwinUtils::IsAppleTV2() )
   {
     return true;
   }

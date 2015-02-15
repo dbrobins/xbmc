@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 
 using namespace XFILE::VIDEODATABASEDIRECTORY;
 
-CDirectoryNodeTitleTvShows::CDirectoryNodeTitleTvShows(const CStdString& strName, CDirectoryNode* pParent)
+CDirectoryNodeTitleTvShows::CDirectoryNodeTitleTvShows(const std::string& strName, CDirectoryNode* pParent)
   : CDirectoryNode(NODE_TYPE_TITLE_TVSHOWS, strName, pParent)
 {
 
@@ -35,7 +35,7 @@ NODE_TYPE CDirectoryNodeTitleTvShows::GetChildType() const
   return NODE_TYPE_SEASONS;
 }
 
-CStdString CDirectoryNodeTitleTvShows::GetLocalizedName() const
+std::string CDirectoryNodeTitleTvShows::GetLocalizedName() const
 {
   CVideoDatabase db;
   if (db.Open())

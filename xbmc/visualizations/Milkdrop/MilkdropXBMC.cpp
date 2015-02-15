@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2004-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2004-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -290,7 +290,7 @@ extern "C" ADDON_STATUS ADDON_SetSetting(const char* id, const void* value)
     }
     return ADDON_STATUS_OK;
   }
-  // It is now time to set the settings got from xmbc
+  // It is now time to set the settings got from xbmc
   if (strcmp(id, "Use Preset") == 0)
     OnAction(34, &value);
   else if (strcmp(id, "Automatic Blend Time") == 0)
@@ -340,6 +340,14 @@ extern "C" ADDON_STATUS ADDON_SetSetting(const char* id, const void* value)
     return ADDON_STATUS_UNKNOWN;
 
   return ADDON_STATUS_OK;
+}
+
+//-- Announce -----------------------------------------------------------------
+// Receive announcements from XBMC
+//-----------------------------------------------------------------------------
+
+extern "C" void ADDON_Announce(const char *flag, const char *sender, const char *message, const void *data)
+{
 }
 
 //-- GetSubModules ------------------------------------------------------------

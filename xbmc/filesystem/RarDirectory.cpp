@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include "utils/URIUtils.h"
 #include "URL.h"
 #include "FileItem.h"
+#include "utils/StringUtils.h"
 
 namespace XFILE
 {
@@ -35,23 +36,20 @@ namespace XFILE
   {
   }
 
-  bool CRarDirectory::GetDirectory(const CStdString& strPathOrig, CFileItemList& items)
+  bool CRarDirectory::GetDirectory(const CURL& urlOrig, CFileItemList& items)
   {
-    CStdString strPath;
+    CURL url(urlOrig);
 
     /* if this isn't a proper archive path, assume it's the path to a archive file */
-    if( !strPathOrig.Left(6).Equals("rar://") )
-      URIUtils::CreateArchivePath(strPath, "rar", strPathOrig, "");
-    else
-      strPath = strPathOrig;
+    if (!urlOrig.IsProtocol("rar"))
+      url = URIUtils::CreateArchivePath("rar", urlOrig);
 
-    CURL url(strPath);
-    CStdString strArchive = url.GetHostName();
-    CStdString strOptions = url.GetOptions();
-    CStdString strPathInArchive = url.GetFileName();
+    std::string strArchive = url.GetHostName();
+    std::string strOptions = url.GetOptions();
+    std::string strPathInArchive = url.GetFileName();
     url.SetOptions("");
 
-    CStdString strSlashPath = url.Get();
+    std::string strSlashPath = url.Get();
 
     // the RAR code depends on things having a "\" at the end of the path
     URIUtils::AddSlashAtEnd(strSlashPath);
@@ -63,7 +61,7 @@ namespace XFILE
       {
         if (items[iEntry]->IsParentFolder())
           continue;
-        items[iEntry]->SetPath(URIUtils::AddFileToFolder(strSlashPath,items[iEntry]->GetPath()+strOptions));
+        items[iEntry]->SetPath(URIUtils::AddFileToFolder(strSlashPath, items[iEntry]->GetPath() + strOptions));
         items[iEntry]->m_iDriveType = 0;
         //CLog::Log(LOGDEBUG, "RarXFILE::GetDirectory() retrieved file: %s", items[iEntry]->m_strPath.c_str());
       }
@@ -76,19 +74,20 @@ namespace XFILE
     }
   }
 
-  bool CRarDirectory::Exists(const char* strPath)
+  bool CRarDirectory::Exists(const CURL& url)
   {
     CFileItemList items;
-    if (GetDirectory(strPath,items))
+    if (GetDirectory(url,items))
       return true;
 
     return false;
   }
 
-  bool CRarDirectory::ContainsFiles(const CStdString& strPath)
+  bool CRarDirectory::ContainsFiles(const CURL& url)
   {
     CFileItemList items;
-    if (g_RarManager.GetFilesInRar(items,strPath))
+    const std::string pathToUrl(url.Get());
+    if (g_RarManager.GetFilesInRar(items, pathToUrl))
     {
       if (items.Size() > 1)
         return true;

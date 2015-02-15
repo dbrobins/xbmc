@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@ public:
   virtual ~CGUIDialogProgressBarHandle(void) {}
 
   const std::string &Title(void) { return m_strTitle; }
+  void SetTitle(const std::string &strTitle);
 
   std::string Text(void) const;
   void SetText(const std::string &strText);

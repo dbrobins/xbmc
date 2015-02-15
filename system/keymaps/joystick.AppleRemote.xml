@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <!-- This file contains the mapping of keys (gamepad,remote and keyboard) to actions within XBMC -->
 <!-- The <global> section is a fall through - they will only be used if the button is not        -->
 <!-- used in the current window's section.  Note that there is only handling                     -->
@@ -18,7 +19,7 @@
 <!--    </universalremote>                                                                       -->
 
 <!-- Note that the action can be a built-in function.                                            -->
-<!--            eg <button id="6">XBMC.ActivateWindow(Favourites)</button>                       -->
+<!--            eg <button id="6">ActivateWindow(Favourites)</button>                       -->
 <!-- would bring up Favourites when the button with the id of 6 is press. In this case, "Menu"   -->
 
 <!--                                                                                             -->
@@ -44,7 +45,7 @@
       <!-- hold right -->      <button id="10">Right</button>
 
       <!-- new aluminium remote buttons  -->
-      <!-- play/pause -->      <button id="12">Play</button>
+      <!-- play/pause -->      <button id="12">PlayPause</button>
 
       <!-- Additional buttons via Harmony Apple TV remote profile - these are also the learned buttons on Apple TV 2gen-->
       <!-- pageup     -->      <button id="13">PageUp</button>
@@ -83,7 +84,7 @@
   </global>
   <Home>
     <joystick name="AppleRemote">
-      <button id="6">XBMC.ActivateWindow(Favourites)</button>
+      <button id="6">ActivateWindow(Favourites)</button>
       <button id="8">ActivateWindow(shutdownmenu)</button>
     </joystick>
   </Home>
@@ -99,8 +100,8 @@
       <button id="8">Fullscreen</button>
       <button id="9">Rewind</button>
       <button id="10">FastForward</button>
-      <!-- pageup     -->      <button id="13">BigStepForward</button>
-      <!-- pagedown   -->      <button id="14">BigStepBack</button>
+      <!-- pageup     -->      <button id="13">ChapterOrBigStepForward</button>
+      <!-- pagedown   -->      <button id="14">ChapterOrBigStepBack</button>
       <!-- SwipeLeft  -->      <button id="80">StepBack</button>
       <!-- SwipeRight -->      <button id="81">StepForward</button>
       <!-- SwipeUp    -->      <button id="82">BigStepForward</button>
@@ -111,6 +112,22 @@
       <!-- FlickDown  -->      <button id="88">BigStepBack</button>
     </joystick>
   </FullscreenVideo>
+  <FullscreenLiveTV>
+    <joystick name="AppleRemote">
+      <button id="3">ChannelDown</button>
+      <button id="4">ChannelUp</button>
+      <!-- pageup     -->      <button id="13">ChannelUp</button>
+      <!-- pagedown   -->      <button id="14">ChannelDown</button>
+    </joystick>
+  </FullscreenLiveTV>
+  <FullscreenRadio>
+    <joystick name="AppleRemote">
+      <button id="3">ChannelDown</button>
+      <button id="4">ChannelUp</button>
+      <!-- pageup     -->      <button id="13">ChannelUp</button>
+      <!-- pagedown   -->      <button id="14">ChannelDown</button>
+    </joystick>
+  </FullscreenRadio>
   <Visualisation>
     <joystick name="AppleRemote">
       <button id="1">VolumeUp</button>
@@ -119,7 +136,7 @@
       <button id="4">SkipNext</button>
       <button id="5">Pause</button>
       <button id="6">Fullscreen</button>
-      <button id="7">XBMC.ActivateWindow(MusicOSD)</button>
+      <button id="7">OSD</button>
       <button id="8">Stop</button>
       <!-- SwipeLeft  -->      <button id="80">SkipPrevious</button>
       <!-- SwipeRight -->      <button id="81">SkipNext</button>

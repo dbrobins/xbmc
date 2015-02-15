@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
  *
  */
 
-
 #include "IDirectory.h"
 #include "Util.h"
 #include "dialogs/GUIDialogOK.h"
@@ -31,7 +30,6 @@ using namespace XFILE;
 
 IDirectory::IDirectory(void)
 {
-  m_strFileMask = "";
   m_flags = DIR_FLAG_DEFAULTS;
 }
 
@@ -39,44 +37,48 @@ IDirectory::~IDirectory(void)
 {}
 
 /*!
- \brief Test a file for an extension specified with SetMask().
+ \brief Test if file have an allowed extension, as specified with SetMask()
  \param strFile File to test
- \return Returns \e true, if file is allowed.
+ \return \e true if file is allowed
+ \note If extension is ".ifo", filename format must be "vide_ts.ifo" or
+       "vts_##_0.ifo". If extension is ".dat", filename format must be
+       "AVSEQ##(#).DAT", "ITEM###(#).DAT" or "MUSIC##(#).DAT".
  */
-bool IDirectory::IsAllowed(const CStdString& strFile) const
+bool IDirectory::IsAllowed(const CURL& url) const
 {
-  CStdString strExtension;
-  if ( !m_strFileMask.size() ) return true;
-  if ( !strFile.size() ) return true;
-
-  URIUtils::GetExtension(strFile, strExtension);
-
-  if (!strExtension.size()) return false;
-
-  strExtension.ToLower();
-  strExtension += '|'; // ensures that we have a | at the end of it
-  if (m_strFileMask.Find(strExtension) != -1)
-  { // it's allowed, but we should also ignore all non dvd related ifo files.
-    if (strExtension.Equals(".ifo|"))
-    {
-      CStdString fileName = URIUtils::GetFileName(strFile);
-      if (fileName.Equals("video_ts.ifo")) return true;
-      if (fileName.length() == 12 && fileName.Left(4).Equals("vts_") && fileName.Right(6).Equals("_0.ifo")) return true;
-      return false;
-    }
-    if (strExtension.Equals(".dat|"))
-    {
-      CStdString fileName = URIUtils::GetFileName(strFile);
-      /* VCD filenames are of the form AVSEQ##(#).DAT, ITEM###(#).DAT, MUSIC##(#).DAT - i.e. all 11 or 12 characters long
-         starting with AVSEQ, MUSIC or ITEM */
-      if ((fileName.length() == 11 || fileName.length() == 12) &&
-          (fileName.Left(5).Equals("AVSEQ") || fileName.Left(5).Equals("MUSIC") || fileName.Left(4).Equals("ITEM")))
-        return true;
-      return false;
-    }
+  if (m_strFileMask.empty())
     return true;
+
+  // Check if strFile have an allowed extension
+  if (!URIUtils::HasExtension(url, m_strFileMask))
+    return false;
+
+  // We should ignore all non dvd/vcd related ifo and dat files.
+  if (URIUtils::HasExtension(url, ".ifo"))
+  {
+    std::string fileName = URIUtils::GetFileName(url);
+
+    // Allow filenames of the form video_ts.ifo or vts_##_0.ifo
+    
+    return StringUtils::EqualsNoCase(fileName, "video_ts.ifo") ||
+          (fileName.length() == 12 &&
+           StringUtils::StartsWithNoCase(fileName, "vts_") &&
+           StringUtils::EndsWithNoCase(fileName, "_0.ifo"));
   }
-  return false;
+  
+  if (URIUtils::HasExtension(url, ".dat"))
+  {
+    std::string fileName = URIUtils::GetFileName(url);
+
+    // Allow filenames of the form AVSEQ##(#).DAT, ITEM###(#).DAT
+    // and MUSIC##(#).DAT
+    return (fileName.length() == 11 || fileName.length() == 12) &&
+           (StringUtils::StartsWithNoCase(fileName, "AVSEQ") ||
+            StringUtils::StartsWithNoCase(fileName, "MUSIC") ||
+            StringUtils::StartsWithNoCase(fileName, "ITEM"));
+  }
+
+  return true;
 }
 
 /*!
@@ -89,11 +91,11 @@ bool IDirectory::IsAllowed(const CStdString& strFile) const
  \endverbatim
  So only *.m4a, *.flac, *.aac files will be retrieved with GetDirectory().
  */
-void IDirectory::SetMask(const CStdString& strMask)
+void IDirectory::SetMask(const std::string& strMask)
 {
   m_strFileMask = strMask;
   // ensure it's completed with a | so that filtering is easy.
-  m_strFileMask.ToLower();
+  StringUtils::ToLower(m_strFileMask);
   if (m_strFileMask.size() && m_strFileMask[m_strFileMask.size() - 1] != '|')
     m_strFileMask += '|';
 }
@@ -109,10 +111,10 @@ void IDirectory::SetFlags(int flags)
 
 bool IDirectory::ProcessRequirements()
 {
-  CStdString type = m_requirements["type"].asString();
+  std::string type = m_requirements["type"].asString();
   if (type == "keyboard")
   {
-    CStdString input;
+    std::string input;
     if (CGUIKeyboardFactory::ShowAndGetInput(input, m_requirements["heading"], false))
     {
       m_requirements["input"] = input;
@@ -136,9 +138,9 @@ bool IDirectory::ProcessRequirements()
   return false;
 }
 
-bool IDirectory::GetKeyboardInput(const CVariant &heading, CStdString &input)
+bool IDirectory::GetKeyboardInput(const CVariant &heading, std::string &input)
 {
-  if (!CStdString(m_requirements["input"].asString()).IsEmpty())
+  if (!m_requirements["input"].asString().empty())
   {
     input = m_requirements["input"].asString();
     return true;
@@ -159,9 +161,9 @@ void IDirectory::SetErrorDialog(const CVariant &heading, const CVariant &line1, 
   m_requirements["line3"] = line3;
 }
 
-void IDirectory::RequireAuthentication(const CStdString &url)
+void IDirectory::RequireAuthentication(const CURL &url)
 {
   m_requirements.clear();
   m_requirements["type"] = "authenticate";
-  m_requirements["url"] = url;
+  m_requirements["url"] = url.Get();
 }

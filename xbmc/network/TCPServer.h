@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include <vector>
 #include <sys/socket.h>
 
+#include "system.h"
 #include "interfaces/json-rpc/IClient.h"
 #include "interfaces/json-rpc/IJSONRPCAnnouncer.h"
 #include "interfaces/json-rpc/ITransportLayer.h"
@@ -36,6 +37,7 @@ namespace JSONRPC
   public:
     static bool StartServer(int port, bool nonlocal);
     static void StopServer(bool bWait);
+    static bool IsRunning();
 
     virtual bool PrepareDownload(const char *path, CVariant &details, std::string &protocol);
     virtual bool Download(const char *path, CVariant &result);

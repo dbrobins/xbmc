@@ -9,8 +9,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,12 @@
  *
  */
 
-#include "utils/StdString.h"
+#include <string>
+#include <stdint.h>
+
+// Reserved 0 - 255
+//  XBIRRemote.h
+//  XINPUT_IR_REMOTE-*
 
 // Analogue - don't change order
 #define KEY_BUTTON_A                        256
@@ -68,18 +73,37 @@
 #define KEY_BUTTON_LEFT_THUMB_STICK_LEFT    282
 #define KEY_BUTTON_LEFT_THUMB_STICK_RIGHT   283
 
-#define KEY_VMOUSE          0xEFFF
-
 // 0xF000 -> 0xF200 is reserved for the keyboard; a keyboard press is either
 #define KEY_VKEY            0xF000 // a virtual key/functional key e.g. cursor left
 #define KEY_ASCII           0xF100 // a printable character in the range of TRUE ASCII (from 0 to 127) // FIXME make it clean and pure unicode! remove the need for KEY_ASCII
 #define KEY_UNICODE         0xF200 // another printable character whose range is not included in this KEY code
 
-// 0xE000 -> 0xE0FF is reserved for mouse actions
-#define KEY_MOUSE           0xE000
+// 0xE000 -> 0xEFFF is reserved for mouse actions
+#define KEY_VMOUSE          0xEFFF
+
+#define KEY_MOUSE_START            0xE000
+#define KEY_MOUSE_CLICK            0xE000
+#define KEY_MOUSE_RIGHTCLICK       0xE001
+#define KEY_MOUSE_MIDDLECLICK      0xE002
+#define KEY_MOUSE_DOUBLE_CLICK     0xE010
+#define KEY_MOUSE_LONG_CLICK       0xE020
+#define KEY_MOUSE_WHEEL_UP         0xE101
+#define KEY_MOUSE_WHEEL_DOWN       0xE102
+#define KEY_MOUSE_MOVE             0xE103
+#define KEY_MOUSE_DRAG             0xE104
+#define KEY_MOUSE_DRAG_START       0xE105
+#define KEY_MOUSE_DRAG_END         0xE106
+#define KEY_MOUSE_RDRAG            0xE107
+#define KEY_MOUSE_RDRAG_START      0xE108
+#define KEY_MOUSE_RDRAG_END        0xE109
+#define KEY_MOUSE_NOOP             0xEFFF
+#define KEY_MOUSE_END              0xEFFF
 
 // 0xD000 -> 0xD0FF is reserved for WM_APPCOMMAND messages
 #define KEY_APPCOMMAND      0xD000
+
+// 0xF000 -> 0xF0FF is reserved for mouse actions
+#define KEY_TOUCH           0xF000
 
 #define KEY_INVALID         0xFFFF
 
@@ -187,6 +211,14 @@
 #define ACTION_VOLAMP_UP            93
 #define ACTION_VOLAMP_DOWN          94
 
+#define ACTION_CREATE_EPISODE_BOOKMARK 95 //Creates an episode bookmark on the currently playing video file containing more than one episode
+#define ACTION_CREATE_BOOKMARK         96 //Creates a bookmark of the currently playing video file
+
+#define ACTION_CHAPTER_OR_BIG_STEP_FORWARD       97 // Goto the next chapter, if not available perform a big step forward
+#define ACTION_CHAPTER_OR_BIG_STEP_BACK          98 // Goto the previous chapter, if not available perform a big step back
+
+#define ACTION_CYCLE_SUBTITLE         99 // switch to next subtitle of movie, but will not enable/disable the subtitles. Can be used in videoFullScreen.xml window id=2005
+
 #define ACTION_MOUSE_START            100
 #define ACTION_MOUSE_LEFT_CLICK       100
 #define ACTION_MOUSE_RIGHT_CLICK      101
@@ -196,6 +228,7 @@
 #define ACTION_MOUSE_WHEEL_DOWN       105
 #define ACTION_MOUSE_DRAG             106
 #define ACTION_MOUSE_MOVE             107
+#define ACTION_MOUSE_LONG_CLICK       108
 #define ACTION_MOUSE_END              109
 
 #define ACTION_BACKSPACE          110
@@ -222,7 +255,6 @@
 #define ACTION_ANALOG_SEEK_BACK     125 // seeks backward, and displays the seek bar.
 
 #define ACTION_VIS_PRESET_SHOW        126
-#define ACTION_VIS_PRESET_LIST        127
 #define ACTION_VIS_PRESET_NEXT        128
 #define ACTION_VIS_PRESET_PREV        129
 #define ACTION_VIS_PRESET_LOCK        130
@@ -273,6 +305,13 @@
 #define ACTION_NEXT_CONTROL           181
 #define ACTION_PREV_CONTROL           182
 #define ACTION_CHANNEL_SWITCH         183
+#define ACTION_CHANNEL_UP             184
+#define ACTION_CHANNEL_DOWN           185
+#define ACTION_NEXT_CHANNELGROUP      186
+#define ACTION_PREVIOUS_CHANNELGROUP  187
+#define ACTION_PVR_PLAY               188
+#define ACTION_PVR_PLAY_TV            189
+#define ACTION_PVR_PLAY_RADIO         190
 
 #define ACTION_TOGGLE_FULLSCREEN      199 // switch 2 desktop resolution
 #define ACTION_TOGGLE_WATCHED         200 // Toggle watched status (videos)
@@ -289,162 +328,59 @@
 #define ACTION_INCREASE_PAR           219
 #define ACTION_DECREASE_PAR           220
 
-#define ACTION_GESTURE_NOTIFY         221
-#define ACTION_GESTURE_BEGIN          222
-#define ACTION_GESTURE_ZOOM           223 //sendaction with point and currentPinchScale (fingers together < 1.0 -> fingers apart > 1.0)
-#define ACTION_GESTURE_ROTATE         224
-#define ACTION_GESTURE_PAN            225
-#define ACTION_GESTURE_END            226
 #define ACTION_VSHIFT_UP              227 // shift up video image in DVDPlayer
 #define ACTION_VSHIFT_DOWN            228 // shift down video image in DVDPlayer
 
 #define ACTION_PLAYER_PLAYPAUSE       229 // Play/pause. If playing it pauses, if paused it plays.
 
-// The NOOP action can be specified to disable an input event. This is
-// useful in user keyboard.xml etc to disable actions specified in the
-// system mappings.
-#define ACTION_NOOP                   999
-
 #define ACTION_SUBTITLE_VSHIFT_UP     230 // shift up subtitles in DVDPlayer
 #define ACTION_SUBTITLE_VSHIFT_DOWN   231 // shift down subtitles in DVDPlayer
 #define ACTION_SUBTITLE_ALIGN         232 // toggle vertical alignment of subtitles
 
-// Window ID defines to make the code a bit more readable
-#define WINDOW_INVALID                     9999
-#define WINDOW_HOME                       10000
-#define WINDOW_PROGRAMS                   10001
-#define WINDOW_PICTURES                   10002
-#define WINDOW_FILES                      10003
-#define WINDOW_SETTINGS_MENU              10004
-#define WINDOW_MUSIC                      10005 // virtual window to return the music start window.
-#define WINDOW_VIDEOS                     10006
-#define WINDOW_SYSTEM_INFORMATION         10007
-#define WINDOW_TEST_PATTERN               10008
-#define WINDOW_SCREEN_CALIBRATION         10011
+#define ACTION_FILTER                 233
 
-#define WINDOW_SETTINGS_START             10012
-#define WINDOW_SETTINGS_MYPICTURES        10012
-#define WINDOW_SETTINGS_MYPROGRAMS        10013
-#define WINDOW_SETTINGS_MYWEATHER         10014
-#define WINDOW_SETTINGS_MYMUSIC           10015
-#define WINDOW_SETTINGS_SYSTEM            10016
-#define WINDOW_SETTINGS_MYVIDEOS          10017
-#define WINDOW_SETTINGS_SERVICE           10018 // former (Eden) WINDOW_SETTINGS_NETWORK
-#define WINDOW_SETTINGS_APPEARANCE        10019
+#define ACTION_SWITCH_PLAYER          234
 
-#define WINDOW_SCRIPTS                    10020 // virtual window for backward compatibility
-#define WINDOW_SETTINGS_MYPVR             10021
+#define ACTION_STEREOMODE_NEXT        235
+#define ACTION_STEREOMODE_PREVIOUS    236
+#define ACTION_STEREOMODE_TOGGLE      237 // turns 3d mode on/off
+#define ACTION_STEREOMODE_SELECT      238
+#define ACTION_STEREOMODE_TOMONO      239
+#define ACTION_STEREOMODE_SET         240
 
-#define WINDOW_VIDEO_FILES                10024
-#define WINDOW_VIDEO_NAV                  10025
-#define WINDOW_VIDEO_PLAYLIST             10028
+#define ACTION_SETTINGS_RESET         241
+#define ACTION_SETTINGS_LEVEL_CHANGE  242
 
-#define WINDOW_LOGIN_SCREEN               10029
-#define WINDOW_SETTINGS_PROFILES          10034
+#define ACTION_TRIGGER_OSD            243 // show autoclosing OSD. Can b used in videoFullScreen.xml window id=2005
+#define ACTION_INPUT_TEXT             244
 
-#define WINDOW_ADDON_BROWSER              10040
+// touch actions
+#define ACTION_TOUCH_TAP              401
+#define ACTION_TOUCH_TAP_TEN          410
+#define ACTION_TOUCH_LONGPRESS        411
+#define ACTION_TOUCH_LONGPRESS_TEN    420
 
-#define WINDOW_DIALOG_POINTER             10099
-#define WINDOW_DIALOG_YES_NO              10100
-#define WINDOW_DIALOG_PROGRESS            10101
-#define WINDOW_DIALOG_KEYBOARD            10103
-#define WINDOW_DIALOG_VOLUME_BAR          10104
-#define WINDOW_DIALOG_SUB_MENU            10105
-#define WINDOW_DIALOG_CONTEXT_MENU        10106
-#define WINDOW_DIALOG_KAI_TOAST           10107
-#define WINDOW_DIALOG_NUMERIC             10109
-#define WINDOW_DIALOG_GAMEPAD             10110
-#define WINDOW_DIALOG_BUTTON_MENU         10111
-#define WINDOW_DIALOG_MUSIC_SCAN          10112
-#define WINDOW_DIALOG_MUTE_BUG            10113
-#define WINDOW_DIALOG_PLAYER_CONTROLS     10114
-#define WINDOW_DIALOG_SEEK_BAR            10115
-#define WINDOW_DIALOG_MUSIC_OSD           10120
-#define WINDOW_DIALOG_VIS_SETTINGS        10121
-#define WINDOW_DIALOG_VIS_PRESET_LIST     10122
-#define WINDOW_DIALOG_VIDEO_OSD_SETTINGS  10123
-#define WINDOW_DIALOG_AUDIO_OSD_SETTINGS  10124
-#define WINDOW_DIALOG_VIDEO_BOOKMARKS     10125
-#define WINDOW_DIALOG_FILE_BROWSER        10126
-#define WINDOW_DIALOG_NETWORK_SETUP       10128
-#define WINDOW_DIALOG_MEDIA_SOURCE        10129
-#define WINDOW_DIALOG_PROFILE_SETTINGS    10130
-#define WINDOW_DIALOG_LOCK_SETTINGS       10131
-#define WINDOW_DIALOG_CONTENT_SETTINGS    10132
-#define WINDOW_DIALOG_VIDEO_SCAN          10133
-#define WINDOW_DIALOG_FAVOURITES          10134
-#define WINDOW_DIALOG_SONG_INFO           10135
-#define WINDOW_DIALOG_SMART_PLAYLIST_EDITOR 10136
-#define WINDOW_DIALOG_SMART_PLAYLIST_RULE   10137
-#define WINDOW_DIALOG_BUSY                10138
-#define WINDOW_DIALOG_PICTURE_INFO        10139
-#define WINDOW_DIALOG_ADDON_SETTINGS      10140
-#define WINDOW_DIALOG_ACCESS_POINTS       10141
-#define WINDOW_DIALOG_FULLSCREEN_INFO     10142
-#define WINDOW_DIALOG_KARAOKE_SONGSELECT  10143
-#define WINDOW_DIALOG_KARAOKE_SELECTOR    10144
-#define WINDOW_DIALOG_SLIDER              10145
-#define WINDOW_DIALOG_ADDON_INFO          10146
-#define WINDOW_DIALOG_TEXT_VIEWER         10147
-#define WINDOW_DIALOG_PLAY_EJECT          10148
-#define WINDOW_DIALOG_PERIPHERAL_MANAGER  10149
-#define WINDOW_DIALOG_PERIPHERAL_SETTINGS 10150
-#define WINDOW_DIALOG_EXT_PROGRESS        10151
+#define ACTION_GESTURE_NOTIFY         500
+#define ACTION_GESTURE_BEGIN          501
+#define ACTION_GESTURE_ZOOM           502 //sendaction with point and currentPinchScale (fingers together < 1.0 -> fingers apart > 1.0)
+#define ACTION_GESTURE_ROTATE         503
+#define ACTION_GESTURE_PAN            504
 
-#define WINDOW_MUSIC_PLAYLIST             10500
-#define WINDOW_MUSIC_FILES                10501
-#define WINDOW_MUSIC_NAV                  10502
-#define WINDOW_MUSIC_PLAYLIST_EDITOR      10503
+#define ACTION_GESTURE_SWIPE_LEFT       511
+#define ACTION_GESTURE_SWIPE_LEFT_TEN   520
+#define ACTION_GESTURE_SWIPE_RIGHT      521
+#define ACTION_GESTURE_SWIPE_RIGHT_TEN  530
+#define ACTION_GESTURE_SWIPE_UP         531
+#define ACTION_GESTURE_SWIPE_UP_TEN     540
+#define ACTION_GESTURE_SWIPE_DOWN       541
+#define ACTION_GESTURE_SWIPE_DOWN_TEN   550
+// 5xx is reserved for additional gesture actions
+#define ACTION_GESTURE_END            599
 
-#define WINDOW_DIALOG_OSD_TELETEXT        10600
-
-// PVR related Window and Dialog ID's
-#define WINDOW_PVR                        10601
-#define WINDOW_DIALOG_PVR_GUIDE_INFO      10602
-#define WINDOW_DIALOG_PVR_RECORDING_INFO  10603
-#define WINDOW_DIALOG_PVR_TIMER_SETTING   10604
-#define WINDOW_DIALOG_PVR_GROUP_MANAGER   10605
-#define WINDOW_DIALOG_PVR_CHANNEL_MANAGER 10606
-#define WINDOW_DIALOG_PVR_GUIDE_SEARCH    10607
-#define WINDOW_DIALOG_PVR_CHANNEL_SCAN    10608
-#define WINDOW_DIALOG_PVR_UPDATE_PROGRESS 10609
-#define WINDOW_DIALOG_PVR_OSD_CHANNELS    10610
-#define WINDOW_DIALOG_PVR_OSD_GUIDE       10611
-#define WINDOW_DIALOG_PVR_OSD_DIRECTOR    10612
-#define WINDOW_DIALOG_PVR_OSD_CUTTER      10613
-// PVR_WINDOW VIEWS = 10694-10699
-
-//#define WINDOW_VIRTUAL_KEYBOARD           11000
-#define WINDOW_DIALOG_SELECT              12000
-#define WINDOW_DIALOG_MUSIC_INFO          12001
-#define WINDOW_DIALOG_OK                  12002
-#define WINDOW_DIALOG_VIDEO_INFO          12003
-#define WINDOW_FULLSCREEN_VIDEO           12005
-#define WINDOW_VISUALISATION              12006
-#define WINDOW_SLIDESHOW                  12007
-#define WINDOW_DIALOG_FILESTACKING        12008
-#define WINDOW_KARAOKELYRICS              12009
-#define WINDOW_WEATHER                    12600
-#define WINDOW_SCREENSAVER                12900
-#define WINDOW_DIALOG_VIDEO_OSD           12901
-
-#define WINDOW_VIDEO_MENU                 12902
-#define WINDOW_DIALOG_MUSIC_OVERLAY       12903
-#define WINDOW_DIALOG_VIDEO_OVERLAY       12904
-#define WINDOW_VIDEO_TIME_SEEK            12905 // virtual window for time seeking during fullscreen video
-
-#define WINDOW_START                      12998 // first window to load
-#define WINDOW_STARTUP_ANIM               12999 // for startup animations
-
-// WINDOW_ID's from 13000 to 13099 reserved for Python
-
-#define WINDOW_PYTHON_START               13000
-#define WINDOW_PYTHON_END                 13099
-
-// WINDOW_ID's from 14000 to 14099 reserved for Addons
-
-#define WINDOW_ADDON_START                14000
-#define WINDOW_ADDON_END                  14099
+// The NOOP action can be specified to disable an input event. This is
+// useful in user keyboard.xml etc to disable actions specified in the
+// system mappings.
+#define ACTION_NOOP                   999
 
 #define ICON_TYPE_NONE          101
 #define ICON_TYPE_PROGRAMS      102
@@ -455,6 +391,8 @@
 #define ICON_TYPE_WEATHER       107
 #define ICON_TYPE_SETTINGS      109
 
+#ifndef SWIG
+
 class CKey;
 
 /*!
@@ -464,10 +402,11 @@ class CKey;
 class CAction
 {
 public:
-  CAction(int actionID, float amount1 = 1.0f, float amount2 = 0.0f, const CStdString &name = "", unsigned int holdTime = 0);
+  CAction(int actionID, float amount1 = 1.0f, float amount2 = 0.0f, const std::string &name = "", unsigned int holdTime = 0);
   CAction(int actionID, wchar_t unicode);
-  CAction(int actionID, unsigned int state, float posX, float posY, float offsetX, float offsetY, const CStdString &name = "");
-  CAction(int actionID, const CStdString &name, const CKey &key);
+  CAction(int actionID, unsigned int state, float posX, float posY, float offsetX, float offsetY, const std::string &name = "");
+  CAction(int actionID, const std::string &name, const CKey &key);
+  CAction(int actionID, const std::string &name);
 
   /*! \brief Identifier of the action
    \return id of the action
@@ -484,7 +423,17 @@ public:
   /*! \brief Human-readable name of the action
    \return name of the action
    */
-  const CStdString &GetName() const { return m_name; };
+  const std::string &GetName() const { return m_name; };
+  
+  /*! \brief Text of the action if any
+   \return text payload of this action.
+   */
+  const std::string &GetText() const { return m_text; };
+  
+  /*! \brief Set the text payload of the action
+   \param text to be set
+   */
+  void SetText(const std::string &text) { m_text = text; };
 
   /*! \brief Get an amount associated with this action
    \param zero-based index of amount to retrieve, defaults to 0
@@ -514,7 +463,7 @@ public:
 
 private:
   int          m_id;
-  CStdString   m_name;
+  std::string   m_name;
 
   static const unsigned int max_amounts = 4; // Must be at least 4.
   float        m_amount[max_amounts];
@@ -523,6 +472,7 @@ private:
   unsigned int m_holdTime;
   unsigned int m_buttonCode;
   wchar_t      m_unicode;
+  std::string  m_text;
 };
 
 /*!
@@ -560,7 +510,7 @@ public:
   CKey(const CKey& key);
 
   virtual ~CKey(void);
-  const CKey& operator=(const CKey& key);
+  CKey& operator=(const CKey& key);
   uint8_t GetLeftTrigger() const;
   uint8_t GetRightTrigger() const;
   float GetLeftThumbX() const;
@@ -586,7 +536,8 @@ public:
     MODIFIER_SHIFT = 0x00020000,
     MODIFIER_ALT   = 0x00040000,
     MODIFIER_RALT  = 0x00080000,
-    MODIFIER_SUPER = 0x00100000
+    MODIFIER_SUPER = 0x00100000,
+    MODIFIER_META  = 0X00200000
   };
 
 private:
@@ -608,5 +559,7 @@ private:
   float m_repeat; // time since last keypress
   bool m_fromService;
 };
+#endif //undef SWIG
+
 #endif
 

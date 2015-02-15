@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -88,6 +88,7 @@ extern "C" {
     int           iEpisodeNumber;      /*!< @brief (optional) episode number */
     int           iEpisodePartNumber;  /*!< @brief (optional) episode part number */
     const char *  strEpisodeName;      /*!< @brief (optional) episode name */
+    const char *  strRecordingId;      /*!< @brief (optional) unique id of the recording on the client which represents this event */
   } ATTRIBUTE_PACKED EPG_TAG;
 
 #ifdef __cplusplus

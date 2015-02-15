@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,13 +21,14 @@
 #include "GUIDialogFavourites.h"
 #include "GUIDialogContextMenu.h"
 #include "GUIDialogFileBrowser.h"
-#include "Favourites.h"
+#include "filesystem/Directory.h"
+#include "filesystem/FavouritesDirectory.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/GUIKeyboardFactory.h"
+#include "guilib/Key.h"
 #include "filesystem/File.h"
 #include "FileItem.h"
 #include "guilib/LocalizeStrings.h"
-#include "settings/Settings.h"
 #include "storage/MediaManager.h"
 
 using namespace XFILE;
@@ -83,7 +84,7 @@ bool CGUIDialogFavourites::OnMessage(CGUIMessage &message)
 
 void CGUIDialogFavourites::OnInitWindow()
 {
-  CFavourites::Load(*m_favourites);
+  XFILE::CDirectory::GetDirectory("favourites://", *m_favourites);
   UpdateList();
   CGUIWindow::OnInitWindow();
 }
@@ -102,7 +103,7 @@ void CGUIDialogFavourites::OnClick(int item)
 
   // grab our message, close the dialog, and send
   CFileItemPtr pItem = (*m_favourites)[item];
-  CStdString execute(pItem->GetPath());
+  std::string execute(pItem->GetPath());
 
   Close();
 
@@ -154,7 +155,7 @@ void CGUIDialogFavourites::OnMoveItem(int item, int amount)
   if (nextItem < 0) nextItem += m_favourites->Size();
 
   m_favourites->Swap(item, nextItem);
-  CFavourites::Save(*m_favourites);
+  CFavouritesDirectory::Save(*m_favourites);
 
   CGUIMessage message(GUI_MSG_ITEM_SELECT, GetID(), FAVOURITES_LIST, nextItem);
   OnMessage(message);
@@ -167,7 +168,7 @@ void CGUIDialogFavourites::OnDelete(int item)
   if (item < 0 || item >= m_favourites->Size())
     return;
   m_favourites->Remove(item);
-  CFavourites::Save(*m_favourites);
+  CFavouritesDirectory::Save(*m_favourites);
 
   CGUIMessage message(GUI_MSG_ITEM_SELECT, GetID(), FAVOURITES_LIST, item < m_favourites->Size() ? item : item - 1);
   OnMessage(message);
@@ -180,11 +181,11 @@ void CGUIDialogFavourites::OnRename(int item)
   if (item < 0 || item >= m_favourites->Size())
     return;
 
-  CStdString label((*m_favourites)[item]->GetLabel());
+  std::string label((*m_favourites)[item]->GetLabel());
   if (CGUIKeyboardFactory::ShowAndGetInput(label, g_localizeStrings.Get(16008), false))
     (*m_favourites)[item]->SetLabel(label);
 
-  CFavourites::Save(*m_favourites);
+  CFavouritesDirectory::Save(*m_favourites);
 
   UpdateList();
 }
@@ -199,10 +200,10 @@ void CGUIDialogFavourites::OnSetThumb(int item)
   CFileItemList items;
 
   // Current
-  if (pItem->HasThumbnail())
+  if (pItem->HasArt("thumb"))
   {
     CFileItemPtr current(new CFileItem("thumb://Current", false));
-    current->SetThumbnailImage(pItem->GetThumbnailImage());
+    current->SetArt("thumb", pItem->GetArt("thumb"));
     current->SetLabel(g_localizeStrings.Get(20016));
     items.Add(current);
   }
@@ -213,14 +214,14 @@ void CGUIDialogFavourites::OnSetThumb(int item)
   none->SetLabel(g_localizeStrings.Get(20018));
   items.Add(none);
 
-  CStdString thumb;
+  std::string thumb;
   VECSOURCES sources;
   g_mediaManager.GetLocalDrives(sources);
   if (!CGUIDialogFileBrowser::ShowAndGetImage(items, sources, g_localizeStrings.Get(1030), thumb))
     return;
 
-  (*m_favourites)[item]->SetThumbnailImage(thumb);
-  CFavourites::Save(*m_favourites);
+  (*m_favourites)[item]->SetArt("thumb", thumb);
+  CFavouritesDirectory::Save(*m_favourites);
   UpdateList();
 }
 

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -67,16 +67,16 @@ std::string CWin32StorageProvider::GetFirstOpticalDeviceFileName()
   return CWIN32Util::GetFirstOpticalDrive();
 }
 
-bool CWin32StorageProvider::Eject(CStdString mountpath)
+bool CWin32StorageProvider::Eject(const std::string& mountpath)
 {
-  if (!mountpath.IsEmpty())
+  if (!mountpath.empty())
   {
     return CWIN32Util::EjectDrive(mountpath[0]);
   }
   return false;
 }
 
-std::vector<CStdString> CWin32StorageProvider::GetDiskUsage()
+std::vector<std::string > CWin32StorageProvider::GetDiskUsage()
 {
   return CWIN32Util::GetDiskUsage();
 }
@@ -88,7 +88,7 @@ bool CWin32StorageProvider::PumpDriveChangeEvents(IStorageEventsCallback *callba
   return b;
 }
 
-CDetectDisc::CDetectDisc(const CStdString &strPath, const bool bautorun)
+CDetectDisc::CDetectDisc(const std::string &strPath, const bool bautorun)
   : m_strPath(strPath), m_bautorun(bautorun)
 {
 }

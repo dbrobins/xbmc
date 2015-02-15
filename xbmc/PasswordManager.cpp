@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,9 +19,9 @@
  */
 
 #include "PasswordManager.h"
-#include "settings/GUIDialogLockSettings.h"
+#include "profiles/ProfilesManager.h"
+#include "profiles/dialogs/GUIDialogLockSettings.h"
 #include "URL.h"
-#include "settings/Settings.h"
 #include "utils/XMLUtils.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
@@ -46,8 +46,8 @@ bool CPasswordManager::AuthenticateURL(CURL &url)
 
   if (!m_loaded)
     Load();
-  CStdString lookup(GetLookupPath(url));
-  map<CStdString, CStdString>::const_iterator it = m_temporaryCache.find(lookup);
+  std::string lookup(GetLookupPath(url));
+  map<std::string, std::string>::const_iterator it = m_temporaryCache.find(lookup);
   if (it == m_temporaryCache.end())
   { // second step, try something that doesn't quite match
     it = m_temporaryCache.find(GetServerLookup(lookup));
@@ -66,9 +66,8 @@ bool CPasswordManager::PromptToAuthenticateURL(CURL &url)
 {
   CSingleLock lock(m_critSection);
 
-  CStdString passcode;
-  CStdString username = url.GetUserName();
-  CStdString path = GetLookupPath(url);
+  std::string passcode;
+  std::string username = url.GetUserName();
 
   bool saveDetails = false;
   if (!CGUIDialogLockSettings::ShowAndGetUserAndPassword(username, passcode, url.GetWithoutUserDetails(), &saveDetails))
@@ -85,13 +84,13 @@ bool CPasswordManager::PromptToAuthenticateURL(CURL &url)
 void CPasswordManager::SaveAuthenticatedURL(const CURL &url, bool saveToProfile)
 {
   // don't store/save authenticated url if it doesn't contain username
-  if (url.GetUserName().IsEmpty())
+  if (url.GetUserName().empty())
     return;
 
   CSingleLock lock(m_critSection);
 
-  CStdString path = GetLookupPath(url);
-  CStdString authenticatedPath = url.Get();
+  std::string path = GetLookupPath(url);
+  std::string authenticatedPath = url.Get();
 
   if (!m_loaded)
     Load();
@@ -117,7 +116,7 @@ void CPasswordManager::Clear()
 void CPasswordManager::Load()
 {
   Clear();
-  CStdString passwordsFile = g_settings.GetUserDataItem("passwords.xml");
+  std::string passwordsFile = CProfilesManager::Get().GetUserDataItem("passwords.xml");
   if (XFILE::CFile::Exists(passwordsFile))
   {
     CXBMCTinyXML doc;
@@ -134,7 +133,7 @@ void CPasswordManager::Load()
     const TiXmlElement *path = root->FirstChildElement("path");
     while (path)
     {
-      CStdString from, to;
+      std::string from, to;
       if (XMLUtils::GetPath(path, "from", from) && XMLUtils::GetPath(path, "to", to))
       {
         m_permanentCache[from] = to;
@@ -149,7 +148,7 @@ void CPasswordManager::Load()
 
 void CPasswordManager::Save() const
 {
-  if (!m_permanentCache.size())
+  if (m_permanentCache.empty())
     return;
 
   CXBMCTinyXML doc;
@@ -158,7 +157,7 @@ void CPasswordManager::Save() const
   if (!root)
     return;
 
-  for (map<CStdString, CStdString>::const_iterator i = m_permanentCache.begin(); i != m_permanentCache.end(); ++i)
+  for (map<std::string, std::string>::const_iterator i = m_permanentCache.begin(); i != m_permanentCache.end(); ++i)
   {
     TiXmlElement pathElement("path");
     TiXmlNode *path = root->InsertEndChild(pathElement);
@@ -166,15 +165,15 @@ void CPasswordManager::Save() const
     XMLUtils::SetPath(path, "to", i->second);
   }
 
-  doc.SaveFile(g_settings.GetUserDataItem("passwords.xml"));
+  doc.SaveFile(CProfilesManager::Get().GetUserDataItem("passwords.xml"));
 }
 
-CStdString CPasswordManager::GetLookupPath(const CURL &url) const
+std::string CPasswordManager::GetLookupPath(const CURL &url) const
 {
   return "smb://" + url.GetHostName() + "/" + url.GetShareName();
 }
 
-CStdString CPasswordManager::GetServerLookup(const CStdString &path) const
+std::string CPasswordManager::GetServerLookup(const std::string &path) const
 {
   CURL url(path);
   return "smb://" + url.GetHostName() + "/";

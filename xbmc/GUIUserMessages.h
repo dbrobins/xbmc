@@ -3,8 +3,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,8 +31,8 @@
 //  General playlist items changed
 #define GUI_MSG_PLAYLIST_CHANGED        GUI_MSG_USER + 3
 
-//  Start Slideshow in my pictures lpVoid = CStdString
-//  Param lpVoid: CStdString* that points to the Directory
+//  Start Slideshow in my pictures lpVoid = std::string
+//  Param lpVoid: std::string* that points to the Directory
 //  to start the slideshow in.
 #define GUI_MSG_START_SLIDESHOW         GUI_MSG_USER + 4
 
@@ -129,3 +129,9 @@
 
 // Sent to the AddonSetting dialogs from addons if they updated a setting
 #define GUI_MSG_SETTING_UPDATED       GUI_MSG_USER + 35
+
+// Message sent to CGUIWindowSlideshow to show picture
+#define GUI_MSG_SHOW_PICTURE          GUI_MSG_USER + 36
+
+// Sent to text field to support 'input method'
+#define GUI_MSG_INPUT_TEXT_EDIT       GUI_MSG_USER + 38

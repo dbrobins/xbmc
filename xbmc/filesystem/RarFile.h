@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -71,8 +71,8 @@ namespace XFILE
     virtual bool          Open(const CURL& url);
     virtual bool          Exists(const CURL& url);
     virtual int           Stat(const CURL& url, struct __stat64* buffer);
-    virtual unsigned int  Read(void* lpBuf, int64_t uiBufSize);
-    virtual int           Write(const void* lpBuf, int64_t uiBufSize);
+    virtual ssize_t       Read(void* lpBuf, size_t uiBufSize);
+    virtual ssize_t       Write(const void* lpBuf, size_t uiBufSize);
     virtual int64_t       Seek(int64_t iFilePosition, int iWhence=SEEK_SET);
     virtual void          Close();
     virtual void          Flush();
@@ -81,10 +81,10 @@ namespace XFILE
     unsigned int          Write(void *lpBuf, int64_t uiBufSize);
 
   protected:
-    CStdString m_strCacheDir;
-    CStdString m_strRarPath;
-    CStdString m_strPassword;
-    CStdString m_strPathInRar;
+    std::string m_strCacheDir;
+    std::string m_strRarPath;
+    std::string m_strPassword;
+    std::string m_strPathInRar;
     BYTE m_bFileOptions;
     void Init();
     void InitFromUrl(const CURL& url);
@@ -104,8 +104,8 @@ namespace XFILE
     CmdExtract* m_pExtract;
     CRarFileExtractThread* m_pExtractThread;
 #endif
-    byte* m_szBuffer;
-    byte* m_szStartOfBuffer;
+    uint8_t* m_szBuffer;
+    uint8_t* m_szStartOfBuffer;
     int64_t m_iDataInBuffer;
     int64_t m_iBufferStart;
   };

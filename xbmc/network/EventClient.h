@@ -2,8 +2,8 @@
 #define __EVENT_CLIENT_H__
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 #include "threads/CriticalSection.h"
 #include "Socket.h"
 #include "EventPacket.h"
-#include "settings/GUISettings.h"
+#include "settings/Settings.h"
 
 #include <list>
 #include <map>
@@ -34,6 +34,8 @@
 namespace EVENTCLIENT
 {
 
+  #define ES_FLAG_UNICODE    0x80000000 // new 16bit key flag to support real unicode over EventServer
+
   class CEventAction
   {
   public:
@@ -41,9 +43,9 @@ namespace EVENTCLIENT
     {
       actionType = 0;
     }
-    CEventAction(const char* action, unsigned char type)
+    CEventAction(const char* action, unsigned char type):
+      actionName(action)
     {
-      actionName = action;
       actionType = type;
     }
 
@@ -57,8 +59,6 @@ namespace EVENTCLIENT
     CEventButtonState()
     {
       m_iKeyCode   = 0;
-      m_mapName    = "";
-      m_buttonName = "";
       m_fAmount    = 0.0f;
       m_bUseAmount = false;
       m_bRepeat    = false;
@@ -68,18 +68,17 @@ namespace EVENTCLIENT
       m_iNextRepeat = 0;
     }
 
-    CEventButtonState(unsigned short iKeyCode,
+    CEventButtonState(unsigned int iKeyCode,
                       std::string mapName,
                       std::string buttonName,
                       float fAmount,
                       bool isAxis,
                       bool bRepeat,
-                      bool bUseAmount
-      )
+                      bool bUseAmount):
+      m_buttonName(buttonName),
+      m_mapName(mapName)
     {
       m_iKeyCode   = iKeyCode;
-      m_buttonName = buttonName;
-      m_mapName    = mapName;
       m_fAmount    = fAmount;
       m_bUseAmount = bUseAmount;
       m_bRepeat    = bRepeat;
@@ -96,13 +95,13 @@ namespace EVENTCLIENT
     bool Repeat() const { return m_bRepeat; }
     int  ControllerNumber() const { return m_iControllerNumber; }
     bool Axis() const { return m_bAxis; }
-    unsigned short KeyCode() const { return m_iKeyCode; }
+    unsigned int KeyCode() const { return m_iKeyCode; }
     float Amount() const  { return m_fAmount; }
     void Load();
     const std::string& JoystickName() const { return m_joystickName; }
 
     // data
-    unsigned short    m_iKeyCode;
+    unsigned int      m_iKeyCode;
     unsigned short    m_iControllerNumber;
     std::string       m_buttonName;
     std::string       m_mapName;
@@ -129,9 +128,9 @@ namespace EVENTCLIENT
       Initialize();
     }
 
-    CEventClient(SOCKETS::CAddress& addr)
+    CEventClient(SOCKETS::CAddress& addr):
+      m_remoteAddr(addr)
     {
-      m_remoteAddr = addr;
       Initialize();
     }
 
@@ -156,8 +155,8 @@ namespace EVENTCLIENT
 
     void RefreshSettings()
     {
-      m_iRepeatDelay = g_guiSettings.GetInt("services.esinitialdelay");
-      m_iRepeatSpeed = g_guiSettings.GetInt("services.escontinuousdelay");
+      m_iRepeatDelay = CSettings::Get().GetInt("services.esinitialdelay");
+      m_iRepeatSpeed = CSettings::Get().GetInt("services.escontinuousdelay");
     }
 
     SOCKETS::CAddress& Address()
@@ -189,7 +188,7 @@ namespace EVENTCLIENT
     void FreePacketQueues();
 
     // return event states
-    unsigned short GetButtonCode(std::string& strMapName, bool& isAxis, float& amount);
+    unsigned int GetButtonCode(std::string& strMapName, bool& isAxis, float& amount);
 
     // update mouse position
     bool GetMousePos(float& x, float& y);

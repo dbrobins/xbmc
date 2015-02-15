@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -27,69 +27,10 @@
 using namespace std;
 using namespace PERIPHERALS;
 
-#define PERIPHERAL_DEFAULT_RESCAN_INTERVAL 1000
+#define PERIPHERAL_DEFAULT_RESCAN_INTERVAL 5000
 
-bool PeripheralScanResult::operator ==(const PeripheralScanResult &right) const
-{
-  return m_iVendorId == right.m_iVendorId &&
-      m_iProductId == right.m_iProductId &&
-      m_type == right.m_type &&
-      m_strLocation.Equals(right.m_strLocation);
-}
-
-bool PeripheralScanResult::operator !=(const PeripheralScanResult &right) const
-{
-  return !(*this == right);
-}
-
-bool PeripheralScanResult::operator ==(const CPeripheral &right) const
-{
-  return m_iVendorId == right.VendorId() &&
-      m_iProductId == right.ProductId() &&
-      m_type == right.Type() &&
-      m_strLocation.Equals(right.Location());
-}
-
-bool PeripheralScanResult::operator !=(const CPeripheral &right) const
-{
-  return !(*this == right);
-}
-
-bool PeripheralScanResults::GetDeviceOnLocation(const CStdString &strLocation, PeripheralScanResult *result) const
-{
-  bool bReturn(false);
-
-  for (unsigned int iDevicePtr = 0; iDevicePtr < m_results.size(); iDevicePtr++)
-  {
-    if (m_results.at(iDevicePtr).m_strLocation == strLocation)
-    {
-      *result = m_results.at(iDevicePtr);
-      bReturn = true;
-      break;
-    }
-  }
-
-  return bReturn;
-}
-
-bool PeripheralScanResults::ContainsResult(const PeripheralScanResult &result) const
-{
-  bool bReturn(false);
-
-  for (unsigned int iDevicePtr = 0; iDevicePtr < m_results.size(); iDevicePtr++)
-  {
-    if (m_results.at(iDevicePtr) == result)
-    {
-      bReturn = true;
-      break;
-    }
-  }
-
-  return bReturn;
-}
-
-CPeripheralBus::CPeripheralBus(CPeripherals *manager, PeripheralBusType type) :
-    CThread("XBMC Peripherals"),
+CPeripheralBus::CPeripheralBus(const std::string &threadname, CPeripherals *manager, PeripheralBusType type) :
+    CThread(threadname.c_str()),
     m_iRescanTime(PERIPHERAL_DEFAULT_RESCAN_INTERVAL),
     m_bInitialised(false),
     m_bIsStarted(false),
@@ -100,17 +41,17 @@ CPeripheralBus::CPeripheralBus(CPeripherals *manager, PeripheralBusType type) :
 {
 }
 
-void CPeripheralBus::OnDeviceAdded(const CStdString &strLocation)
+void CPeripheralBus::OnDeviceAdded(const std::string &strLocation)
 {
   ScanForDevices();
 }
 
-void CPeripheralBus::OnDeviceChanged(const CStdString &strLocation)
+void CPeripheralBus::OnDeviceChanged(const std::string &strLocation)
 {
   ScanForDevices();
 }
 
-void CPeripheralBus::OnDeviceRemoved(const CStdString &strLocation)
+void CPeripheralBus::OnDeviceRemoved(const std::string &strLocation)
 {
   ScanForDevices();
 }
@@ -137,9 +78,9 @@ void CPeripheralBus::UnregisterRemovedDevices(const PeripheralScanResults &resul
   for (int iDevicePtr = (int) m_peripherals.size() - 1; iDevicePtr >= 0; iDevicePtr--)
   {
     CPeripheral *peripheral = m_peripherals.at(iDevicePtr);
-    PeripheralScanResult updatedDevice;
+    PeripheralScanResult updatedDevice(m_type);
     if (!results.GetDeviceOnLocation(peripheral->Location(), &updatedDevice) ||
-        updatedDevice != *peripheral)
+        *peripheral != updatedDevice)
     {
       /* device removed */
       removedPeripherals.push_back(peripheral);
@@ -170,9 +111,9 @@ void CPeripheralBus::RegisterNewDevices(const PeripheralScanResults &results)
   CSingleLock lock(m_critSection);
   for (unsigned int iResultPtr = 0; iResultPtr < results.m_results.size(); iResultPtr++)
   {
-    PeripheralScanResult result = results.m_results.at(iResultPtr);
+    const PeripheralScanResult& result = results.m_results.at(iResultPtr);
     if (!HasPeripheral(result.m_strLocation))
-      g_peripherals.CreatePeripheral(*this, result.m_type, result.m_strLocation, result.m_iVendorId, result.m_iProductId);
+      g_peripherals.CreatePeripheral(*this, result);
   }
 }
 
@@ -185,6 +126,8 @@ bool CPeripheralBus::ScanForDevices(void)
   {
     UnregisterRemovedDevices(results);
     RegisterNewDevices(results);
+
+    CPeripherals::Get().NotifyObservers(ObservableMessagePeripheralsChanged);
 
     bReturn = true;
   }
@@ -215,7 +158,7 @@ void CPeripheralBus::GetFeatures(std::vector<PeripheralFeature> &features) const
     m_peripherals.at(iPeripheralPtr)->GetFeatures(features);
 }
 
-CPeripheral *CPeripheralBus::GetPeripheral(const CStdString &strLocation) const
+CPeripheral *CPeripheralBus::GetPeripheral(const std::string &strLocation) const
 {
   CPeripheral *peripheral(NULL);
   CSingleLock lock(m_critSection);
@@ -241,6 +184,20 @@ int CPeripheralBus::GetPeripheralsWithFeature(vector<CPeripheral *> &results, co
       results.push_back(m_peripherals.at(iPeripheralPtr));
       ++iReturn;
     }
+  }
+
+  return iReturn;
+}
+
+size_t CPeripheralBus::GetNumberOfPeripheralsWithId(const int iVendorId, const int iProductId) const
+{
+  int iReturn(0);
+  CSingleLock lock(m_critSection);
+  for (unsigned int iPeripheralPtr = 0; iPeripheralPtr < m_peripherals.size(); iPeripheralPtr++)
+  {
+    if (m_peripherals.at(iPeripheralPtr)->VendorId() == iVendorId &&
+        m_peripherals.at(iPeripheralPtr)->ProductId() == iProductId)
+      iReturn++;
   }
 
   return iReturn;
@@ -313,14 +270,14 @@ void CPeripheralBus::TriggerDeviceScan(void)
   }
 }
 
-bool CPeripheralBus::HasPeripheral(const CStdString &strLocation) const
+bool CPeripheralBus::HasPeripheral(const std::string &strLocation) const
 {
   return (GetPeripheral(strLocation) != NULL);
 }
 
-void CPeripheralBus::GetDirectory(const CStdString &strPath, CFileItemList &items) const
+void CPeripheralBus::GetDirectory(const std::string &strPath, CFileItemList &items) const
 {
-  CStdString strDevPath;
+  std::string strDevPath;
   CSingleLock lock(m_critSection);
   for (unsigned int iDevicePtr = 0; iDevicePtr < m_peripherals.size(); iDevicePtr++)
   {
@@ -340,13 +297,13 @@ void CPeripheralBus::GetDirectory(const CStdString &strPath, CFileItemList &item
   }
 }
 
-CPeripheral *CPeripheralBus::GetByPath(const CStdString &strPath) const
+CPeripheral *CPeripheralBus::GetByPath(const std::string &strPath) const
 {
-  CStdString strDevPath;
+  std::string strDevPath;
   CSingleLock lock(m_critSection);
   for (unsigned int iDevicePtr = 0; iDevicePtr < m_peripherals.size(); iDevicePtr++)
   {
-    if (strPath.Equals(m_peripherals.at(iDevicePtr)->FileLocation()))
+    if (StringUtils::EqualsNoCase(strPath, m_peripherals.at(iDevicePtr)->FileLocation()))
       return m_peripherals.at(iDevicePtr);
   }
 

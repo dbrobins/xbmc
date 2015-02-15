@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +14,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -39,15 +40,18 @@ public:
   const std::string& GetType() const { return m_type; }
   void AppendPath(const std::string &subPath);
 
-  virtual void AddOption(const std::string &key, const std::string &value) { CUrlOptions::AddOption(key, value); updateOptions(); }
-  virtual void AddOption(const std::string &key, int value) { CUrlOptions::AddOption(key, value); updateOptions(); }
-  virtual void AddOption(const std::string &key, float value) { CUrlOptions::AddOption(key, value); updateOptions(); }
-  virtual void AddOption(const std::string &key, double value) { CUrlOptions::AddOption(key, value); updateOptions(); }
-  virtual void AddOption(const std::string &key, bool value) { CUrlOptions::AddOption(key, value); updateOptions(); }
-  virtual void AddOptions(const std::string &options) { CUrlOptions::AddOptions(options); updateOptions(); }
+  virtual void AddOption(const std::string &key, const char *value);
+  virtual void AddOption(const std::string &key, const std::string &value);
+  virtual void AddOption(const std::string &key, int value);
+  virtual void AddOption(const std::string &key, float value);
+  virtual void AddOption(const std::string &key, double value);
+  virtual void AddOption(const std::string &key, bool value);
+  virtual void AddOptions(const std::string &options);
+  virtual void RemoveOption(const std::string &key);
 
 protected:
   virtual bool parse() = 0;
+  virtual bool validateOption(const std::string &key, const CVariant &value);
   
   CURL m_url;
   std::string m_type;

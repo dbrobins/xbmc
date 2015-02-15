@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2011-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2011-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 
 #include "SlingboxDirectory.h"
 #include "FileItem.h"
+#include "URL.h"
 
 using namespace XFILE;
 using namespace std;
@@ -32,10 +33,11 @@ CSlingboxDirectory::~CSlingboxDirectory()
 {
 }
 
-bool CSlingboxDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
+bool CSlingboxDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
   // Create generic Watch Slingbox item
-  CFileItemPtr item(new CFileItem(strPath, false));
+  const std::string pathToUrl(url.Get());
+  CFileItemPtr item(new CFileItem(pathToUrl, false));
   item->SetLabel("Watch Slingbox");
   item->SetLabelPreformated(true);
   items.Add(item);

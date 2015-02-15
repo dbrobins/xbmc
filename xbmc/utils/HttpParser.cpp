@@ -3,6 +3,24 @@
  * This code was written by Steve Hanov in 2009, no copyright is claimed.
  * This code is in the public domain.
  * Code was taken from http://refactormycode.com/codes/778-an-efficient-http-parser
+ *
+ *      Copyright (C) 2011-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
  */
 
 #include "HttpParser.h"
@@ -188,19 +206,19 @@ HttpParser::addBytes( const char* bytes, unsigned len )
 }
 
 const char*
-HttpParser::getMethod()
+HttpParser::getMethod() const
 {
     return &_data[0];
 }
 
 const char*
-HttpParser::getUri()
+HttpParser::getUri() const
 {
     return &_data[_uriIndex];
 }
 
 const char*
-HttpParser::getQueryString()
+HttpParser::getQueryString() const
 {
     const char* pos = getUri();
     while( *pos ) {
@@ -214,7 +232,7 @@ HttpParser::getQueryString()
 }
 
 const char* 
-HttpParser::getBody()
+HttpParser::getBody() const
 {
     if ( _contentLength > 0 ) {
         return &_data[_contentStart];
@@ -225,9 +243,9 @@ HttpParser::getBody()
 
 // key should be in lower case.
 const char* 
-HttpParser::getValue( const char* key )
+HttpParser::getValue( const char* key ) const
 {
-    for( IntArray::iterator iter = _keys.begin();
+    for( IntArray::const_iterator iter = _keys.begin();
             iter != _keys.end(); ++iter  )
     {
         unsigned index = *iter;
@@ -241,7 +259,7 @@ HttpParser::getValue( const char* key )
 }
 
 unsigned
-HttpParser::getContentLength()
+HttpParser::getContentLength() const
 {
     return _contentLength;
 }

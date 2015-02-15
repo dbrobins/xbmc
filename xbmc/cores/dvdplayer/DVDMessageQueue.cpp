@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,9 +27,8 @@
 
 using namespace std;
 
-CDVDMessageQueue::CDVDMessageQueue(const string &owner) : m_hEvent(true)
+CDVDMessageQueue::CDVDMessageQueue(const string &owner) : m_hEvent(true), m_owner(owner)
 {
-  m_owner = owner;
   m_iDataSize     = 0;
   m_bAbortRequest = false;
   m_bInitialized  = false;
@@ -45,7 +44,7 @@ CDVDMessageQueue::CDVDMessageQueue(const string &owner) : m_hEvent(true)
 CDVDMessageQueue::~CDVDMessageQueue()
 {
   // remove all remaining messages
-  Flush();
+  Flush(CDVDMsg::NONE);
 }
 
 void CDVDMessageQueue::Init()
@@ -67,7 +66,7 @@ void CDVDMessageQueue::Flush(CDVDMsg::Message type)
     if (it->message->IsType(type) ||  type == CDVDMsg::NONE)
       it = m_list.erase(it);
     else
-      it++;
+      ++it;
   }
 
   if (type == CDVDMsg::DEMUXER_PACKET ||  type == CDVDMsg::NONE)
@@ -92,7 +91,7 @@ void CDVDMessageQueue::End()
 {
   CSingleLock lock(m_section);
 
-  Flush();
+  Flush(CDVDMsg::NONE);
 
   m_bInitialized  = false;
   m_iDataSize     = 0;
@@ -121,7 +120,7 @@ MsgQueueReturnCode CDVDMessageQueue::Put(CDVDMsg* pMsg, int priority)
   {
     if(priority <= it->priority)
       break;
-    it++;
+    ++it;
   }
   m_list.insert(it, DVDMessageListItem(pMsg, priority));
 
@@ -230,7 +229,7 @@ unsigned CDVDMessageQueue::GetPacketCount(CDVDMsg::Message type)
     return 0;
 
   unsigned count = 0;
-  for(SList::iterator it = m_list.begin(); it != m_list.end();it++)
+  for(SList::iterator it = m_list.begin(); it != m_list.end();++it)
   {
     if(it->message->IsType(type))
       count++;
@@ -250,6 +249,8 @@ void CDVDMessageQueue::WaitUntilEmpty()
 
 int CDVDMessageQueue::GetLevel() const
 {
+  CSingleLock lock(m_section);
+
   if(m_iDataSize > m_iMaxDataSize)
     return 100;
   if(m_iDataSize == 0)
@@ -263,6 +264,8 @@ int CDVDMessageQueue::GetLevel() const
 
 int CDVDMessageQueue::GetTimeSize() const
 {
+  CSingleLock lock(m_section);
+
   if(IsDataBased())
     return 0;
   else

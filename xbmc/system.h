@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -45,7 +45,6 @@
 #endif
 
 #define HAS_JSONRPC
-#define HAS_HTTPAPI
 
 #ifdef USE_ASAP_CODEC
 #define HAS_ASAP_CODEC
@@ -75,7 +74,7 @@
   #define HAS_AIRPLAY
 #endif
 
-#ifdef HAVE_LIBSHAIRPORT
+#if defined(HAVE_LIBSHAIRPLAY)
   #define HAS_AIRTUNES
 #endif
 
@@ -85,6 +84,12 @@
 
 #if defined(USE_UPNP)
   #define HAS_UPNP
+#endif
+
+#if defined(HAVE_LIBMDNSEMBEDDED)
+  #define HAS_ZEROCONF
+  #define HAS_MDNS
+  #define HAS_MDNS_EMBEDDED
 #endif
 
 /**********************
@@ -109,19 +114,19 @@
 #define HAS_WIN32_NETWORK
 #define HAS_IRSERVERSUITE
 #define HAS_AUDIO
-#define HAVE_LIBCRYSTALHD 2
 #define HAS_WEB_SERVER
 #define HAS_WEB_INTERFACE
 #define HAVE_LIBSSH
 #define HAS_LIBRTMP
 #define HAVE_LIBBLURAY
 #define HAS_ASAP_CODEC
-#define HAVE_YAJL_YAJL_VERSION_H
 #define HAS_FILESYSTEM_SMB
 #define HAS_FILESYSTEM_NFS
 #define HAS_ZEROCONF
+#define HAS_MDNS
 #define HAS_AIRPLAY
 #define HAS_AIRTUNES
+#define HAVE_LIBSHAIRPLAY
 #define HAVE_LIBCEC
 #define HAVE_LIBMP3LAME
 #define HAVE_LIBVORBISENC
@@ -144,7 +149,6 @@
   #endif
   #define HAS_ZEROCONF
   #define HAS_LINUX_NETWORK
-  #define HAS_LCD
 #endif
 
 /*****************
@@ -156,22 +160,26 @@
 #define HAS_ZEROCONF
 #define HAS_AVAHI
 #endif
-#define HAS_LCD
 #ifdef HAVE_DBUS
 #define HAS_DBUS
 #endif
 #define HAS_GL
 #ifdef HAVE_X11
 #define HAS_GLX
+#define HAS_X11_WIN_EVENTS
 #endif
 #ifdef HAVE_SDL
 #define HAS_SDL
 #ifndef HAS_SDL_OPENGL
 #define HAS_SDL_OPENGL
 #endif
+#ifndef HAVE_X11
 #define HAS_SDL_WIN_EVENTS
+#endif
 #else
+#ifndef HAVE_X11
 #define HAS_LINUX_EVENTS
+#endif
 #endif
 #define HAS_LINUX_NETWORK
 #define HAS_LIRC
@@ -188,18 +196,6 @@
 
 #ifdef HAVE_LIBSSH
 #define HAS_FILESYSTEM_SFTP
-#endif
-
-/*****************
- * Git revision
- *****************/
-
-#if defined(TARGET_DARWIN)
-#include "../git_revision.h"
-#endif
-
-#ifndef GIT_REV
-#define GIT_REV "Unknown"
 #endif
 
 /****************************************
@@ -238,7 +234,6 @@
 #if defined(TARGET_ANDROID)
 #undef HAS_LINUX_EVENTS
 #undef HAS_LIRC
-#undef HAS_LCD
 #endif
 
 // EGL detected. Dont use GLX!
@@ -273,3 +268,11 @@
 #define GET_G(color)            ((color >>  8) & 0xFF)
 #define GET_B(color)            ((color >>  0) & 0xFF)
 
+/****************
+ * default skin
+ ****************/
+#if defined(HAS_TOUCH_SKIN) && defined(TARGET_DARWIN_IOS) && !defined(TARGET_DARWIN_IOS_ATV2)
+#define DEFAULT_SKIN          "skin.re-touched"
+#else
+#define DEFAULT_SKIN          "skin.confluence"
+#endif

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,8 +22,8 @@
 #include "utils/log.h"
 #include "windowing/WindowingFactory.h"
 #include "utils/fastmemcpy.h"
-#include "settings/GUISettings.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/Settings.h"
 
 CRenderCaptureBase::CRenderCaptureBase()
 {
@@ -54,7 +54,43 @@ bool CRenderCaptureBase::UseOcclusionQuery()
     return true;
 }
 
-#if defined(HAS_GL) || defined(HAS_GLES)
+#if defined(TARGET_RASPBERRY_PI)
+
+CRenderCaptureDispmanX::CRenderCaptureDispmanX()
+{
+}
+
+CRenderCaptureDispmanX::~CRenderCaptureDispmanX()
+{
+	delete[] m_pixels;
+}
+
+int CRenderCaptureDispmanX::GetCaptureFormat()
+{
+	return CAPTUREFORMAT_BGRA;
+}
+
+void CRenderCaptureDispmanX::BeginRender()
+{
+}
+
+void CRenderCaptureDispmanX::EndRender()
+{
+	m_pixels = g_RBP.CaptureDisplay(m_width, m_height, NULL, true);
+
+	SetState(CAPTURESTATE_DONE);
+}
+
+void* CRenderCaptureDispmanX::GetRenderBuffer()
+{
+    return m_pixels;
+}
+
+void CRenderCaptureDispmanX::ReadOut()
+{
+}
+
+#elif defined(HAS_GL) || defined(HAS_GLES)
 
 CRenderCaptureGL::CRenderCaptureGL()
 {
@@ -94,8 +130,7 @@ void CRenderCaptureGL::BeginRender()
   if (!m_asyncChecked)
   {
 #ifndef HAS_GLES
-    bool usePbo = g_guiSettings.GetBool("videoplayer.usepbo");
-    m_asyncSupported = g_Windowing.IsExtSupported("GL_ARB_pixel_buffer_object") && usePbo;
+    m_asyncSupported = g_Windowing.IsExtSupported("GL_ARB_pixel_buffer_object");
     m_occlusionQuerySupported = g_Windowing.IsExtSupported("GL_ARB_occlusion_query");
 
     if (m_flags & CAPTUREFLAG_CONTINUOUS)
@@ -104,8 +139,6 @@ void CRenderCaptureGL::BeginRender()
         CLog::Log(LOGWARNING, "CRenderCaptureGL: GL_ARB_occlusion_query not supported, performance might suffer");
       if (!g_Windowing.IsExtSupported("GL_ARB_pixel_buffer_object"))
         CLog::Log(LOGWARNING, "CRenderCaptureGL: GL_ARB_pixel_buffer_object not supported, performance might suffer");
-      if (!usePbo)
-        CLog::Log(LOGWARNING, "CRenderCaptureGL: GL_ARB_pixel_buffer_object disabled, performance might suffer");
       if (UseOcclusionQuery())
         CLog::Log(LOGWARNING, "CRenderCaptureGL: GL_ARB_occlusion_query disabled, performance might suffer");
     }

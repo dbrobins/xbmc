@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,13 +20,14 @@
  *
  */
 
-#include "utils/StdString.h"
+#include <string>
 
 class CBuiltins
 {
 public:
-  static bool HasCommand(const CStdString& execString);
-  static void GetHelp(CStdString &help);
-  static int Execute(const CStdString& execString);
+  static bool HasCommand(const std::string& execString);
+  static bool IsSystemPowerdownCommand(const std::string& execString);
+  static void GetHelp(std::string &help);
+  static int Execute(const std::string& execString);
 };
 

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ CMusicInfoTagLoaderDatabase::~CMusicInfoTagLoaderDatabase()
 {
 }
 
-bool CMusicInfoTagLoaderDatabase::Load(const CStdString& strFileName, CMusicInfoTag& tag, EmbeddedArt *art)
+bool CMusicInfoTagLoaderDatabase::Load(const std::string& strFileName, CMusicInfoTag& tag, EmbeddedArt *art)
 {
   tag.SetLoaded(false);
   CMusicDatabase database;
@@ -43,7 +43,7 @@ bool CMusicInfoTagLoaderDatabase::Load(const CStdString& strFileName, CMusicInfo
   XFILE::MUSICDATABASEDIRECTORY::CDirectoryNode::GetDatabaseInfo(strFileName,param);
 
   CSong song;
-  if (database.GetSongById(param.GetSongId(),song))
+  if (database.GetSong(param.GetSongId(),song))
     tag.SetSong(song);
 
   database.Close();

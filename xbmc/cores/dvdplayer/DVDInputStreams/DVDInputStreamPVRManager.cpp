@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 #include "utils/StringUtils.h"
 #include "pvr/addons/PVRClients.h"
 #include "pvr/channels/PVRChannelGroupsContainer.h"
-#include "settings/GUISettings.h"
+#include "settings/Settings.h"
 
 using namespace XFILE;
 using namespace PVR;
@@ -45,8 +45,7 @@ CDVDInputStreamPVRManager::CDVDInputStreamPVRManager(IDVDPlayer* pPlayer) : CDVD
   m_pLiveTV         = NULL;
   m_pOtherStream    = NULL;
   m_eof             = true;
-  m_bReopened       = false;
-  m_iScanTimeout    = 0;
+  m_ScanTimeout.Set(0);
 }
 
 /************************************************************************
@@ -59,15 +58,13 @@ CDVDInputStreamPVRManager::~CDVDInputStreamPVRManager()
 
 void CDVDInputStreamPVRManager::ResetScanTimeout(unsigned int iTimeoutMs)
 {
-  m_iScanTimeout = iTimeoutMs > 0 ?
-      XbmcThreads::SystemClockMillis() + iTimeoutMs :
-      0;
+  m_ScanTimeout.Set(iTimeoutMs);
 }
 
 bool CDVDInputStreamPVRManager::IsEOF()
 {
   // don't mark as eof while within the scan timeout
-  if (m_iScanTimeout && XbmcThreads::SystemClockMillis() < m_iScanTimeout)
+  if (!m_ScanTimeout.IsTimePast())
     return false;
 
   if (m_pOtherStream)
@@ -132,7 +129,7 @@ bool CDVDInputStreamPVRManager::Open(const char* strFile, const std::string& con
     }
   }
 
-  ResetScanTimeout((unsigned int) g_guiSettings.GetInt("pvrplayback.scantime") * 1000);
+  ResetScanTimeout((unsigned int) CSettings::Get().GetInt("pvrplayback.scantime") * 1000);
   m_content = content;
   CLog::Log(LOGDEBUG, "CDVDInputStreamPVRManager::Open - stream opened: %s", transFile.c_str());
 
@@ -166,7 +163,7 @@ void CDVDInputStreamPVRManager::Close()
   CLog::Log(LOGDEBUG, "CDVDInputStreamPVRManager::Close - stream closed");
 }
 
-int CDVDInputStreamPVRManager::Read(BYTE* buf, int buf_size)
+int CDVDInputStreamPVRManager::Read(uint8_t* buf, int buf_size)
 {
   if(!m_pFile) return -1;
 
@@ -179,7 +176,7 @@ int CDVDInputStreamPVRManager::Read(BYTE* buf, int buf_size)
     unsigned int ret = m_pFile->Read(buf, buf_size);
 
     /* we currently don't support non completing reads */
-    if( ret <= 0 ) m_eof = true;
+    if( ret == 0 ) m_eof = true;
 
     return (int)(ret & 0xFFFFFFFF);
   }
@@ -190,15 +187,15 @@ int64_t CDVDInputStreamPVRManager::Seek(int64_t offset, int whence)
   if (!m_pFile)
     return -1;
 
-  if (whence == SEEK_POSSIBLE)
-    return m_pFile->IoControl(IOCTRL_SEEK_POSSIBLE, NULL);
-
   if (m_pOtherStream)
   {
     return m_pOtherStream->Seek(offset, whence);
   }
   else
   {
+    if (whence == SEEK_POSSIBLE)
+      return m_pFile->IoControl(IOCTRL_SEEK_POSSIBLE, NULL);
+
     int64_t ret = m_pFile->Seek(offset, whence);
 
     /* if we succeed, we are not eof anymore */
@@ -311,23 +308,21 @@ bool CDVDInputStreamPVRManager::UpdateItem(CFileItem& item)
 
 CDVDInputStream::ENextStream CDVDInputStreamPVRManager::NextStream()
 {
-  if(!m_pFile) return NEXTSTREAM_NONE;
+  if(!m_pFile)
+    return NEXTSTREAM_NONE;
 
-  if(m_bReopened)
-  {
-    m_bReopened = false;
-    m_eof       = false;
-    return NEXTSTREAM_RETRY;
-  }
+  m_eof = IsEOF();
 
-  if (m_pOtherStream)
-    return m_pOtherStream->NextStream();
+  CDVDInputStream::ENextStream next;
+  if (m_pOtherStream && ((next = m_pOtherStream->NextStream()) != NEXTSTREAM_NONE))
+    return next;
   else if(m_pFile->SkipNext())
   {
-    m_eof = false;
-    return NEXTSTREAM_OPEN;
+    if (m_eof)
+      return NEXTSTREAM_OPEN;
+    else
+      return NEXTSTREAM_RETRY;
   }
-
   return NEXTSTREAM_NONE;
 }
 
@@ -352,11 +347,26 @@ bool CDVDInputStreamPVRManager::Record(bool bOnOff)
   return false;
 }
 
-CStdString CDVDInputStreamPVRManager::GetInputFormat()
+bool CDVDInputStreamPVRManager::CanPause()
+{
+  return g_PVRClients->CanPauseStream();
+}
+
+bool CDVDInputStreamPVRManager::CanSeek()
+{
+  return g_PVRClients->CanSeekStream();
+}
+
+void CDVDInputStreamPVRManager::Pause(bool bPaused)
+{
+  g_PVRClients->PauseStream(bPaused);
+}
+
+std::string CDVDInputStreamPVRManager::GetInputFormat()
 {
   if (!m_pOtherStream && g_PVRManager.IsStarted())
     return g_PVRClients->GetCurrentInputFormat();
-  return StringUtils::EmptyString;
+  return "";
 }
 
 bool CDVDInputStreamPVRManager::CloseAndOpen(const char* strFile)
@@ -365,14 +375,13 @@ bool CDVDInputStreamPVRManager::CloseAndOpen(const char* strFile)
 
   if (Open(strFile, m_content))
   {
-    m_bReopened = true;
     return true;
   }
 
   return false;
 }
 
-bool CDVDInputStreamPVRManager::SupportsChannelSwitch(void) const
+bool CDVDInputStreamPVRManager::SupportsChannelSwitch(void)
 {
   PVR_CLIENT client;
   return g_PVRClients->GetPlayingClient(client) &&

@@ -1,24 +1,27 @@
 /*
-    SDL - Simple DirectMedia Layer
-    Copyright (C) 1997-2009 Sam Lantinga
-
-    This library is free software; you can redistribute it and/or
-    modify it under the terms of the GNU Lesser General Public
-    License as published by the Free Software Foundation; either
-    version 2.1 of the License, or (at your option) any later version.
-
-    This library is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-    Lesser General Public License for more details.
-
-    You should have received a copy of the GNU Lesser General Public
-    License along with this library; if not, write to the Free Software
-    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-
-    Sam Lantinga
-    slouken@libsdl.org
-*/
+ *      SDL - Simple DirectMedia Layer
+ *      Copyright (C) 1997-2009 Sam Lantinga
+ *      Sam Lantinga
+ *      slouken@libsdl.org
+ *  
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 
 /* Include file for SDL event handling */
 
@@ -32,6 +35,17 @@
 /* General keyboard/mouse state definitions */
 #define XBMC_RELEASED	0
 #define XBMC_PRESSED	1
+
+/* Hat definitions */
+#define XBMC_HAT_CENTERED    0
+#define XBMC_HAT_UP          0x01
+#define XBMC_HAT_RIGHT       0x02
+#define XBMC_HAT_DOWN        0x04
+#define XBMC_HAT_LEFT        0x08
+#define XBMC_HAT_LEFTUP      XBMC_HAT_UP   | XBMC_HAT_LEFT
+#define XBMC_HAT_RIGHTUP     XBMC_HAT_UP   | XBMC_HAT_RIGHT
+#define XBMC_HAT_LEFTDOWN    XBMC_HAT_DOWN | XBMC_HAT_LEFT
+#define XBMC_HAT_RIGHTDOWN   XBMC_HAT_DOWN | XBMC_HAT_RIGHT
 
 /* Event enumerations */
 typedef enum {
@@ -53,6 +67,8 @@ typedef enum {
        XBMC_VIDEOMOVE,          /* User moved the window */
        XBMC_VIDEOEXPOSE,        /* Screen needs to be redrawn */
        XBMC_APPCOMMAND,         /* Media commands, such as WM_APPCOMMAND on Windows for media keys. */
+       XBMC_TOUCH,
+       XBMC_SETFOCUS,
        XBMC_USEREVENT,
 
        XBMC_MAXEVENT = 256      /* XBMC_EventType is represented as uchar */
@@ -98,6 +114,7 @@ typedef struct XBMC_JoyAxisEvent {
 	unsigned char which;	/* The joystick device index */
 	unsigned char axis;	/* The joystick axis index */
 	int16_t value;	/* The axis value (range: -32768 to 32767) */
+	float   fvalue; /* The axis value (range: -1.0 to 1.0) */
 } XBMC_JoyAxisEvent;
 
 /* Joystick trackball motion event structure */
@@ -179,6 +196,21 @@ typedef struct XBMC_AppCommandEvent {
   unsigned int action; /* One of ACTION_... */  
 } XBMC_AppCommandEvent;
 
+/* Mouse motion event structure */
+typedef struct XBMC_TouchEvent {
+  unsigned char type;   /* XBMC_TOUCH */
+  int action;           /* action ID */
+  float x, y;           /* The X/Y coordinates of the mouse */
+  float x2, y2;         /* Additional X/Y coordinates */
+  int pointers;         /* number of touch pointers */
+} XBMC_TouchEvent;
+
+typedef struct XBMC_SetFocusEvent {
+	unsigned char type;	/* XBMC_SETFOCUS */
+	int x;		/* x position */
+	int y;		/* y position */
+} XBMC_SetFocusEvent;
+
 /* General event structure */
 typedef union XBMC_Event {
   unsigned char type;
@@ -197,6 +229,8 @@ typedef union XBMC_Event {
   XBMC_UserEvent user;
   XBMC_SysWMEvent syswm;
   XBMC_AppCommandEvent appcommand;
+  XBMC_TouchEvent touch;
+  XBMC_SetFocusEvent focus;
 } XBMC_Event;
 
 #endif /* _XBMC_events_h */

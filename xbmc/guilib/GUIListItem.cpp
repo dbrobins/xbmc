@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,9 +22,15 @@
 #include "GUIListItemLayout.h"
 #include "utils/Archive.h"
 #include "utils/CharsetConverter.h"
+#include "utils/StringUtils.h"
 #include "utils/Variant.h"
 
 using namespace std;
+
+bool CGUIListItem::icompare::operator()(const std::string &s1, const std::string &s2) const
+{
+  return StringUtils::CompareNoCase(s1, s2) < 0;
+}
 
 CGUIListItem::CGUIListItem(const CGUIListItem& item)
 {
@@ -37,25 +43,18 @@ CGUIListItem::CGUIListItem(const CGUIListItem& item)
 CGUIListItem::CGUIListItem(void)
 {
   m_bIsFolder = false;
-  m_strLabel2 = "";
-  m_strLabel = "";
   m_bSelected = false;
-  m_strIcon = "";
-  m_strThumbnailImage = "";
   m_overlayIcon = ICON_OVERLAY_NONE;
   m_layout = NULL;
   m_focusedLayout = NULL;
 }
 
-CGUIListItem::CGUIListItem(const CStdString& strLabel)
+CGUIListItem::CGUIListItem(const std::string& strLabel):
+  m_strLabel(strLabel)
 {
   m_bIsFolder = false;
-  m_strLabel2 = "";
-  m_strLabel = strLabel;
   SetSortLabel(strLabel);
   m_bSelected = false;
-  m_strIcon = "";
-  m_strThumbnailImage = "";
   m_overlayIcon = ICON_OVERLAY_NONE;
   m_layout = NULL;
   m_focusedLayout = NULL;
@@ -66,23 +65,23 @@ CGUIListItem::~CGUIListItem(void)
   FreeMemory();
 }
 
-void CGUIListItem::SetLabel(const CStdString& strLabel)
+void CGUIListItem::SetLabel(const std::string& strLabel)
 {
   if (m_strLabel == strLabel)
     return;
   m_strLabel = strLabel;
-  if (m_sortLabel.IsEmpty())
+  if (m_sortLabel.empty())
     SetSortLabel(strLabel);
   SetInvalid();
 }
 
-const CStdString& CGUIListItem::GetLabel() const
+const std::string& CGUIListItem::GetLabel() const
 {
   return m_strLabel;
 }
 
 
-void CGUIListItem::SetLabel2(const CStdString& strLabel2)
+void CGUIListItem::SetLabel2(const std::string& strLabel2)
 {
   if (m_strLabel2 == strLabel2)
     return;
@@ -90,41 +89,86 @@ void CGUIListItem::SetLabel2(const CStdString& strLabel2)
   SetInvalid();
 }
 
-const CStdString& CGUIListItem::GetLabel2() const
+const std::string& CGUIListItem::GetLabel2() const
 {
   return m_strLabel2;
 }
 
-void CGUIListItem::SetSortLabel(const CStdString &label)
+void CGUIListItem::SetSortLabel(const std::string &label)
 {
   g_charsetConverter.utf8ToW(label, m_sortLabel, false);
   // no need to invalidate - this is never shown in the UI
 }
 
-void CGUIListItem::SetSortLabel(const CStdStringW &label)
+void CGUIListItem::SetSortLabel(const std::wstring &label)
 {
   m_sortLabel = label;
 }
 
-const CStdStringW& CGUIListItem::GetSortLabel() const
+const std::wstring& CGUIListItem::GetSortLabel() const
 {
   return m_sortLabel;
 }
 
-void CGUIListItem::SetThumbnailImage(const CStdString& strThumbnail)
+void CGUIListItem::SetArt(const std::string &type, const std::string &url)
 {
-  if (m_strThumbnailImage == strThumbnail)
-    return;
-  m_strThumbnailImage = strThumbnail;
+  ArtMap::iterator i = m_art.find(type);
+  if (i == m_art.end() || i->second != url)
+  {
+    m_art[type] = url;
+    SetInvalid();
+  }
+}
+
+void CGUIListItem::SetArt(const ArtMap &art)
+{
+  m_art = art;
   SetInvalid();
 }
 
-const CStdString& CGUIListItem::GetThumbnailImage() const
+void CGUIListItem::SetArtFallback(const std::string &from, const std::string &to)
 {
-  return m_strThumbnailImage;
+  m_artFallbacks[from] = to;
 }
 
-void CGUIListItem::SetIconImage(const CStdString& strIcon)
+void CGUIListItem::ClearArt()
+{
+  m_art.clear();
+  m_artFallbacks.clear();
+}
+
+void CGUIListItem::AppendArt(const ArtMap &art, const std::string &prefix)
+{
+  for (ArtMap::const_iterator i = art.begin(); i != art.end(); ++i)
+    SetArt(prefix.empty() ? i->first : prefix + '.' + i->first, i->second);
+}
+
+std::string CGUIListItem::GetArt(const std::string &type) const
+{
+  ArtMap::const_iterator i = m_art.find(type);
+  if (i != m_art.end())
+    return i->second;
+  i = m_artFallbacks.find(type);
+  if (i != m_artFallbacks.end())
+  {
+    ArtMap::const_iterator j = m_art.find(i->second);
+    if (j != m_art.end())
+      return j->second;
+  }
+  return "";
+}
+
+const CGUIListItem::ArtMap &CGUIListItem::GetArt() const
+{
+  return m_art;
+}
+
+bool CGUIListItem::HasArt(const std::string &type) const
+{
+  return !GetArt(type).empty();
+}
+
+void CGUIListItem::SetIconImage(const std::string& strIcon)
 {
   if (m_strIcon == strIcon)
     return;
@@ -132,7 +176,7 @@ void CGUIListItem::SetIconImage(const CStdString& strIcon)
   SetInvalid();
 }
 
-const CStdString& CGUIListItem::GetIconImage() const
+const std::string& CGUIListItem::GetIconImage() const
 {
   return m_strIcon;
 }
@@ -146,7 +190,7 @@ void CGUIListItem::SetOverlayImage(GUIIconOverlay icon, bool bOnOff)
   SetInvalid();
 }
 
-CStdString CGUIListItem::GetOverlayImage() const
+std::string CGUIListItem::GetOverlayImage() const
 {
   switch (m_overlayIcon)
   {
@@ -154,10 +198,6 @@ CStdString CGUIListItem::GetOverlayImage() const
     return "OverlayRAR.png";
   case ICON_OVERLAY_ZIP:
     return "OverlayZIP.png";
-  case ICON_OVERLAY_TRAINED:
-    return "OverlayTrained.png";
-  case ICON_OVERLAY_HAS_TRAINER:
-    return "OverlayHasTrainer.png";
   case ICON_OVERLAY_LOCKED:
     return "OverlayLocked.png";
   case ICON_OVERLAY_UNWATCHED:
@@ -171,25 +211,6 @@ CStdString CGUIListItem::GetOverlayImage() const
   }
 }
 
-map<string, string> CGUIListItem::GetArt() const
-{
-  map<string, string> art;
-  if (HasThumbnail())
-    art.insert(make_pair("thumb", GetThumbnailImage()));
-  if (HasProperty("fanart_image"))
-    art.insert(make_pair("fanart", GetProperty("fanart_image").asString()));
-  return art;
-}
-
-void CGUIListItem::SetArt(const map<string, string> &art)
-{
-  map<string, string>::const_iterator i = art.find("thumb");
-  if (i != art.end())
-    SetThumbnailImage(i->second);
-  if ((i = art.find("fanart")) != art.end())
-    SetProperty("fanart_image", i->second);
-}
-
 void CGUIListItem::Select(bool bOnOff)
 {
   m_bSelected = bOnOff;
@@ -198,12 +219,6 @@ void CGUIListItem::Select(bool bOnOff)
 bool CGUIListItem::HasIcon() const
 {
   return (m_strIcon.size() != 0);
-}
-
-
-bool CGUIListItem::HasThumbnail() const
-{
-  return (m_strThumbnailImage.size() != 0);
 }
 
 bool CGUIListItem::HasOverlay() const
@@ -216,7 +231,7 @@ bool CGUIListItem::IsSelected() const
   return m_bSelected;
 }
 
-const CGUIListItem& CGUIListItem::operator =(const CGUIListItem& item)
+CGUIListItem& CGUIListItem::operator =(const CGUIListItem& item)
 {
   if (&item == this) return * this;
   m_strLabel2 = item.m_strLabel2;
@@ -225,10 +240,11 @@ const CGUIListItem& CGUIListItem::operator =(const CGUIListItem& item)
   FreeMemory();
   m_bSelected = item.m_bSelected;
   m_strIcon = item.m_strIcon;
-  m_strThumbnailImage = item.m_strThumbnailImage;
   m_overlayIcon = item.m_overlayIcon;
   m_bIsFolder = item.m_bIsFolder;
   m_mapProperties = item.m_mapProperties;
+  m_art = item.m_art;
+  m_artFallbacks = item.m_artFallbacks;
   SetInvalid();
   return *this;
 }
@@ -241,15 +257,26 @@ void CGUIListItem::Archive(CArchive &ar)
     ar << m_strLabel;
     ar << m_strLabel2;
     ar << m_sortLabel;
-    ar << m_strThumbnailImage;
     ar << m_strIcon;
     ar << m_bSelected;
     ar << m_overlayIcon;
     ar << (int)m_mapProperties.size();
-    for (PropertyMap::const_iterator it = m_mapProperties.begin(); it != m_mapProperties.end(); it++)
+    for (PropertyMap::const_iterator it = m_mapProperties.begin(); it != m_mapProperties.end(); ++it)
     {
       ar << it->first;
       ar << it->second;
+    }
+    ar << (int)m_art.size();
+    for (ArtMap::const_iterator i = m_art.begin(); i != m_art.end(); ++i)
+    {
+      ar << i->first;
+      ar << i->second;
+    }
+    ar << (int)m_artFallbacks.size();
+    for (ArtMap::const_iterator i = m_artFallbacks.begin(); i != m_artFallbacks.end(); ++i)
+    {
+      ar << i->first;
+      ar << i->second;
     }
   }
   else
@@ -258,7 +285,6 @@ void CGUIListItem::Archive(CArchive &ar)
     ar >> m_strLabel;
     ar >> m_strLabel2;
     ar >> m_sortLabel;
-    ar >> m_strThumbnailImage;
     ar >> m_strIcon;
     ar >> m_bSelected;
 
@@ -270,12 +296,29 @@ void CGUIListItem::Archive(CArchive &ar)
     ar >> mapSize;
     for (int i = 0; i < mapSize; i++)
     {
-      CStdString key;
+      std::string key;
       CVariant value;
       ar >> key;
       ar >> value;
       SetProperty(key, value);
     }
+    ar >> mapSize;
+    for (int i = 0; i < mapSize; i++)
+    {
+      std::string key, value;
+      ar >> key;
+      ar >> value;
+      m_art.insert(make_pair(key, value));
+    }
+    ar >> mapSize;
+    for (int i = 0; i < mapSize; i++)
+    {
+      std::string key, value;
+      ar >> key;
+      ar >> value;
+      m_artFallbacks.insert(make_pair(key, value));
+    }
+    SetInvalid();
   }
 }
 void CGUIListItem::Serialize(CVariant &value)
@@ -283,21 +326,22 @@ void CGUIListItem::Serialize(CVariant &value)
   value["isFolder"] = m_bIsFolder;
   value["strLabel"] = m_strLabel;
   value["strLabel2"] = m_strLabel2;
-  value["sortLabel"] = CStdString(m_sortLabel);
-  value["strThumbnailImage"] = m_strThumbnailImage;
+  value["sortLabel"] = m_sortLabel;
   value["strIcon"] = m_strIcon;
   value["selected"] = m_bSelected;
 
-  for (PropertyMap::const_iterator it = m_mapProperties.begin(); it != m_mapProperties.end(); it++)
+  for (PropertyMap::const_iterator it = m_mapProperties.begin(); it != m_mapProperties.end(); ++it)
   {
     value["properties"][it->first] = it->second;
   }
+  for (ArtMap::const_iterator it = m_art.begin(); it != m_art.end(); ++it)
+    value["art"][it->first] = it->second;
 }
 
 void CGUIListItem::FreeIcons()
 {
   FreeMemory();
-  m_strThumbnailImage = "";
+  ClearArt();
   m_strIcon = "";
   SetInvalid();
 }
@@ -346,12 +390,22 @@ void CGUIListItem::SetInvalid()
   if (m_focusedLayout) m_focusedLayout->SetInvalid();
 }
 
-void CGUIListItem::SetProperty(const CStdString &strKey, const CVariant &value)
+void CGUIListItem::SetProperty(const std::string &strKey, const CVariant &value)
 {
-  m_mapProperties[strKey] = value;
+  PropertyMap::iterator iter = m_mapProperties.find(strKey);
+  if (iter == m_mapProperties.end())
+  {
+    m_mapProperties.insert(make_pair(strKey, value));
+    SetInvalid();
+  }
+  else if (iter->second != value)
+  {
+    iter->second = value;
+    SetInvalid();
+  }
 }
 
-CVariant CGUIListItem::GetProperty(const CStdString &strKey) const
+CVariant CGUIListItem::GetProperty(const std::string &strKey) const
 {
   PropertyMap::const_iterator iter = m_mapProperties.find(strKey);
   if (iter == m_mapProperties.end())
@@ -360,7 +414,7 @@ CVariant CGUIListItem::GetProperty(const CStdString &strKey) const
   return iter->second;
 }
 
-bool CGUIListItem::HasProperty(const CStdString &strKey) const
+bool CGUIListItem::HasProperty(const std::string &strKey) const
 {
   PropertyMap::const_iterator iter = m_mapProperties.find(strKey);
   if (iter == m_mapProperties.end())
@@ -369,26 +423,33 @@ bool CGUIListItem::HasProperty(const CStdString &strKey) const
   return true;
 }
 
-void CGUIListItem::ClearProperty(const CStdString &strKey)
+void CGUIListItem::ClearProperty(const std::string &strKey)
 {
   PropertyMap::iterator iter = m_mapProperties.find(strKey);
   if (iter != m_mapProperties.end())
+  {
     m_mapProperties.erase(iter);
+    SetInvalid();
+  }
 }
 
 void CGUIListItem::ClearProperties()
 {
-  m_mapProperties.clear();
+  if (!m_mapProperties.empty())
+  {
+    m_mapProperties.clear();
+    SetInvalid();
+  }
 }
 
-void CGUIListItem::IncrementProperty(const CStdString &strKey, int nVal)
+void CGUIListItem::IncrementProperty(const std::string &strKey, int nVal)
 {
   int64_t i = GetProperty(strKey).asInteger();
   i += nVal;
   SetProperty(strKey, i);
 }
 
-void CGUIListItem::IncrementProperty(const CStdString &strKey, double dVal)
+void CGUIListItem::IncrementProperty(const std::string &strKey, double dVal)
 {
   double d = GetProperty(strKey).asDouble();
   d += dVal;

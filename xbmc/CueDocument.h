@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@
 
 #define MAX_PATH_SIZE 1024
 
+class CueReader;
+
 class CCueDocument
 {
   class CCueTrack
@@ -38,48 +40,45 @@ class CCueDocument
       replayGainTrackGain = 0.0f;
       replayGainTrackPeak = 0.0f;
     }
-    CStdString strArtist;
-    CStdString strTitle;
-    CStdString strFile;
+    std::string strArtist;
+    std::string strTitle;
+    std::string strFile;
     int iTrackNumber;
     int iStartTime;
     int iEndTime;
     float replayGainTrackGain;
     float replayGainTrackPeak;
   };
-
 public:
   CCueDocument(void);
   ~CCueDocument(void);
   // USED
-  bool Parse(const CStdString &strFile);
+  bool ParseFile(const std::string &strFilePath);
+  bool ParseTag(const std::string &strContent);
   void GetSongs(VECSONGS &songs);
-  CStdString GetMediaPath();
-  CStdString GetMediaTitle();
-  void GetMediaFiles(std::vector<CStdString>& mediaFiles);
-
+  std::string GetMediaPath();
+  std::string GetMediaTitle();
+  void GetMediaFiles(std::vector<std::string>& mediaFiles);
+  void UpdateMediaFile(const std::string& oldMediaFile, const std::string& mediaFile);
 private:
-
-  // USED for file access
-  XFILE::CFile m_file;
-  char m_szBuffer[1024];
+  bool Parse(CueReader& reader, const std::string& strFile = std::string());
 
   // Member variables
-  CStdString m_strArtist;  // album artist
-  CStdString m_strAlbum;  // album title
-  CStdString m_strGenre;  // album genre
+  std::string m_strArtist;  // album artist
+  std::string m_strAlbum;  // album title
+  std::string m_strGenre;  // album genre
   int m_iYear;            //album year
   int m_iTrack;   // current track
   int m_iTotalTracks;  // total tracks
+  int m_iDiscNumber;  // Disc number
   float m_replayGainAlbumGain;
   float m_replayGainAlbumPeak;
 
   // cuetrack array
   std::vector<CCueTrack> m_Track;
 
-  bool ReadNextLine(CStdString &strLine);
-  bool ExtractQuoteInfo(const CStdString &line, CStdString &quote);
-  int ExtractTimeFromIndex(const CStdString &index);
-  int ExtractNumericInfo(const CStdString &info);
-  bool ResolvePath(CStdString &strPath, const CStdString &strBase);
+  std::string ExtractInfo(const std::string &line);
+  int ExtractTimeFromIndex(const std::string &index);
+  int ExtractNumericInfo(const std::string &info);
+  bool ResolvePath(std::string &strPath, const std::string &strBase);
 };

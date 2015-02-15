@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include "filesystem/File.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
+#include "utils/XMLUtils.h"
 
 using namespace XFILE;
 using namespace PLAYLIST;
@@ -89,14 +90,14 @@ bool CPlayListWPL::LoadData(istream& stream)
   if (!pMediaElement) return false;
   while (pMediaElement)
   {
-    CStdString strFileName = pMediaElement->Attribute("src");
-    if (strFileName.size())
+    std::string strFileName = XMLUtils::GetAttribute(pMediaElement, "src");
+    if (!strFileName.empty())
     {
-      strFileName = URIUtils::SubstitutePath(strFileName);
-      CUtil::GetQualifiedFilename(m_strBasePath, strFileName);
-      CStdString strDescription = URIUtils::GetFileName(strFileName);
+      std::string strFileNameClean = URIUtils::SubstitutePath(strFileName);
+      CUtil::GetQualifiedFilename(m_strBasePath, strFileNameClean);
+      std::string strDescription = URIUtils::GetFileName(strFileNameClean);
       CFileItemPtr newItem(new CFileItem(strDescription));
-      newItem->SetPath(strFileName);
+      newItem->SetPath(strFileNameClean);
       Add(newItem);
     }
     pMediaElement = pMediaElement->NextSiblingElement();
@@ -104,34 +105,34 @@ bool CPlayListWPL::LoadData(istream& stream)
   return true;
 }
 
-void CPlayListWPL::Save(const CStdString& strFileName) const
+void CPlayListWPL::Save(const std::string& strFileName) const
 {
   if (!m_vecItems.size()) return ;
-  CStdString strPlaylist = CUtil::MakeLegalPath(strFileName);
+  std::string strPlaylist = CUtil::MakeLegalPath(strFileName);
   CFile file;
   if (!file.OpenForWrite(strPlaylist, true))
   {
     CLog::Log(LOGERROR, "Could not save WPL playlist: [%s]", strPlaylist.c_str());
     return ;
   }
-  CStdString write;
-  write.AppendFormat("<?wpl version=%c1.0%c>\n", 34, 34);
-  write.AppendFormat("<smil>\n");
-  write.AppendFormat("    <head>\n");
-  write.AppendFormat("        <meta name=%cGenerator%c content=%cMicrosoft Windows Media Player -- 10.0.0.3646%c/>\n", 34, 34, 34, 34);
-  write.AppendFormat("        <author/>\n");
-  write.AppendFormat("        <title>%s</title>\n", m_strPlayListName.c_str());
-  write.AppendFormat("    </head>\n");
-  write.AppendFormat("    <body>\n");
-  write.AppendFormat("        <seq>\n");
+  std::string write;
+  write += StringUtils::Format("<?wpl version=%c1.0%c>\n", 34, 34);
+  write += StringUtils::Format("<smil>\n");
+  write += StringUtils::Format("    <head>\n");
+  write += StringUtils::Format("        <meta name=%cGenerator%c content=%cMicrosoft Windows Media Player -- 10.0.0.3646%c/>\n", 34, 34, 34, 34);
+  write += StringUtils::Format("        <author/>\n");
+  write += StringUtils::Format("        <title>%s</title>\n", m_strPlayListName.c_str());
+  write += StringUtils::Format("    </head>\n");
+  write += StringUtils::Format("    <body>\n");
+  write += StringUtils::Format("        <seq>\n");
   for (int i = 0; i < (int)m_vecItems.size(); ++i)
   {
     CFileItemPtr item = m_vecItems[i];
-    write.AppendFormat("            <media src=%c%s%c/>", 34, item->GetPath().c_str(), 34);
+    write += StringUtils::Format("            <media src=%c%s%c/>", 34, item->GetPath().c_str(), 34);
   }
-  write.AppendFormat("        </seq>\n");
-  write.AppendFormat("    </body>\n");
-  write.AppendFormat("</smil>\n");
+  write += StringUtils::Format("        </seq>\n");
+  write += StringUtils::Format("    </body>\n");
+  write += StringUtils::Format("</smil>\n");
   file.Write(write.c_str(), write.size());
   file.Close();
 }

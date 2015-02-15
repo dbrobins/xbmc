@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2009-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2009-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 #include "utils/URIUtils.h"
 #include "filesystem/File.h"
 #include "utils/log.h"
-
+#include "utils/StringUtils.h"
 #include <cstdlib>
 #include <cstdio>
 
@@ -30,7 +30,7 @@ using namespace XFILE;
 
 ModplugCodec::ModplugCodec()
 {
-  m_CodecName = "MOD";
+  m_CodecName = "mod";
   m_module = NULL;
 }
 
@@ -39,7 +39,7 @@ ModplugCodec::~ModplugCodec()
   DeInit();
 }
 
-bool ModplugCodec::Init(const CStdString &strFile, unsigned int filecache)
+bool ModplugCodec::Init(const std::string &strFile, unsigned int filecache)
 {
   DeInit();
 
@@ -47,23 +47,20 @@ bool ModplugCodec::Init(const CStdString &strFile, unsigned int filecache)
     return false;
 
   // set correct codec name
-  URIUtils::GetExtension(strFile,m_CodecName);
-  m_CodecName.erase(0,1);
-  m_CodecName.ToUpper();
+  m_CodecName = URIUtils::GetExtension(strFile);
+  StringUtils::TrimLeft(m_CodecName, ".");
+  StringUtils::ToUpper(m_CodecName);
 
   // Read our file to memory so it can be passed to ModPlug_Load()
   CFile file;
-  if (!file.Open(strFile))
+  XFILE::auto_buffer buf;
+  if (file.LoadFile(strFile, buf) <= 0)
   {
     CLog::Log(LOGERROR,"ModplugCodec: error opening file %s!",strFile.c_str());
     return false;
   }
-  char *data = new char[(unsigned int)file.GetLength()];
-  file.Read(data,file.GetLength());
-
   // Now load the module
-  m_module = m_dll.ModPlug_Load(data,(int)file.GetLength());
-  delete[] data;
+  m_module = m_dll.ModPlug_Load(buf.get(),buf.size());
   if (!m_module)
   {
     CLog::Log(LOGERROR,"ModplugCodec: error loading module file %s!",strFile.c_str());

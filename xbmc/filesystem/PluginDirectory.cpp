@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,29 +26,33 @@
 #include "addons/AddonManager.h"
 #include "addons/AddonInstaller.h"
 #include "addons/IAddon.h"
-#ifdef HAS_PYTHON
-#include "interfaces/python/XBPython.h"
-#endif
+#include "interfaces/generic/ScriptInvocationManager.h"
 #include "threads/SingleLock.h"
 #include "guilib/GUIWindowManager.h"
 #include "dialogs/GUIDialogProgress.h"
-#include "settings/GUISettings.h"
+#include "settings/Settings.h"
 #include "FileItem.h"
 #include "video/VideoInfoTag.h"
 #include "guilib/LocalizeStrings.h"
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
+#include "utils/StringUtils.h"
 #include "ApplicationMessenger.h"
+#include "Application.h"
 #include "URL.h"
 
 using namespace XFILE;
 using namespace std;
 using namespace ADDON;
 
-vector<CPluginDirectory *> CPluginDirectory::globalHandles;
+map<int, CPluginDirectory *> CPluginDirectory::globalHandles;
+int CPluginDirectory::handleCounter = 0;
 CCriticalSection CPluginDirectory::m_handleLock;
 
 CPluginDirectory::CPluginDirectory()
+  : m_cancelled(false)
+  , m_success(false)
+  , m_totalItems(0)
 {
   m_listItems = new CFileItemList;
   m_fileResult = new CFileItem;
@@ -63,36 +67,47 @@ CPluginDirectory::~CPluginDirectory(void)
 int CPluginDirectory::getNewHandle(CPluginDirectory *cp)
 {
   CSingleLock lock(m_handleLock);
-  int handle = (int)globalHandles.size();
-  globalHandles.push_back(cp);
+  int handle = ++handleCounter;
+  globalHandles[handle] = cp;
   return handle;
 }
 
 void CPluginDirectory::removeHandle(int handle)
 {
   CSingleLock lock(m_handleLock);
-  if (handle >= 0 && handle < (int)globalHandles.size())
-    globalHandles.erase(globalHandles.begin() + handle);
+  if (!globalHandles.erase(handle))
+    CLog::Log(LOGWARNING, "Attempt to erase invalid handle %i", handle);
 }
 
-bool CPluginDirectory::StartScript(const CStdString& strPath, bool retrievingDir)
+CPluginDirectory *CPluginDirectory::dirFromHandle(int handle)
+{
+  CSingleLock lock(m_handleLock);
+  map<int, CPluginDirectory *>::iterator i = globalHandles.find(handle);
+  if (i != globalHandles.end())
+    return i->second;
+  CLog::Log(LOGWARNING, "Attempt to use invalid handle %i", handle);
+  return NULL;
+}
+
+bool CPluginDirectory::StartScript(const std::string& strPath, bool retrievingDir)
 {
   CURL url(strPath);
 
-  if (!CAddonMgr::Get().GetAddon(url.GetHostName(), m_addon, ADDON_PLUGIN) && !CAddonInstaller::Get().PromptForInstall(url.GetHostName(), m_addon))
+  // try the plugin type first, and if not found, try an unknown type
+  if (!CAddonMgr::Get().GetAddon(url.GetHostName(), m_addon, ADDON_PLUGIN) &&
+      !CAddonMgr::Get().GetAddon(url.GetHostName(), m_addon, ADDON_UNKNOWN) &&
+      !CAddonInstaller::Get().PromptForInstall(url.GetHostName(), m_addon))
   {
     CLog::Log(LOGERROR, "Unable to find plugin %s", url.GetHostName().c_str());
     return false;
   }
 
   // get options
-  CStdString options = url.GetOptions();
-  URIUtils::RemoveSlashAtEnd(options); // This MAY kill some scripts (eg though with a URL ending with a slash), but
-                                    // is needed for all others, as XBMC adds slashes to "folders"
+  std::string options = url.GetOptions();
   url.SetOptions(""); // do this because we can then use the url to generate the basepath
                       // which is passed to the plugin (and represents the share)
 
-  CStdString basePath(url.Get());
+  std::string basePath(url.Get());
   // reset our wait event, and grab a new handle
   m_fetchComplete.Reset();
   int handle = getNewHandle(this);
@@ -107,9 +122,8 @@ bool CPluginDirectory::StartScript(const CStdString& strPath, bool retrievingDir
   m_totalItems = 0;
 
   // setup our parameters to send the script
-  CStdString strHandle;
-  strHandle.Format("%i", handle);
-  vector<CStdString> argv;
+  std::string strHandle = StringUtils::Format("%i", handle);
+  vector<string> argv;
   argv.push_back(basePath);
   argv.push_back(strHandle);
   argv.push_back(options);
@@ -117,15 +131,14 @@ bool CPluginDirectory::StartScript(const CStdString& strPath, bool retrievingDir
   // run the script
   CLog::Log(LOGDEBUG, "%s - calling plugin %s('%s','%s','%s')", __FUNCTION__, m_addon->Name().c_str(), argv[0].c_str(), argv[1].c_str(), argv[2].c_str());
   bool success = false;
-#ifdef HAS_PYTHON
-  CStdString file = m_addon->LibPath();
-  if (g_pythonParser.evalFile(file, argv,m_addon) >= 0)
+  std::string file = m_addon->LibPath();
+  int id = CScriptInvocationManager::Get().Execute(file, m_addon, argv);
+  if (id >= 0)
   { // wait for our script to finish
-    CStdString scriptName = m_addon->Name();
-    success = WaitOnScriptResult(file, scriptName, retrievingDir);
+    std::string scriptName = m_addon->Name();
+    success = WaitOnScriptResult(file, id, scriptName, retrievingDir);
   }
   else
-#endif
     CLog::Log(LOGERROR, "Unable to run plugin %s", m_addon->Name().c_str());
 
   // free our handle
@@ -134,7 +147,7 @@ bool CPluginDirectory::StartScript(const CStdString& strPath, bool retrievingDir
   return success;
 }
 
-bool CPluginDirectory::GetPluginResult(const CStdString& strPath, CFileItem &resultItem)
+bool CPluginDirectory::GetPluginResult(const std::string& strPath, CFileItem &resultItem)
 {
   CURL url(strPath);
   CPluginDirectory* newDir = new CPluginDirectory();
@@ -146,7 +159,7 @@ bool CPluginDirectory::GetPluginResult(const CStdString& strPath, CFileItem &res
     if (!resultItem.HasProperty("original_listitem_url"))
       resultItem.SetProperty("original_listitem_url", resultItem.GetPath());
     resultItem.SetPath(newDir->m_fileResult->GetPath());
-    resultItem.SetMimeType(newDir->m_fileResult->GetMimeType(false));
+    resultItem.SetMimeType(newDir->m_fileResult->GetMimeType());
     resultItem.UpdateInfo(*newDir->m_fileResult);
     if (newDir->m_fileResult->HasVideoInfoTag() && newDir->m_fileResult->GetVideoInfoTag()->m_resumePoint.IsSet())
       resultItem.m_lStartOffset = STARTOFFSET_RESUME; // resume point set in the resume item, so force resume
@@ -159,13 +172,10 @@ bool CPluginDirectory::GetPluginResult(const CStdString& strPath, CFileItem &res
 bool CPluginDirectory::AddItem(int handle, const CFileItem *item, int totalItems)
 {
   CSingleLock lock(m_handleLock);
-  if (handle < 0 || handle >= (int)globalHandles.size())
-  {
-    CLog::Log(LOGERROR, " %s - called with an invalid handle.", __FUNCTION__);
+  CPluginDirectory *dir = dirFromHandle(handle);
+  if (!dir)
     return false;
-  }
 
-  CPluginDirectory *dir = globalHandles[handle];
   CFileItemPtr pItem(new CFileItem(*item));
   dir->m_listItems->Add(pItem);
   dir->m_totalItems = totalItems;
@@ -176,13 +186,10 @@ bool CPluginDirectory::AddItem(int handle, const CFileItem *item, int totalItems
 bool CPluginDirectory::AddItems(int handle, const CFileItemList *items, int totalItems)
 {
   CSingleLock lock(m_handleLock);
-  if (handle < 0 || handle >= (int)globalHandles.size())
-  {
-    CLog::Log(LOGERROR, " %s - called with an invalid handle.", __FUNCTION__);
+  CPluginDirectory *dir = dirFromHandle(handle);
+  if (!dir)
     return false;
-  }
 
-  CPluginDirectory *dir = globalHandles[handle];
   CFileItemList pItemList;
   pItemList.Copy(*items);
   dir->m_listItems->Append(pItemList);
@@ -194,12 +201,9 @@ bool CPluginDirectory::AddItems(int handle, const CFileItemList *items, int tota
 void CPluginDirectory::EndOfDirectory(int handle, bool success, bool replaceListing, bool cacheToDisc)
 {
   CSingleLock lock(m_handleLock);
-  if (handle < 0 || handle >= (int)globalHandles.size())
-  {
-    CLog::Log(LOGERROR, " %s - called with an invalid handle.", __FUNCTION__);
+  CPluginDirectory *dir = dirFromHandle(handle);
+  if (!dir)
     return;
-  }
-  CPluginDirectory *dir = globalHandles[handle];
 
   // set cache to disc
   dir->m_listItems->SetCacheToDisc(cacheToDisc ? CFileItemList::CACHE_IF_SLOW : CFileItemList::CACHE_NEVER);
@@ -208,22 +212,18 @@ void CPluginDirectory::EndOfDirectory(int handle, bool success, bool replaceList
   dir->m_listItems->SetReplaceListing(replaceListing);
 
   if (!dir->m_listItems->HasSortDetails())
-    dir->m_listItems->AddSortMethod(SORT_METHOD_NONE, 552, LABEL_MASKS("%L", "%D"));
+    dir->m_listItems->AddSortMethod(SortByNone, 552, LABEL_MASKS("%L", "%D"));
 
   // set the event to mark that we're done
   dir->m_fetchComplete.Set();
 }
 
-void CPluginDirectory::AddSortMethod(int handle, SORT_METHOD sortMethod, const CStdString &label2Mask)
+void CPluginDirectory::AddSortMethod(int handle, SORT_METHOD sortMethod, const std::string &label2Mask)
 {
   CSingleLock lock(m_handleLock);
-  if (handle < 0 || handle >= (int)globalHandles.size())
-  {
-    CLog::Log(LOGERROR, "%s - called with an invalid handle.", __FUNCTION__);
+  CPluginDirectory *dir = dirFromHandle(handle);
+  if (!dir)
     return;
-  }
-
-  CPluginDirectory *dir = globalHandles[handle];
 
   // TODO: Add all sort methods and fix which labels go on the right or left
   switch(sortMethod)
@@ -231,170 +231,174 @@ void CPluginDirectory::AddSortMethod(int handle, SORT_METHOD sortMethod, const C
     case SORT_METHOD_LABEL:
     case SORT_METHOD_LABEL_IGNORE_THE:
       {
-        if (g_guiSettings.GetBool("filelists.ignorethewhensorting"))
-          dir->m_listItems->AddSortMethod(SORT_METHOD_LABEL_IGNORE_THE, 551, LABEL_MASKS("%T", label2Mask));
-        else
-          dir->m_listItems->AddSortMethod(SORT_METHOD_LABEL, 551, LABEL_MASKS("%T", label2Mask));
+        dir->m_listItems->AddSortMethod(SortByLabel, 551, LABEL_MASKS("%T", label2Mask), CSettings::Get().GetBool("filelists.ignorethewhensorting") ? SortAttributeIgnoreArticle : SortAttributeNone);
         break;
       }
     case SORT_METHOD_TITLE:
     case SORT_METHOD_TITLE_IGNORE_THE:
       {
-        if (g_guiSettings.GetBool("filelists.ignorethewhensorting"))
-          dir->m_listItems->AddSortMethod(SORT_METHOD_TITLE_IGNORE_THE, 556, LABEL_MASKS("%T", label2Mask));
-        else
-          dir->m_listItems->AddSortMethod(SORT_METHOD_TITLE, 556, LABEL_MASKS("%T", label2Mask));
+        dir->m_listItems->AddSortMethod(SortByTitle, 556, LABEL_MASKS("%T", label2Mask), CSettings::Get().GetBool("filelists.ignorethewhensorting") ? SortAttributeIgnoreArticle : SortAttributeNone);
         break;
       }
     case SORT_METHOD_ARTIST:
     case SORT_METHOD_ARTIST_IGNORE_THE:
       {
-        if (g_guiSettings.GetBool("filelists.ignorethewhensorting"))
-          dir->m_listItems->AddSortMethod(SORT_METHOD_ARTIST_IGNORE_THE, 557, LABEL_MASKS("%T", "%A"));
-        else
-          dir->m_listItems->AddSortMethod(SORT_METHOD_ARTIST, 557, LABEL_MASKS("%T", "%A"));
+        dir->m_listItems->AddSortMethod(SortByArtist, 557, LABEL_MASKS("%T", "%A"), CSettings::Get().GetBool("filelists.ignorethewhensorting") ? SortAttributeIgnoreArticle : SortAttributeNone);
         break;
       }
     case SORT_METHOD_ALBUM:
     case SORT_METHOD_ALBUM_IGNORE_THE:
       {
-        if (g_guiSettings.GetBool("filelists.ignorethewhensorting"))
-          dir->m_listItems->AddSortMethod(SORT_METHOD_ALBUM_IGNORE_THE, 558, LABEL_MASKS("%T", "%B"));
-        else
-          dir->m_listItems->AddSortMethod(SORT_METHOD_ALBUM, 558, LABEL_MASKS("%T", "%B"));
+        dir->m_listItems->AddSortMethod(SortByAlbum, 558, LABEL_MASKS("%T", "%B"), CSettings::Get().GetBool("filelists.ignorethewhensorting") ? SortAttributeIgnoreArticle : SortAttributeNone);
         break;
       }
     case SORT_METHOD_DATE:
       {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_DATE, 552, LABEL_MASKS("%T", "%J"));
+        dir->m_listItems->AddSortMethod(SortByDate, 552, LABEL_MASKS("%T", "%J"));
         break;
       }
     case SORT_METHOD_BITRATE:
       {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_BITRATE, 623, LABEL_MASKS("%T", "%X"));
+        dir->m_listItems->AddSortMethod(SortByBitrate, 623, LABEL_MASKS("%T", "%X"));
         break;
       }             
     case SORT_METHOD_SIZE:
       {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_SIZE, 553, LABEL_MASKS("%T", "%I"));
+        dir->m_listItems->AddSortMethod(SortBySize, 553, LABEL_MASKS("%T", "%I"));
         break;
       }
     case SORT_METHOD_FILE:
       {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_FILE, 561, LABEL_MASKS("%T", label2Mask));
+        dir->m_listItems->AddSortMethod(SortByFile, 561, LABEL_MASKS("%T", label2Mask));
         break;
       }
     case SORT_METHOD_TRACKNUM:
       {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_TRACKNUM, 554, LABEL_MASKS("[%N. ]%T", label2Mask));
+        dir->m_listItems->AddSortMethod(SortByTrackNumber, 554, LABEL_MASKS("[%N. ]%T", label2Mask));
         break;
       }
     case SORT_METHOD_DURATION:
+    case SORT_METHOD_VIDEO_RUNTIME:
       {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_DURATION, 555, LABEL_MASKS("%T", "%D"));
+        dir->m_listItems->AddSortMethod(SortByTime, 180, LABEL_MASKS("%T", "%D"));
         break;
       }
     case SORT_METHOD_VIDEO_RATING:
+    case SORT_METHOD_SONG_RATING:
       {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_VIDEO_RATING, 563, LABEL_MASKS("%T", "%R"));
+        dir->m_listItems->AddSortMethod(SortByRating, 563, LABEL_MASKS("%T", "%R"));
         break;
       }
     case SORT_METHOD_YEAR:
       {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_YEAR, 562, LABEL_MASKS("%T", "%Y"));
-        break;
-      }
-    case SORT_METHOD_SONG_RATING:
-      {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_SONG_RATING, 563, LABEL_MASKS("%T", "%R"));
+        dir->m_listItems->AddSortMethod(SortByYear, 562, LABEL_MASKS("%T", "%Y"));
         break;
       }
     case SORT_METHOD_GENRE:
       {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_GENRE, 515, LABEL_MASKS("%T", "%G"));
+        dir->m_listItems->AddSortMethod(SortByGenre, 515, LABEL_MASKS("%T", "%G"));
         break;
       }
     case SORT_METHOD_COUNTRY:
       {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_COUNTRY, 574, LABEL_MASKS("%T", "%G"));
+        dir->m_listItems->AddSortMethod(SortByCountry, 574, LABEL_MASKS("%T", "%G"));
         break;
       }
     case SORT_METHOD_VIDEO_TITLE:
       {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_VIDEO_TITLE, 369, LABEL_MASKS("%T", label2Mask));
+        dir->m_listItems->AddSortMethod(SortByTitle, 369, LABEL_MASKS("%T", label2Mask));
         break;
       }
     case SORT_METHOD_VIDEO_SORT_TITLE:
     case SORT_METHOD_VIDEO_SORT_TITLE_IGNORE_THE:
       {
-        if (g_guiSettings.GetBool("filelists.ignorethewhensorting"))
-          dir->m_listItems->AddSortMethod(SORT_METHOD_VIDEO_SORT_TITLE_IGNORE_THE, 369, LABEL_MASKS("%T", label2Mask));
-        else
-          dir->m_listItems->AddSortMethod(SORT_METHOD_VIDEO_SORT_TITLE, 369, LABEL_MASKS("%T", label2Mask));
+        dir->m_listItems->AddSortMethod(SortBySortTitle, 556, LABEL_MASKS("%T", label2Mask), CSettings::Get().GetBool("filelists.ignorethewhensorting") ? SortAttributeIgnoreArticle : SortAttributeNone);
         break;
       }
     case SORT_METHOD_MPAA_RATING:
       {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_MPAA_RATING, 563, LABEL_MASKS("%T", "%O"));
-        break;
-      }
-    case SORT_METHOD_VIDEO_RUNTIME:
-      {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_VIDEO_RUNTIME, 555, LABEL_MASKS("%T", "%D"));
+        dir->m_listItems->AddSortMethod(SortByMPAA, 20074, LABEL_MASKS("%T", "%O"));
         break;
       }
     case SORT_METHOD_STUDIO:
     case SORT_METHOD_STUDIO_IGNORE_THE:
       {
-        if (g_guiSettings.GetBool("filelists.ignorethewhensorting"))
-          dir->m_listItems->AddSortMethod(SORT_METHOD_STUDIO_IGNORE_THE, 572, LABEL_MASKS("%T", "%U"));
-        else
-          dir->m_listItems->AddSortMethod(SORT_METHOD_STUDIO, 572, LABEL_MASKS("%T", "%U"));
+        dir->m_listItems->AddSortMethod(SortByStudio, 572, LABEL_MASKS("%T", "%U"), CSettings::Get().GetBool("filelists.ignorethewhensorting") ? SortAttributeIgnoreArticle : SortAttributeNone);
         break;
       }
     case SORT_METHOD_PROGRAM_COUNT:
       {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_PROGRAM_COUNT, 567, LABEL_MASKS("%T", "%C"));
+        dir->m_listItems->AddSortMethod(SortByProgramCount, 567, LABEL_MASKS("%T", "%C"));
         break;
       }
     case SORT_METHOD_UNSORTED:
       {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_UNSORTED, 571, LABEL_MASKS("%T", label2Mask));
+        dir->m_listItems->AddSortMethod(SortByNone, 571, LABEL_MASKS("%T", label2Mask));
         break;
       }
     case SORT_METHOD_NONE:
       {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_NONE, 552, LABEL_MASKS("%T", label2Mask));
+        dir->m_listItems->AddSortMethod(SortByNone, 552, LABEL_MASKS("%T", label2Mask));
         break;
       }
     case SORT_METHOD_DRIVE_TYPE:
       {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_DRIVE_TYPE, 564, LABEL_MASKS()); // Preformatted
+        dir->m_listItems->AddSortMethod(SortByDriveType, 564, LABEL_MASKS()); // Preformatted
         break;
       }
     case SORT_METHOD_PLAYLIST_ORDER:
       {
-        CStdString strTrackLeft=g_guiSettings.GetString("musicfiles.trackformat");
-        CStdString strTrackRight=g_guiSettings.GetString("musicfiles.trackformatright");
+        std::string strTrackLeft=CSettings::Get().GetString("musicfiles.trackformat");
+        std::string strTrackRight=CSettings::Get().GetString("musicfiles.trackformatright");
 
-        dir->m_listItems->AddSortMethod(SORT_METHOD_PLAYLIST_ORDER, 559, LABEL_MASKS(strTrackLeft, strTrackRight));
+        dir->m_listItems->AddSortMethod(SortByPlaylistOrder, 559, LABEL_MASKS(strTrackLeft, strTrackRight));
         break;
       }
     case SORT_METHOD_EPISODE:
       {
-        dir->m_listItems->AddSortMethod(SORT_METHOD_EPISODE,20359,LABEL_MASKS("%E. %T","%R"));
+        dir->m_listItems->AddSortMethod(SortByEpisodeNumber, 20359, LABEL_MASKS("%E. %T","%R"));
         break;
       }
     case SORT_METHOD_PRODUCTIONCODE:
       {
         //dir->m_listItems.AddSortMethod(SORT_METHOD_PRODUCTIONCODE,20368,LABEL_MASKS("%E. %T","%P", "%E. %T","%P"));
-        dir->m_listItems->AddSortMethod(SORT_METHOD_PRODUCTIONCODE,20368,LABEL_MASKS("%H. %T","%P", "%H. %T","%P"));
+        dir->m_listItems->AddSortMethod(SortByProductionCode, 20368, LABEL_MASKS("%H. %T","%P", "%H. %T","%P"));
         break;
       }
     case SORT_METHOD_LISTENERS:
       {
-       dir->m_listItems->AddSortMethod(SORT_METHOD_LISTENERS,20455,LABEL_MASKS("%T","%W"));
+       dir->m_listItems->AddSortMethod(SortByListeners, 20455, LABEL_MASKS("%T","%W"));
        break;
+      }
+    case SORT_METHOD_DATEADDED:
+      {
+        dir->m_listItems->AddSortMethod(SortByDateAdded, 570, LABEL_MASKS("%T", "%a"));
+        break;
+      }
+    case SORT_METHOD_FULLPATH:
+      {
+        dir->m_listItems->AddSortMethod(SortByPath, 573, LABEL_MASKS("%T", label2Mask));
+        break;
+      }
+    case SORT_METHOD_LABEL_IGNORE_FOLDERS:
+      {
+        dir->m_listItems->AddSortMethod(SortByLabel, SortAttributeIgnoreFolders, 551, LABEL_MASKS("%T", label2Mask));
+        break;
+      }
+    case SORT_METHOD_LASTPLAYED:
+      {
+        dir->m_listItems->AddSortMethod(SortByLastPlayed, 568, LABEL_MASKS("%T", "%G"));
+        break;
+      }
+    case SORT_METHOD_PLAYCOUNT:
+      {
+        dir->m_listItems->AddSortMethod(SortByPlaycount, 567, LABEL_MASKS("%T", "%V"));
+        break;
+      }
+    case SORT_METHOD_CHANNEL:
+      {
+        dir->m_listItems->AddSortMethod(SortByChannel, 19029, LABEL_MASKS("%T", label2Mask));
+        break;
       }
    
     default:
@@ -402,11 +406,10 @@ void CPluginDirectory::AddSortMethod(int handle, SORT_METHOD sortMethod, const C
   }
 }
 
-bool CPluginDirectory::GetDirectory(const CStdString& strPath, CFileItemList& items)
+bool CPluginDirectory::GetDirectory(const CURL& url, CFileItemList& items)
 {
-  CURL url(strPath);
-
-  bool success = StartScript(strPath, true);
+  const std::string pathToUrl(url.Get());
+  bool success = StartScript(pathToUrl, true);
 
   // append the items to the list
   items.Assign(*m_listItems, true); // true to keep the current items
@@ -414,10 +417,10 @@ bool CPluginDirectory::GetDirectory(const CStdString& strPath, CFileItemList& it
   return success;
 }
 
-bool CPluginDirectory::RunScriptWithParams(const CStdString& strPath)
+bool CPluginDirectory::RunScriptWithParams(const std::string& strPath)
 {
   CURL url(strPath);
-  if (url.GetHostName().IsEmpty()) // called with no script - should never happen
+  if (url.GetHostName().empty()) // called with no script - should never happen
     return false;
 
   AddonPtr addon;
@@ -428,35 +431,30 @@ bool CPluginDirectory::RunScriptWithParams(const CStdString& strPath)
   }
 
   // options
-  CStdString options = url.GetOptions();
-  URIUtils::RemoveSlashAtEnd(options); // This MAY kill some scripts (eg though with a URL ending with a slash), but
-                                    // is needed for all others, as XBMC adds slashes to "folders"
+  std::string options = url.GetOptions();
   url.SetOptions(""); // do this because we can then use the url to generate the basepath
                       // which is passed to the plugin (and represents the share)
 
-  CStdString basePath(url.Get());
+  std::string basePath(url.Get());
 
   // setup our parameters to send the script
-  CStdString strHandle;
-  strHandle.Format("%i", -1);
-  vector<CStdString> argv;
+  std::string strHandle = StringUtils::Format("%i", -1);
+  vector<string> argv;
   argv.push_back(basePath);
   argv.push_back(strHandle);
   argv.push_back(options);
 
   // run the script
-#ifdef HAS_PYTHON
   CLog::Log(LOGDEBUG, "%s - calling plugin %s('%s','%s','%s')", __FUNCTION__, addon->Name().c_str(), argv[0].c_str(), argv[1].c_str(), argv[2].c_str());
-  if (g_pythonParser.evalFile(addon->LibPath(), argv,addon) >= 0)
+  if (CScriptInvocationManager::Get().Execute(addon->LibPath(), addon, argv) >= 0)
     return true;
   else
-#endif
     CLog::Log(LOGERROR, "Unable to run plugin %s", addon->Name().c_str());
 
   return false;
 }
 
-bool CPluginDirectory::WaitOnScriptResult(const CStdString &scriptPath, const CStdString &scriptName, bool retrievingDir)
+bool CPluginDirectory::WaitOnScriptResult(const std::string &scriptPath, int scriptId, const std::string &scriptName, bool retrievingDir)
 {
   const unsigned int timeBeforeProgressBar = 1500;
   const unsigned int timeToKillScript = 1000;
@@ -464,8 +462,9 @@ bool CPluginDirectory::WaitOnScriptResult(const CStdString &scriptPath, const CS
   unsigned int startTime = XbmcThreads::SystemClockMillis();
   CGUIDialogProgress *progressBar = NULL;
   bool cancelled = false;
+  bool inMainAppThread = g_application.IsCurrentThread();
 
-  CLog::Log(LOGDEBUG, "%s - waiting on the %s plugin...", __FUNCTION__, scriptName.c_str());
+  CLog::Log(LOGDEBUG, "%s - waiting on the %s (id=%d) plugin...", __FUNCTION__, scriptName.c_str(), scriptId);
   while (true)
   {
     {
@@ -478,9 +477,7 @@ bool CPluginDirectory::WaitOnScriptResult(const CStdString &scriptPath, const CS
       }
     }
     // check our script is still running
-#ifdef HAS_PYTHON
-    if (!g_pythonParser.isRunning(g_pythonParser.getScriptId(scriptPath.c_str())))
-#endif
+    if (!CScriptInvocationManager::Get().IsRunning(scriptId))
     { // check whether we exited normally
       if (!m_fetchComplete.WaitMSec(0))
       { // python didn't return correctly
@@ -505,10 +502,10 @@ bool CPluginDirectory::WaitOnScriptResult(const CStdString &scriptPath, const CS
       if (progressBar)
       {
         progressBar->SetHeading(scriptName);
-        progressBar->SetLine(0, retrievingDir ? 1040 : 10214);
+        progressBar->SetLine(0, 10214);
         progressBar->SetLine(1, "");
         progressBar->SetLine(2, "");
-        progressBar->ShowProgressBar(retrievingDir);
+        progressBar->ShowProgressBar(false);
         progressBar->StartModal();
       }
     }
@@ -521,22 +518,24 @@ bool CPluginDirectory::WaitOnScriptResult(const CStdString &scriptPath, const CS
         m_cancelled = true;
       }
     }
+    else // if the progressBar exists and we call StartModal or Progress we get the
+         //  ProcessRenderLoop call anyway.
+      if (inMainAppThread) 
+        g_windowManager.ProcessRenderLoop();
+
     if (!cancelled && m_cancelled)
     {
       cancelled = true;
       startTime = XbmcThreads::SystemClockMillis();
     }
-    if (cancelled && XbmcThreads::SystemClockMillis() - startTime > timeToKillScript)
+    if ((cancelled && XbmcThreads::SystemClockMillis() - startTime > timeToKillScript) || g_application.m_bStop)
     { // cancel our script
-#ifdef HAS_PYTHON
-      int id = g_pythonParser.getScriptId(scriptPath.c_str());
-      if (id != -1 && g_pythonParser.isRunning(id))
+      if (scriptId != -1 && CScriptInvocationManager::Get().IsRunning(scriptId))
       {
-        CLog::Log(LOGDEBUG, "%s- cancelling plugin %s", __FUNCTION__, scriptName.c_str());
-        g_pythonParser.stopScript(id);
+        CLog::Log(LOGDEBUG, "%s- cancelling plugin %s (id=%d)", __FUNCTION__, scriptName.c_str(), scriptId);
+        CScriptInvocationManager::Get().Stop(scriptId);
         break;
       }
-#endif
     }
   }
 
@@ -549,12 +548,9 @@ bool CPluginDirectory::WaitOnScriptResult(const CStdString &scriptPath, const CS
 void CPluginDirectory::SetResolvedUrl(int handle, bool success, const CFileItem *resultItem)
 {
   CSingleLock lock(m_handleLock);
-  if (handle < 0 || handle >= (int)globalHandles.size())
-  {
-    CLog::Log(LOGERROR, " %s - called with an invalid handle.", __FUNCTION__);
+  CPluginDirectory *dir = dirFromHandle(handle);
+  if (!dir)
     return;
-  }
-  CPluginDirectory* dir  = globalHandles[handle];
 
   dir->m_success = success;
   *dir->m_fileResult = *resultItem;
@@ -563,57 +559,42 @@ void CPluginDirectory::SetResolvedUrl(int handle, bool success, const CFileItem 
   dir->m_fetchComplete.Set();
 }
 
-CStdString CPluginDirectory::GetSetting(int handle, const CStdString &strID)
+std::string CPluginDirectory::GetSetting(int handle, const std::string &strID)
 {
-  if (handle < 0 || handle >= (int)globalHandles.size())
-  {
-    CLog::Log(LOGERROR, "%s called with an invalid handle.", __FUNCTION__);
-    return "";
-  }
-
-  CPluginDirectory *dir = globalHandles[handle];
-  if(dir->m_addon)
+  CSingleLock lock(m_handleLock);
+  CPluginDirectory *dir = dirFromHandle(handle);
+  if(dir && dir->m_addon)
     return dir->m_addon->GetSetting(strID);
   else
     return "";
 }
 
-void CPluginDirectory::SetSetting(int handle, const CStdString &strID, const CStdString &value)
+void CPluginDirectory::SetSetting(int handle, const std::string &strID, const std::string &value)
 {
-  if (handle < 0 || handle >= (int)globalHandles.size())
-  {
-    CLog::Log(LOGERROR, "%s called with an invalid handle.", __FUNCTION__);
-    return;
-  }
-
-  CPluginDirectory *dir = globalHandles[handle];
-  if(dir->m_addon)
+  CSingleLock lock(m_handleLock);
+  CPluginDirectory *dir = dirFromHandle(handle);
+  if(dir && dir->m_addon)
     dir->m_addon->UpdateSetting(strID, value);
 }
 
-void CPluginDirectory::SetContent(int handle, const CStdString &strContent)
-{
-  if (handle < 0 || handle >= (int)globalHandles.size())
-  {
-    CLog::Log(LOGERROR, "%s called with an invalid handle.", __FUNCTION__);
-    return;
-  }
-
-  CPluginDirectory *dir = globalHandles[handle];
-  dir->m_listItems->SetContent(strContent);
-}
-
-void CPluginDirectory::SetProperty(int handle, const CStdString &strProperty, const CStdString &strValue)
+void CPluginDirectory::SetContent(int handle, const std::string &strContent)
 {
   CSingleLock lock(m_handleLock);
-  if (handle < 0 || handle >= (int)globalHandles.size())
-  {
-    CLog::Log(LOGERROR, "%s called with an invalid handle.", __FUNCTION__);
-    return;
-  }
+  CPluginDirectory *dir = dirFromHandle(handle);
+  if (dir)
+    dir->m_listItems->SetContent(strContent);
+}
 
-  CPluginDirectory *dir = globalHandles[handle];
-  dir->m_listItems->SetProperty(strProperty, strValue);
+void CPluginDirectory::SetProperty(int handle, const std::string &strProperty, const std::string &strValue)
+{
+  CSingleLock lock(m_handleLock);
+  CPluginDirectory *dir = dirFromHandle(handle);
+  if (!dir)
+    return;
+  if (strProperty == "fanart_image")
+    dir->m_listItems->SetArt("fanart", strValue);
+  else
+    dir->m_listItems->SetProperty(strProperty, strValue);
 }
 
 void CPluginDirectory::CancelDirectory()

@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <!-- This file contains the mapping of keys (gamepad, remote, and keyboard) to actions within XBMC -->
 <!-- The <global> section is a fall through - they will only be used if the button is not          -->
 <!-- used in the current window's section.  Note that there is only handling                       -->
@@ -18,7 +19,7 @@
 <!--    </universalremote>            -->
 
 <!-- Note that the action can be a built-in function.                 -->
-<!--  eg <B>XBMC.ActivateWindow(MyMusic)</B>                         -->
+<!--  eg <B>ActivateWindow(MyMusic)</B>                         -->
 <!-- would automatically go to My Music on the press of the B button. -->
 
 <!-- Joysticks / Gamepads:                                                                    -->
@@ -48,10 +49,10 @@
       <button id="6">ContextMenu</button>
       <button id="7"/>
       <button id="8"/>
-      <button id="9">XBMC.ActivateWindow(PlayerControls)</button>
+      <button id="9">ActivateWindow(PlayerControls)</button>
       <button id="10"/>
       <button id="11">Screenshot</button>
-      <button id="12">XBMC.ActivateWindow(ShutdownMenu)</button>
+      <button id="12">ActivateWindow(ShutdownMenu)</button>
       <button id="13">Up</button>
       <button id="14">Right</button>
       <button id="15">Down</button>
@@ -70,7 +71,7 @@
       <altname>Mad Catz MicroCON</altname>
       <altname>Logitech Xbox Cordless Controller</altname>
       <altname>Microsoft X-Box pad (Japan)</altname> 
-      <button id="3">XBMC.Skin.ToggleSetting(HomeViewToggle)</button>
+      <button id="3">Skin.ToggleSetting(HomeViewToggle)</button>
     </joystick>
   </Home>
   <MyFiles>
@@ -119,8 +120,8 @@
       <button id="5">AspectRatio</button>
       <button id="6">Info</button>
       <button id="9">OSD</button>
-      <button id="13">BigStepForward</button>
-      <button id="14">StepForward</button>
+      <button id="13">ChapterOrBigStepForward</button>
+      <button id="14">ChapterOrStepForward</button>
       <button id="15">BigStepBack</button>
       <button id="16">StepBack</button>
       <button id="17">SmallStepBack</button>
@@ -128,6 +129,28 @@
       <axis limit="0" id="6">AnalogFastForward</axis>
     </joystick>
   </FullscreenVideo>
+  <FullscreenLiveTV>
+    <joystick name="Microsoft Xbox Controller S">
+      <altname>Mad Catz MicroCON</altname>
+      <altname>Logitech Xbox Cordless Controller</altname>
+      <altname>Microsoft X-Box pad (Japan)</altname> 
+      <button id="13">ChannelUp</button>
+      <button id="14">StepForward</button>
+      <button id="15">ChannelDown</button>
+      <button id="16">StepBack</button>
+    </joystick>
+  </FullscreenLiveTV>
+  <FullscreenRadio>
+    <joystick name="Microsoft Xbox Controller S">
+      <altname>Mad Catz MicroCON</altname>
+      <altname>Logitech Xbox Cordless Controller</altname>
+      <altname>Microsoft X-Box pad (Japan)</altname> 
+      <button id="13">ChannelUp</button>
+      <button id="14">StepForward</button>
+      <button id="15">ChannelDown</button>
+      <button id="16">StepBack</button>
+    </joystick>
+  </FullscreenRadio>
   <FullscreenInfo>
     <joystick name="Microsoft Xbox Controller S">
       <altname>Mad Catz MicroCON</altname>
@@ -156,9 +179,9 @@
       <button id="1">Pause</button>
       <button id="2">Stop</button>
       <button id="3">CodecInfo</button>
-      <button id="5">XBMC.ActivateWindow(VisualisationPresetList)</button>
+      <button id="5">ActivateWindow(VisualisationPresetList)</button>
       <button id="6">Info</button>
-      <button id="9">XBMC.ActivateWindow(MusicOSD)</button>
+      <button id="9">OSD</button>
       <button id="13">NextPreset</button>
       <button id="14">SkipNext</button>
       <button id="15">PreviousPreset</button>

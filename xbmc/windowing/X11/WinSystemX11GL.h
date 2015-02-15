@@ -3,9 +3,10 @@
 
 #pragma once
 
+#if defined(HAVE_LIBGL)
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,7 +32,7 @@ class CWinSystemX11GL : public CWinSystemX11, public CRenderSystemGL
 public:
   CWinSystemX11GL();
   virtual ~CWinSystemX11GL();
-  virtual bool CreateNewWindow(const CStdString& name, bool fullScreen, RESOLUTION_INFO& res, PHANDLE_EVENT_FUNC userFunction);
+  virtual bool CreateNewWindow(const std::string& name, bool fullScreen, RESOLUTION_INFO& res, PHANDLE_EVENT_FUNC userFunction);
   virtual bool ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop);
   virtual bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays);
 
@@ -41,15 +42,12 @@ protected:
   virtual bool PresentRenderImpl(const CDirtyRegionList& dirty);
   virtual void SetVSyncImpl(bool enable);
 
-  CStdString m_glxext;
+  std::string m_glxext;
 
   int (*m_glXGetVideoSyncSGI)(unsigned int*);
   int (*m_glXWaitVideoSyncSGI)(int, int, unsigned int*);
-  int (*m_glXSwapIntervalSGI)(int);
   int (*m_glXSwapIntervalMESA)(int);
-
-  Bool    (*m_glXGetSyncValuesOML)(Display* dpy, GLXDrawable drawable, int64_t* ust, int64_t* msc, int64_t* sbc);
-  int64_t (*m_glXSwapBuffersMscOML)(Display* dpy, GLXDrawable drawable, int64_t target_msc, int64_t divisor,int64_t remainder);
+  PFNGLXSWAPINTERVALEXTPROC m_glXSwapIntervalEXT;
 
   int m_iVSyncErrors;
 };
@@ -57,5 +55,6 @@ protected:
 XBMC_GLOBAL_REF(CWinSystemX11GL,g_Windowing);
 #define g_Windowing XBMC_GLOBAL_USE(CWinSystemX11GL)
 
+#endif // HAVE_LIBGL
 
 #endif // WINDOW_SYSTEM_H

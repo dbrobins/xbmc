@@ -2,8 +2,8 @@
 #define __XBMCHELPER_H__
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,11 +22,23 @@
  */
 
 #if !defined(__arm__)
-class XBMCHelper
+
+#include "settings/lib/ISettingCallback.h"
+
+enum AppleRemoteOptions
+{
+  APPLE_REMOTE_DISABLED    = 0,
+  APPLE_REMOTE_STANDARD,
+  APPLE_REMOTE_UNIVERSAL,
+  APPLE_REMOTE_MULTIREMOTE
+};
+
+class XBMCHelper : public ISettingCallback
 {
  public:
-
   static XBMCHelper& GetInstance();
+
+  virtual bool OnSettingChanging(const CSetting *setting);
 
   void Start();
   void Stop();
@@ -45,6 +57,7 @@ private:
   XBMCHelper(XBMCHelper const& );
   XBMCHelper& operator=(XBMCHelper const&);
 
+  void HandleLaunchAgent();
   void Install();
   void Uninstall();
 

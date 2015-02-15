@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,15 +19,10 @@
  */
 
 #include "utils/XMLUtils.h"
+#include "utils/StringUtils.h"
 #include "XBDateTime.h"
 
 #include "gtest/gtest.h"
-
-TEST(TestXMLUtils, HasUTF8Declaration)
-{
-  EXPECT_TRUE(XMLUtils::HasUTF8Declaration(
-    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
-}
 
 TEST(TestXMLUtils, GetHex)
 {
@@ -82,13 +77,13 @@ TEST(TestXMLUtils, GetDouble)
 {
   CXBMCTinyXML a;
   double val;
-  CStdString refstr, valstr;
+  std::string refstr, valstr;
 
   a.Parse("<root><node>1000.1f</node></root>");
   EXPECT_TRUE(XMLUtils::GetDouble(a.RootElement(), "node", val));
 
   refstr = "1000.100000";
-  valstr.Format("%f", val);
+  valstr = StringUtils::Format("%f", val);
   EXPECT_STREQ(refstr.c_str(), valstr.c_str());
 }
 
@@ -120,7 +115,7 @@ TEST(TestXMLUtils, GetBoolean)
 TEST(TestXMLUtils, GetString)
 {
   CXBMCTinyXML a;
-  CStdString ref, val;
+  std::string ref, val;
 
   a.Parse("<root><node>some string</node></root>");
   EXPECT_TRUE(XMLUtils::GetString(a.RootElement(), "node", val));
@@ -132,7 +127,7 @@ TEST(TestXMLUtils, GetString)
 TEST(TestXMLUtils, GetAdditiveString)
 {
   CXBMCTinyXML a, b;
-  CStdString ref, val;
+  std::string ref, val;
 
   a.Parse("<root>\n"
           "  <node>some string1</node>\n"
@@ -181,22 +176,10 @@ TEST(TestXMLUtils, GetStringArray)
   EXPECT_STREQ("some string5", strarray.at(4).c_str());
 }
 
-TEST(TestXMLUtils, GetEncoding)
-{
-  CXBMCTinyXML a;
-  CStdString ref, val;
-
-  a.Parse("<?xml version=\"1.0\" encoding=\"UTF-16\"?>");
-  EXPECT_TRUE(XMLUtils::GetEncoding(&a, val));
-
-  ref = "UTF-16";
-  EXPECT_STREQ(ref.c_str(), val.c_str());
-}
-
 TEST(TestXMLUtils, GetPath)
 {
   CXBMCTinyXML a, b;
-  CStdString ref, val;
+  std::string ref, val;
 
   a.Parse("<root><node urlencoded=\"yes\">special://xbmc/</node></root>");
   EXPECT_TRUE(XMLUtils::GetPath(a.RootElement(), "node", val));
@@ -237,7 +220,7 @@ TEST(TestXMLUtils, GetDateTime)
 TEST(TestXMLUtils, SetString)
 {
   CXBMCTinyXML a;
-  CStdString ref, val;
+  std::string ref, val;
 
   a.Parse("<root></root>");
   XMLUtils::SetString(a.RootElement(), "node", "some string");
@@ -250,7 +233,7 @@ TEST(TestXMLUtils, SetString)
 TEST(TestXMLUtils, SetAdditiveString)
 {
   CXBMCTinyXML a;
-  CStdString ref, val;
+  std::string ref, val;
 
   a.Parse("<root></root>");
   XMLUtils::SetAdditiveString(a.RootElement(), "node", ",",
@@ -337,7 +320,7 @@ TEST(TestXMLUtils, SetHex)
 TEST(TestXMLUtils, SetPath)
 {
   CXBMCTinyXML a;
-  CStdString ref, val;
+  std::string ref, val;
 
   a.Parse("<root></root>");
   XMLUtils::SetPath(a.RootElement(), "node", "special://xbmc/");

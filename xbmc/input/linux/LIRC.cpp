@@ -1,22 +1,22 @@
 /*
-*      Copyright (C) 2007-2012 Team XBMC
-*      http://www.xbmc.org
-*
-*  This Program is free software; you can redistribute it and/or modify
-*  it under the terms of the GNU General Public License as published by
-*  the Free Software Foundation; either version 2, or (at your option)
-*  any later version.
-*
-*  This Program is distributed in the hope that it will be useful,
-*  but WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-*  GNU General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with XBMC; see the file COPYING.  If not, see
-*  <http://www.gnu.org/licenses/>.
-*
-*/
+*      Copyright (C) 2007-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 #include "system.h"
 
 #if defined (HAS_LIRC)
@@ -39,7 +39,8 @@
 
 CRemoteControl g_RemoteControl;
 
-CRemoteControl::CRemoteControl()
+CRemoteControl::CRemoteControl():
+  m_deviceName(LIRC_DEVICE)
 {
   m_fd = -1;
   m_file = NULL;
@@ -47,7 +48,6 @@ CRemoteControl::CRemoteControl()
   m_button = 0;
   m_holdTime = 0;
   m_used = true;
-  m_deviceName = LIRC_DEVICE;
   m_inotify_fd = -1;
   m_inotify_wd = -1;
   m_bLogConnectFailure = true;
@@ -111,7 +111,7 @@ void CRemoteControl::Disconnect()
   }
 }
 
-void CRemoteControl::setDeviceName(const CStdString& value)
+void CRemoteControl::setDeviceName(const std::string& value)
 {
   if (value.length()>0)
     m_deviceName=value;
@@ -129,7 +129,7 @@ void CRemoteControl::Initialize()
   struct sockaddr_un addr;
   unsigned int now = XbmcThreads::SystemClockMillis();
 
-  if (!m_used || (now - m_lastInitAttempt) < m_initRetryPeriod)
+  if (m_bInitialized || !m_used || (now - m_lastInitAttempt) < (unsigned int)m_initRetryPeriod)
     return;
   
   m_lastInitAttempt = now;
@@ -168,7 +168,7 @@ void CRemoteControl::Initialize()
                   if ((m_inotify_wd = inotify_add_watch(m_inotify_fd, m_deviceName.c_str(), IN_DELETE_SELF)) != -1)
                   {
                     m_bInitialized = true;
-                    CLog::Log(LOGINFO, "LIRC %s: sucessfully started", __FUNCTION__);
+                    CLog::Log(LOGINFO, "LIRC %s: successfully started", __FUNCTION__);
                   }
                   else
                     CLog::Log(LOGDEBUG, "LIRC: Failed to initialize Inotify. LIRC device will not be monitored.");
@@ -177,7 +177,7 @@ void CRemoteControl::Initialize()
             }
 #else
             m_bInitialized = true;
-            CLog::Log(LOGINFO, "LIRC %s: sucessfully started", __FUNCTION__);
+            CLog::Log(LOGINFO, "LIRC %s: successfully started", __FUNCTION__);
 #endif
           }
           else
@@ -346,7 +346,7 @@ unsigned int CRemoteControl::GetHoldTime() const
   return m_holdTime;
 }
 
-void CRemoteControl::AddSendCommand(const CStdString& command)
+void CRemoteControl::AddSendCommand(const std::string& command)
 {
   if (!m_bInitialized || !m_used)
     return;

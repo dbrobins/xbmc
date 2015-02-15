@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 
 #include "guilib/GUIDialog.h"
 #include "dialogs/GUIDialogContextMenu.h"
-#include "GUIViewControl.h"
+#include "view/GUIViewControl.h"
 #include "../channels/PVRChannelGroup.h"
 
 namespace PVR
@@ -39,13 +39,14 @@ namespace PVR
     virtual CFileItemPtr GetCurrentListItem(int offset = 0);
 
   protected:
+    virtual void OnInitWindow();
+    virtual void OnDeinitWindow(int nextWindowID);
+
     virtual bool OnPopupMenu(int iItem);
     virtual bool OnContextButton(int itemNumber, CONTEXT_BUTTON button);
 
-    virtual bool OnActionClose(const CAction &action);
     virtual bool OnActionMove(const CAction &action);
 
-    virtual bool OnMessageInit(CGUIMessage &message);
     virtual bool OnMessageClick(CGUIMessage &message);
 
     virtual bool OnClickListChannels(CGUIMessage &message);
@@ -60,9 +61,6 @@ namespace PVR
     virtual bool OnClickButtonUseEPG(CGUIMessage &message);
     virtual bool OnClickEPGSourceSpin(CGUIMessage &message);
     virtual bool OnClickButtonGroupManager(CGUIMessage &message);
-    virtual bool OnClickButtonEditChannel(CGUIMessage &message);
-    virtual bool OnClickButtonDeleteChannel(CGUIMessage &message);
-    virtual bool OnClickButtonNewChannel(CGUIMessage &message);
 
     virtual bool PersistChannel(CFileItemPtr pItem, CPVRChannelGroupPtr group, unsigned int *iChannelNumber);
     virtual void SetItemsUnchanged(void);

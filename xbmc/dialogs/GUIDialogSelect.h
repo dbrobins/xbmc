@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 
 #include "GUIDialogBoxBase.h"
 #include "guilib/GUIListItem.h"
-#include "GUIViewControl.h"
+#include "view/GUIViewControl.h"
 
 class CFileItem;
 class CFileItemList;
@@ -37,21 +37,21 @@ public:
   virtual bool OnBack(int actionID);
 
   void Reset();
-  void Add(const CStdString& strLabel);
-  void Add(const CFileItem* pItem);
+  int  Add(const std::string& strLabel);
+  int  Add(const CFileItem* pItem);
   void Add(const CFileItemList& items);
   void SetItems(CFileItemList* items);
   int GetSelectedLabel() const;
-  const CStdString& GetSelectedLabelText();
-  const CFileItemPtr GetSelectedItem();
+  const std::string& GetSelectedLabelText() const;
+  const CFileItemPtr GetSelectedItem() const;
   const CFileItemList& GetSelectedItems() const;
   void EnableButton(bool enable, int string);
   bool IsButtonPressed();
   void Sort(bool bSortOrder = true);
   void SetSelected(int iSelected);
-  void SetSelected(const CStdString &strSelectedLabel);
+  void SetSelected(const std::string &strSelectedLabel);
   void SetSelected(std::vector<int> selectedIndexes);
-  void SetSelected(const std::vector<CStdString> &selectedLabels);
+  void SetSelected(const std::vector<std::string> &selectedLabels);
   void SetUseDetails(bool useDetails);
   void SetMultiSelection(bool multiSelection);
 protected:
@@ -69,7 +69,6 @@ protected:
   bool m_multiSelection;
 
   CFileItemList* m_selectedItems;
-  CFileItemList* m_vecListInternal;
   CFileItemList* m_vecList;
   CGUIViewControl m_viewControl;
 };

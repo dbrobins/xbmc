@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,10 +29,11 @@
 #include "windowing/WindowingFactory.h"
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
+#include "utils/StringUtils.h"
 
 CDummyVideoPlayer::CDummyVideoPlayer(IPlayerCallback& callback)
     : IPlayer(callback),
-      CThread("CDummyVideoPlayer")
+      CThread("DummyVideoPlayer")
 {
   m_paused = false;
   m_clock = 0;
@@ -141,7 +142,7 @@ bool CDummyVideoPlayer::CanSeek()
   return GetTotalTime() > 0;
 }
 
-void CDummyVideoPlayer::Seek(bool bPlus, bool bLargeStep)
+void CDummyVideoPlayer::Seek(bool bPlus, bool bLargeStep, bool bChapterOverride)
 {
   if (g_advancedSettings.m_videoUseTimeSeeking && GetTotalTime() > 2000*g_advancedSettings.m_videoTimeSeekForwardBig)
   {
@@ -169,17 +170,17 @@ void CDummyVideoPlayer::Seek(bool bPlus, bool bLargeStep)
   }
 }
 
-void CDummyVideoPlayer::GetAudioInfo(CStdString& strAudioInfo)
+void CDummyVideoPlayer::GetAudioInfo(std::string& strAudioInfo)
 {
   strAudioInfo = "DummyVideoPlayer - nothing to see here";
 }
 
-void CDummyVideoPlayer::GetVideoInfo(CStdString& strVideoInfo)
+void CDummyVideoPlayer::GetVideoInfo(std::string& strVideoInfo)
 {
   strVideoInfo = "DummyVideoPlayer - nothing to see here";
 }
 
-void CDummyVideoPlayer::GetGeneralInfo(CStdString& strGeneralInfo)
+void CDummyVideoPlayer::GetGeneralInfo(std::string& strGeneralInfo)
 {
   strGeneralInfo = "DummyVideoPlayer - what are you still looking for?";
 }
@@ -254,12 +255,12 @@ void CDummyVideoPlayer::ShowOSD(bool bOnoff)
 {
 }
 
-CStdString CDummyVideoPlayer::GetPlayerState()
+std::string CDummyVideoPlayer::GetPlayerState()
 {
   return "";
 }
 
-bool CDummyVideoPlayer::SetPlayerState(CStdString state)
+bool CDummyVideoPlayer::SetPlayerState(const std::string& state)
 {
   return true;
 }
@@ -289,8 +290,7 @@ void CDummyVideoPlayer::Render()
     int mins = (int)(m_clock / 60000);
     int secs = (int)((m_clock / 1000) % 60);
     int ms = (int)(m_clock % 1000);
-    CStdString currentTime;
-    currentTime.Format("Video goes here %02i:%02i:%03i", mins, secs, ms);
+    std::string currentTime = StringUtils::Format("Video goes here %02i:%02i:%03i", mins, secs, ms);
     float posX = (vw.x1 + vw.x2) * 0.5f;
     float posY = (vw.y1 + vw.y2) * 0.5f;
     CGUITextLayout::DrawText(font, posX, posY, 0xffffffff, 0, currentTime, XBFONT_CENTER_X | XBFONT_CENTER_Y);

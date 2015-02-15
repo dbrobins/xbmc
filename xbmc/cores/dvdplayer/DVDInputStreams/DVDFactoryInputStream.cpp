@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -39,23 +39,46 @@
 #endif
 #include "FileItem.h"
 #include "storage/MediaManager.h"
+#include "URL.h"
+#include "filesystem/File.h"
+#include "utils/URIUtils.h"
+
 
 CDVDInputStream* CDVDFactoryInputStream::CreateInputStream(IDVDPlayer* pPlayer, const std::string& file, const std::string& content)
 {
   CFileItem item(file.c_str(), false);
-  if (content != "bluray/iso" && (item.IsDVDFile(false, true) || item.IsDVDImage() ||
-#ifdef HAS_DVD_DRIVE
-    file.compare(g_mediaManager.TranslateDevicePath("")) == 0 ))
-#else
-  0 ))
-#endif
+
+  if(item.IsDiscImage())
   {
-    return (new CDVDInputStreamNavigator(pPlayer));
+#ifdef HAVE_LIBBLURAY
+    CURL url("udf://");
+    url.SetHostName(file);
+    url.SetFileName("BDMV/index.bdmv");
+    if(XFILE::CFile::Exists(url.Get()))
+        return new CDVDInputStreamBluray(pPlayer);
+#endif
+
+    return new CDVDInputStreamNavigator(pPlayer);
   }
+
+#ifdef HAS_DVD_DRIVE
+  if(file.compare(g_mediaManager.TranslateDevicePath("")) == 0)
+  {
+#ifdef HAVE_LIBBLURAY
+    if(XFILE::CFile::Exists(URIUtils::AddFileToFolder(file, "BDMV/index.bdmv")))
+        return new CDVDInputStreamBluray(pPlayer);
+#endif
+
+    return new CDVDInputStreamNavigator(pPlayer);
+  }
+#endif
+
+  if (item.IsDVDFile(false, true))
+    return (new CDVDInputStreamNavigator(pPlayer));
   else if(file.substr(0, 6) == "pvr://")
     return new CDVDInputStreamPVRManager(pPlayer);
 #ifdef HAVE_LIBBLURAY
-  else if (item.IsType(".bdmv") || item.IsType(".mpls") || content == "bluray/iso" || file.substr(0, 7) == "bluray:")
+  else if (item.IsType(".bdmv") || item.IsType(".mpls") || file.substr(0, 7) == "bluray:")
     return new CDVDInputStreamBluray(pPlayer);
 #endif
   else if(file.substr(0, 6) == "rtp://"
@@ -65,8 +88,7 @@ CDVDInputStream* CDVDFactoryInputStream::CreateInputStream(IDVDPlayer* pPlayer, 
        || file.substr(0, 6) == "tcp://"
        || file.substr(0, 6) == "mms://"
        || file.substr(0, 7) == "mmst://"
-       || file.substr(0, 7) == "mmsh://"
-       || (item.IsInternetStream() && item.IsType(".m3u8")))
+       || file.substr(0, 7) == "mmsh://")
     return new CDVDInputStreamFFmpeg();
   else if(file.substr(0, 8) == "sling://"
        || file.substr(0, 7) == "myth://"
@@ -90,6 +112,14 @@ CDVDInputStream* CDVDFactoryInputStream::CreateInputStream(IDVDPlayer* pPlayer, 
   else if(file.substr(0, 7) == "htsp://")
     return new CDVDInputStreamHTSP();
 #endif
+  else if (item.IsInternetStream())
+  {
+    if (item.IsType(".m3u8"))
+      return new CDVDInputStreamFFmpeg();
+    item.FillInMimeType();
+    if (item.GetMimeType() == "application/vnd.apple.mpegurl")
+      return new CDVDInputStreamFFmpeg();
+  }
 
   // our file interface handles all these types of streams
   return (new CDVDInputStreamFile());

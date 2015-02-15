@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -72,12 +72,16 @@ class thread
 //  inline thread(const thread& other) { }
 public:
   inline explicit thread(IRunnable& runnable) : 
-    f(&runnable), cthread(new CThread(f, "dumb thread"))
+    f(&runnable), cthread(new CThread(f, "DumbThread"))
   {
     cthread->Create();
   }
 
   inline thread() : f(NULL), cthread(NULL) {}
+  ~thread()
+  {
+    delete cthread;
+  }
 
   /**
    * Gcc-4.2 requires this to be 'const' to find the right constructor.

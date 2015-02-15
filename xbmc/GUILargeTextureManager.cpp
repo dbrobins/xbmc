@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 
 #include "threads/SystemClock.h"
 #include "GUILargeTextureManager.h"
-#include "settings/GUISettings.h"
+#include "settings/Settings.h"
 #include "guilib/Texture.h"
 #include "threads/SingleLock.h"
 #include "utils/TimeUtils.h"
@@ -29,13 +29,16 @@
 #include "utils/log.h"
 #include "TextureCache.h"
 
+#include <cassert>
+
 using namespace std;
 
 
-CImageLoader::CImageLoader(const CStdString &path)
+CImageLoader::CImageLoader(const std::string &path, const bool useCache):
+  m_path(path)
 {
-  m_path = path;
   m_texture = NULL;
+  m_use_cache = useCache;
 }
 
 CImageLoader::~CImageLoader()
@@ -46,22 +49,26 @@ CImageLoader::~CImageLoader()
 bool CImageLoader::DoWork()
 {
   bool needsChecking = false;
+  std::string loadPath;
 
-  CStdString texturePath = g_TextureManager.GetTexturePath(m_path);
-  CStdString loadPath = CTextureCache::Get().CheckCachedImage(texturePath, true, needsChecking); 
+  std::string texturePath = g_TextureManager.GetTexturePath(m_path);
+  if (m_use_cache)
+    loadPath = CTextureCache::Get().CheckCachedImage(texturePath, true, needsChecking);
+  else
+    loadPath = texturePath;
 
-  if (loadPath.IsEmpty())
+  if (m_use_cache && loadPath.empty())
   {
     // not in our texture cache, so try and load directly and then cache the result
     loadPath = CTextureCache::Get().CacheImage(texturePath, &m_texture);
     if (m_texture)
       return true; // we're done
   }
-  if (!loadPath.IsEmpty())
+  if (!m_use_cache || !loadPath.empty())
   {
     // direct route - load the image
     unsigned int start = XbmcThreads::SystemClockMillis();
-    m_texture = CBaseTexture::LoadFromFile(loadPath, g_graphicsContext.GetWidth(), g_graphicsContext.GetHeight(), g_guiSettings.GetBool("pictures.useexifrotation"));
+    m_texture = CBaseTexture::LoadFromFile(loadPath, g_graphicsContext.GetWidth(), g_graphicsContext.GetHeight(), CSettings::Get().GetBool("pictures.useexifrotation"));
     if (!m_texture)
       return false;
     if (XbmcThreads::SystemClockMillis() - start > 100)
@@ -73,9 +80,9 @@ bool CImageLoader::DoWork()
   return true;
 }
 
-CGUILargeTextureManager::CLargeTexture::CLargeTexture(const CStdString &path)
+CGUILargeTextureManager::CLargeTexture::CLargeTexture(const std::string &path):
+  m_path(path)
 {
-  m_path = path;
   m_refCount = 1;
   m_timeToDelete = 0;
 }
@@ -148,7 +155,7 @@ void CGUILargeTextureManager::CleanupUnusedImages(bool immediately)
 
 // if available, increment reference count, and return the image.
 // else, add to the queue list if appropriate.
-bool CGUILargeTextureManager::GetImage(const CStdString &path, CTextureArray &texture, bool firstRequest)
+bool CGUILargeTextureManager::GetImage(const std::string &path, CTextureArray &texture, bool firstRequest, const bool useCache)
 {
   CSingleLock lock(m_listSection);
   for (listIterator it = m_allocated.begin(); it != m_allocated.end(); ++it)
@@ -164,12 +171,12 @@ bool CGUILargeTextureManager::GetImage(const CStdString &path, CTextureArray &te
   }
 
   if (firstRequest)
-    QueueImage(path);
+    QueueImage(path, useCache);
 
   return true;
 }
 
-void CGUILargeTextureManager::ReleaseImage(const CStdString &path, bool immediately)
+void CGUILargeTextureManager::ReleaseImage(const std::string &path, bool immediately)
 {
   CSingleLock lock(m_listSection);
   for (listIterator it = m_allocated.begin(); it != m_allocated.end(); ++it)
@@ -197,7 +204,7 @@ void CGUILargeTextureManager::ReleaseImage(const CStdString &path, bool immediat
 }
 
 // queue the image, and start the background loader if necessary
-void CGUILargeTextureManager::QueueImage(const CStdString &path)
+void CGUILargeTextureManager::QueueImage(const std::string &path, bool useCache)
 {
   CSingleLock lock(m_listSection);
   for (queueIterator it = m_queued.begin(); it != m_queued.end(); ++it)
@@ -212,7 +219,7 @@ void CGUILargeTextureManager::QueueImage(const CStdString &path)
 
   // queue the item
   CLargeTexture *image = new CLargeTexture(path);
-  unsigned int jobID = CJobManager::GetInstance().AddJob(new CImageLoader(path), this, CJob::PRIORITY_NORMAL);
+  unsigned int jobID = CJobManager::GetInstance().AddJob(new CImageLoader(path, useCache), this, CJob::PRIORITY_NORMAL);
   m_queued.push_back(make_pair(jobID, image));
 }
 

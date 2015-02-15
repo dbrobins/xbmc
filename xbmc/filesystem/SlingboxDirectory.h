@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2011-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2011-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ namespace XFILE
     CSlingboxDirectory();
     virtual ~CSlingboxDirectory();
     
-    virtual bool IsAllowed(const CStdString &strFile) const    { return true; }
-    virtual bool GetDirectory(const CStdString& strPath, CFileItemList &items);
+    virtual bool AllowAll() const { return true; }
+    virtual bool GetDirectory(const CURL& url, CFileItemList &items);
   };
 }

@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2010-2012 Team XBMC
+ *      Copyright (C) 2010-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -19,7 +19,7 @@
  *
  */
 
-#include "../AEAudioFormat.h"
+#include "cores/AudioEngine/Utils/AEAudioFormat.h"
 #include "cores/IAudioCallback.h"
 #include <stdint.h>
 
@@ -50,12 +50,14 @@ public:
   virtual unsigned int GetSpace() = 0;
 
   /**
-   * Add interleaved PCM data to the stream
-   * @param data The interleaved PCM data
-   * @param size The size in bytes of data, if this is > GetSpace() only up to GetSpace() bytes will be consumed
-   * @return The number of bytes consumed
+   * Add planar or interleaved PCM data to the stream
+   * @param data array of pointers to the planes
+   * @param offset to frame in frames
+   * @param frames number of frames
+   * @param pts timestamp
+   * @return The number of frames consumed
    */
-  virtual unsigned int AddData(void *data, unsigned int size) = 0;
+  virtual unsigned int AddData(uint8_t* const *data, unsigned int offset, unsigned int frames, double pts = 0.0) = 0;
 
   /**
    * Returns the time in seconds that it will take
@@ -63,6 +65,12 @@ public:
    * @return seconds
    */
   virtual double GetDelay() = 0;
+
+  /**
+   * Returns playing PTS
+   * @return millis
+   */
+  virtual int64_t GetPlayingPTS() = 0;
 
   /**
    * Returns if the stream is buffering
@@ -97,7 +105,7 @@ public:
    * Start draining the stream
    * @note Once called AddData will not consume more data.
    */
-  virtual void Drain() = 0;
+  virtual void Drain(bool wait) = 0;
 
   /**
    * Returns true if the is stream draining
@@ -137,6 +145,18 @@ public:
    * @param factor The replay gain factor
    */
   virtual void SetReplayGain(float factor) = 0;
+
+  /**
+   * Gets the stream's volume amplification in linear units.
+   * @return The volume amplification factor between 1.0 and 1000.0
+   */
+  virtual float GetAmplification() = 0;
+
+  /**
+   * Sets the stream's volume amplification in linear units.
+   * @param The volume amplification factor between 1.0 and 1000.0
+   */
+  virtual void SetAmplification(float amplify) = 0;
 
   /**
    * Returns the size of one audio frame in bytes (channelCount * resolution)
@@ -213,5 +233,10 @@ public:
    * Slave a stream to resume when this stream has drained
    */
   virtual void RegisterSlave(IAEStream *stream) = 0;
+
+  /**
+   * Sginal a clock change
+   */
+  virtual void Discontinuity() = 0;
 };
 

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 #include "utils/log.h"
 #include "dialogs/GUIDialogKaiToast.h"
 
-#include "epg/Epg.h"
+#include "epg/EpgContainer.h"
 #include "pvr/PVRManager.h"
 #include "pvr/channels/PVRChannelGroupsContainer.h"
 #include "pvr/channels/PVRChannelGroupInternal.h"
@@ -55,6 +55,7 @@ CAddonCallbacksPVR::CAddonCallbacksPVR(CAddon* addon)
   m_callbacks->TriggerChannelGroupsUpdate = PVRTriggerChannelGroupsUpdate;
   m_callbacks->TriggerTimerUpdate         = PVRTriggerTimerUpdate;
   m_callbacks->TriggerRecordingUpdate     = PVRTriggerRecordingUpdate;
+  m_callbacks->TriggerEpgUpdate           = PVRTriggerEpgUpdate;
   m_callbacks->FreeDemuxPacket            = PVRFreeDemuxPacket;
   m_callbacks->AllocateDemuxPacket        = PVRAllocateDemuxPacket;
   m_callbacks->TransferChannelGroup       = PVRTransferChannelGroup;
@@ -129,7 +130,7 @@ void CAddonCallbacksPVR::PVRTransferChannelGroupMember(void *addonData, const AD
   else if (group->IsRadio() == channel->IsRadio())
   {
     /* transfer this entry to the group */
-    group->AddToGroup(*channel, member->iChannelNumber, false);
+    group->AddToGroup(*channel, member->iChannelNumber);
   }
 }
 
@@ -190,7 +191,7 @@ void CAddonCallbacksPVR::PVRTransferRecordingEntry(void *addonData, const ADDON_
   }
 
   /* transfer this entry to the recordings container */
-  CPVRRecording transferRecording(*recording, client->GetID());
+  CPVRRecordingPtr transferRecording(new CPVRRecording(*recording, client->GetID()));
   xbmcRecordings->UpdateFromClient(transferRecording);
 }
 
@@ -237,6 +238,7 @@ void CAddonCallbacksPVR::PVRAddMenuHook(void *addonData, PVR_MENUHOOK *hook)
     PVR_MENUHOOK hookInt;
     hookInt.iHookId            = hook->iHookId;
     hookInt.iLocalizedStringId = hook->iLocalizedStringId;
+    hookInt.category           = hook->category;
 
     /* add this new hook */
     hooks->push_back(hookInt);
@@ -252,13 +254,13 @@ void CAddonCallbacksPVR::PVRRecording(void *addonData, const char *strName, cons
     return;
   }
 
-  CStdString strLine1;
+  std::string strLine1;
   if (bOnOff)
-    strLine1.Format(g_localizeStrings.Get(19197), client->Name());
+    strLine1 = StringUtils::Format(g_localizeStrings.Get(19197).c_str(), client->Name().c_str());
   else
-    strLine1.Format(g_localizeStrings.Get(19198), client->Name());
+    strLine1 = StringUtils::Format(g_localizeStrings.Get(19198).c_str(), client->Name().c_str());
 
-  CStdString strLine2;
+  std::string strLine2;
   if (strName)
     strLine2 = strName;
   else if (strFileName)
@@ -293,6 +295,19 @@ void CAddonCallbacksPVR::PVRTriggerChannelGroupsUpdate(void *addonData)
 {
   /* update all channel groups in the next iteration of the pvrmanager's main loop */
   g_PVRManager.TriggerChannelGroupsUpdate();
+}
+
+void CAddonCallbacksPVR::PVRTriggerEpgUpdate(void *addonData, unsigned int iChannelUid)
+{
+  // get the client
+  CPVRClient *client = GetPVRClient(addonData);
+  if (!client)
+  {
+    CLog::Log(LOGERROR, "PVR - %s - invalid handler data", __FUNCTION__);
+    return;
+  }
+
+  g_EpgContainer.UpdateRequest(client->GetID(), iChannelUid);
 }
 
 void CAddonCallbacksPVR::PVRFreeDemuxPacket(void *addonData, DemuxPacket* pPacket)

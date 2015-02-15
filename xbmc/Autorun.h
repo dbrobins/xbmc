@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,12 +32,22 @@
 
 #ifdef HAS_DVD_DRIVE
 
-#include "utils/StdString.h"
+#include <string>
+#include <vector>
 
 namespace XFILE
 {
   class IDirectory;
 }
+
+class CSetting;
+
+enum AutoCDAction
+{
+  AUTOCD_NONE = 0,
+  AUTOCD_PLAY,
+  AUTOCD_RIP
+};
 
 namespace MEDIA_DETECT
 {
@@ -46,16 +56,19 @@ class CAutorun
 public:
   CAutorun();
   virtual ~CAutorun();
-  static bool CanResumePlayDVD(const CStdString& path);
-  static bool PlayDisc(const CStdString& path="", bool bypassSettings = false, bool startFromBeginning = false);
-  static bool PlayDiscAskResume(const CStdString& path="");
+  static bool CanResumePlayDVD(const std::string& path);
+  static bool PlayDisc(const std::string& path="", bool bypassSettings = false, bool startFromBeginning = false);
+  static bool PlayDiscAskResume(const std::string& path="");
   bool IsEnabled() const;
   void Enable();
   void Disable();
   void HandleAutorun();
-  static void ExecuteAutorun(const CStdString& path = "", bool bypassSettings = false, bool ignoreplaying = false, bool startFromBeginning = false);
+  static void ExecuteAutorun(const std::string& path = "", bool bypassSettings = false, bool ignoreplaying = false, bool startFromBeginning = false);
+
+  static void SettingOptionAudioCdActionsFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
+
 protected:
-  static bool RunDisc(XFILE::IDirectory* pDir, const CStdString& strDrive, int& nAddedToPlaylist, bool bRoot, bool bypassSettings, bool startFromBeginning);
+  static bool RunDisc(XFILE::IDirectory* pDir, const std::string& strDrive, int& nAddedToPlaylist, bool bRoot, bool bypassSettings, bool startFromBeginning);
   bool m_bEnable;
 };
 }

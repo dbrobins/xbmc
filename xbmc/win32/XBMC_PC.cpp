@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,10 +18,11 @@
  *
  */
 
+#include "AppParamParser.h"
 #include "settings/AdvancedSettings.h"
-#include "settings/AppParamParser.h"
 #include "utils/CharsetConverter.h"
 #include "utils/log.h"
+#include "utils/SystemInfo.h"
 #include "threads/platform/win/Win32Exception.h"
 #include "shellapi.h"
 #include "dbghelp.h"
@@ -30,10 +31,19 @@
 #include "Application.h"
 #include "XbmcContext.h"
 #include "GUIInfoManager.h"
+#include "utils/StringUtils.h"
+#include "utils/CPUInfo.h"
+#include <mmdeviceapi.h>
+#include "win32/IMMNotificationClient.h"
+
+#ifndef _DEBUG
+#define XBMC_TRACK_EXCEPTIONS
+#endif
 
 // Minidump creation function
 LONG WINAPI CreateMiniDump( EXCEPTION_POINTERS* pEp )
 {
+  win32_exception::write_stacktrace(pEp);
   win32_exception::write_minidump(pEp);
   return pEp->ExceptionRecord->ExceptionCode;;
 }
@@ -62,11 +72,12 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR commandLine, INT )
   win32_exception::set_version(g_infoManager.GetVersion());
   SetUnhandledExceptionFilter( CreateMiniDump );
 
-  // check if XBMC is already running
-  CreateMutex(NULL, FALSE, "XBMC Media Center");
+  // check if Kodi is already running
+  std::string appName = CSysInfo::GetAppName();
+  CreateMutex(NULL, FALSE, (appName + " Media Center").c_str());
   if(GetLastError() == ERROR_ALREADY_EXISTS)
   {
-    HWND m_hwnd = FindWindow("XBMC","XBMC");
+    HWND m_hwnd = FindWindow(appName.c_str(), appName.c_str());
     if(m_hwnd != NULL)
     {
       // switch to the running instance
@@ -80,10 +91,16 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR commandLine, INT )
   if(CWIN32Util::GetDesktopColorDepth() < 32)
   {
     //FIXME: replace it by a SDL window for all ports
-    MessageBox(NULL, "Desktop Color Depth isn't 32Bit", "XBMC: Fatal Error", MB_OK|MB_ICONERROR);
+    MessageBox(NULL, "Desktop Color Depth isn't 32Bit", (appName + ": Fatal Error").c_str(), MB_OK|MB_ICONERROR);
     return 0;
   }
 #endif
+
+  if((g_cpuInfo.GetCPUFeatures() & CPU_FEATURE_SSE2) == 0)
+  {
+    MessageBox(NULL, "No SSE2 support detected", (appName + ": Fatal Error").c_str(), MB_OK|MB_ICONERROR);
+    return 0;
+  }
 
   //Initialize COM
   CoInitializeEx(NULL, COINIT_MULTITHREADED);
@@ -102,8 +119,11 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR commandLine, INT )
     int argc;
     LPWSTR* argvW = CommandLineToArgvW(GetCommandLineW(), &argc);
 
-    CStdString* strargvA = new CStdString[argc];
+    std::vector<std::string> strargvA;
+    strargvA.resize(argc);
     const char** argv = (const char**) LocalAlloc(LMEM_FIXED, argc*sizeof(char*));
+    if (!argv)
+      return 20;
     for (int i = 0; i < argc; i++)
     {
       g_charsetConverter.wToUTF8(argvW[i], strargvA[i]);
@@ -117,7 +137,6 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR commandLine, INT )
     // Clean up the storage we've used
     LocalFree(argvW);
     LocalFree(argv);
-    delete [] strargvA;
   }
 
   // Initialise Winsock
@@ -127,42 +146,108 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR commandLine, INT )
   // use 1 ms timer precision - like SDL initialization used to do
   timeBeginPeriod(1);
 
-  // Create and run the app
-  if(!g_application.Create())
+#ifdef XBMC_TRACK_EXCEPTIONS
+  try
   {
-    CStdString errorMsg;
-    errorMsg.Format("CApplication::Create() failed - check log file and that it is writable");
-    MessageBox(NULL, errorMsg.c_str(), "XBMC: Error", MB_OK|MB_ICONERROR);
-    return 0;
+#endif
+    // Create and run the app
+    if(!g_application.Create())
+    {
+      MessageBox(NULL, "ERROR: Unable to create application. Exiting.", (appName + ": Error").c_str(), MB_OK|MB_ICONERROR);
+      return 1;
+    }
+#ifdef XBMC_TRACK_EXCEPTIONS
   }
+  catch (const XbmcCommons::UncheckedException &e)
+  {
+    e.LogThrowMessage("CApplication::Create()");
+    MessageBox(NULL, "ERROR: Unable to create application. Exiting.", (appName + ": Error").c_str(), MB_OK|MB_ICONERROR);
+    return 1;
+  }
+  catch (...)
+  {
+    CLog::Log(LOGERROR, "exception in CApplication::Create()");
+    MessageBox(NULL, "ERROR: Unable to create application. Exiting.", (appName + ": Error").c_str(), MB_OK|MB_ICONERROR);
+    return 1;
+  }
+#endif
 
 #ifndef _DEBUG
   // we don't want to see the "no disc in drive" windows message box
   SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOOPENFILEERRORBOX);
 #endif
 
-  if (!g_application.CreateGUI())
+#ifdef XBMC_TRACK_EXCEPTIONS
+  try
   {
-    CStdString errorMsg;
-    errorMsg.Format("CApplication::CreateGUI() failed - Check log file for display errors");
-    MessageBox(NULL, errorMsg.c_str(), "XBMC: Error", MB_OK|MB_ICONERROR);
-    return 0;
+#endif
+    if (!g_application.CreateGUI())
+    {
+      MessageBox(NULL, "ERROR: Unable to create GUI. Exiting.", (appName + ": Error").c_str(), MB_OK|MB_ICONERROR);
+      return 1;
+    }
+#ifdef XBMC_TRACK_EXCEPTIONS
+  }
+  catch (const XbmcCommons::UncheckedException &e)
+  {
+    e.LogThrowMessage("CApplication::CreateGUI()");
+    MessageBox(NULL, "ERROR: Unable to create GUI. Exiting.", (appName + ": Error").c_str(), MB_OK|MB_ICONERROR);
+    return 1;
+  }
+  catch (...)
+  {
+    CLog::Log(LOGERROR, "exception in CApplication::CreateGUI()");
+    MessageBox(NULL, "ERROR: Unable to create GUI. Exiting.", (appName + ": Error").c_str(), MB_OK|MB_ICONERROR);
+    return 1;
+  }
+#endif
+
+#ifdef XBMC_TRACK_EXCEPTIONS
+  try
+  {
+#endif
+    if (!g_application.Initialize())
+    {
+      MessageBox(NULL, "ERROR: Unable to Initialize. Exiting.", (appName + ": Error").c_str(), MB_OK|MB_ICONERROR);
+      return 1;
+    }
+#ifdef XBMC_TRACK_EXCEPTIONS
+  }
+  catch (const XbmcCommons::UncheckedException &e)
+  {
+    e.LogThrowMessage("CApplication::Initialize()");
+    MessageBox(NULL, "ERROR: Unable to Initialize. Exiting.", (appName + ": Error").c_str(), MB_OK|MB_ICONERROR);
+    return 1;
+  }
+  catch (...)
+  {
+    CLog::Log(LOGERROR, "exception in CApplication::Initialize()");
+    MessageBox(NULL, "ERROR: Unable to Initialize. Exiting.", (appName + ": Error").c_str(), MB_OK|MB_ICONERROR);
+    return 1;
+  }
+#endif
+
+  IMMDeviceEnumerator *pEnumerator = NULL;
+  CMMNotificationClient cMMNC;
+  HRESULT hr = CoCreateInstance(CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL, IID_IMMDeviceEnumerator, (void**)&pEnumerator);
+  if(SUCCEEDED(hr))
+  {
+    pEnumerator->RegisterEndpointNotificationCallback(&cMMNC);
+    SAFE_RELEASE(pEnumerator);
   }
 
-  if (!g_application.Initialize())
-  {
-    CStdString errorMsg;
-    errorMsg.Format("CApplication::Initialize() failed - Check log file and that it is writable");
-    MessageBox(NULL, errorMsg.c_str(), "XBMC: Error", MB_OK|MB_ICONERROR);
-    return 0;
-  }
-
-  g_application.Run(true);
+  g_application.Run();
 
   // clear previously set timer resolution
   timeEndPeriod(1);		
 
   // the end
+  hr = CoCreateInstance(CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL, IID_IMMDeviceEnumerator, (void**)&pEnumerator);
+  if(SUCCEEDED(hr))
+  {
+    pEnumerator->UnregisterEndpointNotificationCallback(&cMMNC);
+    SAFE_RELEASE(pEnumerator);
+  }
   WSACleanup();
   CoUninitialize();
 

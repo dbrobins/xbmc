@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,28 +21,7 @@
  */
 
 #include "guilib/GUIDialog.h"
-
-class CGUISliderControl;
-
-/*! \brief Interface class for callback from the slider dialog
- Used to pass feedback from the slider dialog to a caller.  Users of the
- slider dialog should derive from this class if they wish to respond to changes
- in the slider by the user as they happen.  OnSliderChange is called in response
- to the user moving the slider.  The caller may then update the text on the slider
- and update anything that should be changed as the slider is adjusted.
- \sa CGUIDialogSlider
- */
-class ISliderCallback
-{
-public:
-  virtual ~ISliderCallback() {}
-  
-  /*! \brief Callback function called whenever the user moves the slider
-   \param data pointer of callbackData passed into CGUIDialogSlider::ShowAndGetInput()
-   \param slider pointer to the slider control on the dialog 
-   */
-  virtual void OnSliderChange(void *data, CGUISliderControl *slider)=0;
-};
+#include "guilib/ISliderCallback.h"
 
 class CGUIDialogSlider : public CGUIDialog
 {
@@ -64,7 +43,7 @@ public:
    \param callbackData pointer to callback-specific data (defaults to NULL)
    \sa ISliderCallback, Display
    */
-  static void ShowAndGetInput(const CStdString &label, float value, float min, float delta, float max, ISliderCallback *callback, void *callbackData = NULL);
+  static void ShowAndGetInput(const std::string &label, float value, float min, float delta, float max, ISliderCallback *callback, void *callbackData = NULL);
 
   /*! \brief Show the slider dialog as a response to user input
    Shows the slider with the given values for a short period of time, used for UI feedback of a set user action.
@@ -79,7 +58,7 @@ public:
    */
   static void Display(int label, float value, float min, float delta, float max, ISliderCallback *callback);
 protected:
-  void SetSlider(const CStdString &label, float value, float min, float delta, float max, ISliderCallback *callback, void *callbackData);
+  void SetSlider(const std::string &label, float value, float min, float delta, float max, ISliderCallback *callback, void *callbackData);
   virtual void OnWindowLoaded();
 
   ISliderCallback *m_callback;

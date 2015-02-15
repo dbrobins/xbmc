@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,6 +29,10 @@
 #include "windowing/WindowingFactory.h"
 #include "pictures/Picture.h"
 
+#ifdef TARGET_RASPBERRY_PI
+#include "xbmc/linux/RBP.h"
+#endif
+
 #ifdef HAS_VIDEO_PLAYBACK
 #include "cores/VideoRenderers/RenderManager.h"
 #endif
@@ -39,7 +43,13 @@
 #include "utils/JobManager.h"
 #include "utils/URIUtils.h"
 #include "utils/log.h"
-#include "settings/GUISettings.h"
+#include "settings/SettingPath.h"
+#include "settings/Settings.h"
+#include "settings/windows/GUIControlSettings.h"
+
+#if defined(HAS_LIBAMCODEC)
+#include "utils/ScreenshotAML.h"
+#endif
 
 using namespace std;
 using namespace XFILE;
@@ -52,13 +62,22 @@ CScreenshotSurface::CScreenshotSurface()
   m_buffer = NULL;
 }
 
+CScreenshotSurface::~CScreenshotSurface()
+{
+  delete m_buffer;
+}
+
 bool CScreenshotSurface::capture()
 {
-
-#ifdef HAS_DX
+#if defined(TARGET_RASPBERRY_PI)
+  g_RBP.GetDisplaySize(m_width, m_height);
+  m_buffer = g_RBP.CaptureDisplay(m_width, m_height, &m_stride, true, false);
+  if (!m_buffer)
+    return false;
+#elif defined(HAS_DX)
   LPDIRECT3DSURFACE9 lpSurface = NULL, lpBackbuffer = NULL;
   g_graphicsContext.Lock();
-  if (g_application.IsPlayingVideo())
+  if (g_application.m_pPlayer->IsPlayingVideo())
   {
 #ifdef HAS_VIDEO_PLAYBACK
     g_renderManager.SetupScreenshot();
@@ -104,7 +123,7 @@ bool CScreenshotSurface::capture()
 #elif defined(HAS_GL) || defined(HAS_GLES)
 
   g_graphicsContext.BeginPaint();
-  if (g_application.IsPlayingVideo())
+  if (g_application.m_pPlayer->IsPlayingVideo())
   {
 #ifdef HAS_VIDEO_PLAYBACK
     g_renderManager.SetupScreenshot();
@@ -147,6 +166,11 @@ bool CScreenshotSurface::capture()
   }
 
   delete [] surface;
+  
+#if defined(HAS_LIBAMCODEC)
+  // Captures the current visible videobuffer and blend it into m_buffer (captured overlay)
+  CScreenshotAML::CaptureVideoFrame(m_buffer, m_width, m_height);
+#endif
 
 #else
   //nothing to take a screenshot from
@@ -156,7 +180,7 @@ bool CScreenshotSurface::capture()
   return true;
 }
 
-void CScreenShot::TakeScreenshot(const CStdString &filename, bool sync)
+void CScreenShot::TakeScreenshot(const std::string &filename, bool sync)
 {
 
   CScreenshotSurface surface;
@@ -183,6 +207,7 @@ void CScreenShot::TakeScreenshot(const CStdString &filename, bool sync)
       CLog::Log(LOGERROR, "Unable to write screenshot %s", filename.c_str());
 
     delete [] surface.m_buffer;
+    surface.m_buffer = NULL;
   }
   else
   {
@@ -197,18 +222,30 @@ void CScreenShot::TakeScreenshot(const CStdString &filename, bool sync)
     //buffer is deleted from CThumbnailWriter
     CThumbnailWriter* thumbnailwriter = new CThumbnailWriter(surface.m_buffer, surface.m_width, surface.m_height, surface.m_stride, filename);
     CJobManager::GetInstance().AddJob(thumbnailwriter, NULL);
+    surface.m_buffer = NULL;
   }
 }
 
 void CScreenShot::TakeScreenshot()
 {
   static bool savingScreenshots = false;
-  static vector<CStdString> screenShots;
-
+  static vector<std::string> screenShots;
   bool promptUser = false;
+  std::string strDir;
+
   // check to see if we have a screenshot folder yet
-  CStdString strDir = g_guiSettings.GetString("debug.screenshotpath", false);
-  if (strDir.IsEmpty())
+  CSettingPath *screenshotSetting = (CSettingPath*)CSettings::Get().GetSetting("debug.screenshotpath");
+  if (screenshotSetting != NULL)
+  {
+    strDir = screenshotSetting->GetValue();
+    if (strDir.empty())
+    {
+      if (CGUIControlButtonSetting::GetPath(screenshotSetting))
+        strDir = screenshotSetting->GetValue();
+    }
+  }
+
+  if (strDir.empty())
   {
     strDir = "special://temp/";
     if (!savingScreenshots)
@@ -220,24 +257,34 @@ void CScreenShot::TakeScreenshot()
   }
   URIUtils::RemoveSlashAtEnd(strDir);
 
-  if (!strDir.IsEmpty())
+  if (!strDir.empty())
   {
-    CStdString file = CUtil::GetNextFilename(URIUtils::AddFileToFolder(strDir, "screenshot%03d.png"), 999);
+    std::string file = CUtil::GetNextFilename(URIUtils::AddFileToFolder(strDir, "screenshot%03d.png"), 999);
 
-    if (!file.IsEmpty())
+    if (!file.empty())
     {
       TakeScreenshot(file, false);
       if (savingScreenshots)
         screenShots.push_back(file);
       if (promptUser)
       { // grab the real directory
-        CStdString newDir = g_guiSettings.GetString("debug.screenshotpath");
-        if (!newDir.IsEmpty())
+        std::string newDir;
+        if (screenshotSetting != NULL)
+        {
+          newDir = screenshotSetting->GetValue();
+          if (newDir.empty())
+          {
+            if (CGUIControlButtonSetting::GetPath(screenshotSetting))
+              newDir = screenshotSetting->GetValue();
+          }
+        }
+
+        if (!newDir.empty())
         {
           for (unsigned int i = 0; i < screenShots.size(); i++)
           {
-            CStdString file = CUtil::GetNextFilename(URIUtils::AddFileToFolder(newDir, "screenshot%03d.png"), 999);
-            CFile::Cache(screenShots[i], file);
+            std::string file = CUtil::GetNextFilename(URIUtils::AddFileToFolder(newDir, "screenshot%03d.png"), 999);
+            CFile::Copy(screenShots[i], file);
           }
           screenShots.clear();
         }

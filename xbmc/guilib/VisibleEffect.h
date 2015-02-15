@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,7 +31,11 @@ class CGUIListItem;
 
 #include "TransformMatrix.h"  // needed for the TransformMatrix member
 #include "Geometry.h"         // for CPoint, CRect
-#include "utils/StdString.h"
+#include <memory>
+#include "interfaces/info/InfoBool.h"
+
+#include <string>
+#include <vector>
 
 enum ANIMATION_TYPE
 {
@@ -55,7 +59,7 @@ public:
   CAnimEffect(const CAnimEffect &src);
 
   virtual ~CAnimEffect();
-  const CAnimEffect &operator=(const CAnimEffect &src);
+  CAnimEffect& operator=(const CAnimEffect &src);
 
   void Calculate(unsigned int time, const CPoint &center);
   void ApplyState(ANIMATION_STATE state, const CPoint &center);
@@ -65,7 +69,7 @@ public:
   const TransformMatrix &GetTransform() const { return m_matrix; };
   EFFECT_TYPE GetType() const { return m_effect; };
 
-  static Tweener* GetTweener(const TiXmlElement *pAnimationNode);
+  static std::shared_ptr<Tweener> GetTweener(const TiXmlElement *pAnimationNode);
 protected:
   TransformMatrix m_matrix;
   EFFECT_TYPE m_effect;
@@ -77,7 +81,7 @@ private:
   unsigned int m_length;
   unsigned int m_delay;
 
-  Tweener *m_pTweener;
+  std::shared_ptr<Tweener> m_pTweener;
 };
 
 class CFadeEffect : public CAnimEffect
@@ -147,7 +151,7 @@ public:
 
   virtual ~CAnimation();
 
-  const CAnimation &operator=(const CAnimation &src);
+  CAnimation& operator=(const CAnimation &src);
 
   static CAnimation CreateFader(float start, float end, unsigned int delay, unsigned int length, ANIMATION_TYPE type = ANIM_TYPE_NONE);
 
@@ -175,15 +179,14 @@ public:
 
 private:
   void Calculate(const CPoint &point);
-  void AddEffect(const CStdString &type, const TiXmlElement *node, const CRect &rect);
-  void AddEffect(CAnimEffect *effect);
+  void AddEffect(const std::string &type, const TiXmlElement *node, const CRect &rect);
 
   enum ANIM_REPEAT { ANIM_REPEAT_NONE = 0, ANIM_REPEAT_PULSE, ANIM_REPEAT_LOOP };
 
   // type of animation
   ANIMATION_TYPE m_type;
   bool m_reversible;
-  unsigned int m_condition;
+  INFO::InfoPtr m_condition;
 
   // conditional anims can repeat
   ANIM_REPEAT m_repeatAnim;
@@ -213,9 +216,9 @@ private:
 class CScroller
 {
 public:
-  CScroller(unsigned int duration = 200, Tweener *tweener = NULL);
+  CScroller(unsigned int duration = 200, std::shared_ptr<Tweener> tweener = std::shared_ptr<Tweener>());
   CScroller(const CScroller& right);
-  const CScroller &operator=(const CScroller &src);
+  CScroller& operator=(const CScroller &src);
   ~CScroller();
 
   /**
@@ -257,5 +260,5 @@ private:
   unsigned int m_lastTime;                //!< Brief last remember time (updated each time Scroll() method is called)
 
   unsigned int m_duration;                //!< Brief duration of scroll
-  Tweener* m_pTweener;
+  std::shared_ptr<Tweener> m_pTweener;
 };

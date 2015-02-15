@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -43,12 +43,18 @@ namespace PVR
     void OnSearch();
 
   protected:
+    virtual void OnInitWindow();
+
     void UpdateChannelSpin(void);
     void UpdateGroupsSpin(void);
     void UpdateGenreSpin(void);
     void UpdateDurationSpin(void);
-    void ReadDateTime(const CStdString &strDate, const CStdString &strTime, CDateTime &dateTime) const;
+    void ReadDateTime(const std::string &strDate, const std::string &strTime, CDateTime &dateTime) const;
     void Update();
+
+    bool IsRadioSelected(int controlID);
+    int  GetSpinValue(int controlID);
+    std::string GetEditValue(int controlID);
 
     bool m_bConfirmed;
     bool m_bCanceled;

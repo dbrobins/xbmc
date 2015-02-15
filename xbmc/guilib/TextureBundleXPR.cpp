@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,18 +24,19 @@
 #include "GraphicContext.h"
 #include "DirectXGraphics.h"
 #include "utils/log.h"
-#ifndef _LINUX
+#ifndef TARGET_POSIX
 #include <sys/stat.h>
 #include "utils/CharsetConverter.h"
 #endif
 #include <lzo/lzo1x.h>
 #include "addons/Skin.h"
-#include "settings/GUISettings.h"
+#include "settings/Settings.h"
 #include "filesystem/SpecialProtocol.h"
 #include "utils/EndianSwap.h"
 #include "utils/URIUtils.h"
+#include "utils/StringUtils.h"
 
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
 #pragma comment(lib,"liblzo2.lib")
 #endif
 
@@ -58,10 +59,14 @@ public:
   CAutoBuffer() { p = 0; }
   explicit CAutoBuffer(size_t s) { p = (BYTE*)malloc(s); }
   ~CAutoBuffer() { free(p); }
-operator BYTE*() { return p; }
+operator BYTE*() const { return p; }
   void Set(BYTE* buf) { free(p); p = buf; }
   bool Resize(size_t s);
 void Release() { p = 0; }
+
+private:
+  CAutoBuffer(const CAutoBuffer&);
+  CAutoBuffer& operator=(const CAutoBuffer&);
 };
 
 bool CAutoBuffer::Resize(size_t s)
@@ -91,7 +96,7 @@ public:
   CAutoTexBuffer() { p = 0; }
   explicit CAutoTexBuffer(size_t s) { p = (BYTE*)XPhysicalAlloc(s, MAXULONG_PTR, 128, PAGE_READWRITE); }
   ~CAutoTexBuffer() { if (p) XPhysicalFree(p); }
-operator BYTE*() { return p; }
+operator BYTE*() const { return p; }
   BYTE* Set(BYTE* buf) { if (p) XPhysicalFree(p); return p = buf; }
 void Release() { p = 0; }
 };
@@ -119,16 +124,16 @@ bool CTextureBundleXPR::OpenBundle()
   if (m_hFile != NULL)
     Cleanup();
 
-  CStdString strPath;
+  std::string strPath;
 
   if (m_themeBundle)
   {
     // if we are the theme bundle, we only load if the user has chosen
     // a valid theme (or the skin has a default one)
-    CStdString theme = g_guiSettings.GetString("lookandfeel.skintheme");
-    if (!theme.IsEmpty() && theme.CompareNoCase("SKINDEFAULT"))
+    std::string theme = CSettings::Get().GetString("lookandfeel.skintheme");
+    if (!theme.empty() && !StringUtils::EqualsNoCase(theme, "SKINDEFAULT"))
     {
-      CStdString themeXPR(URIUtils::ReplaceExtension(theme, ".xpr"));
+      std::string themeXPR(URIUtils::ReplaceExtension(theme, ".xpr"));
       strPath = URIUtils::AddFileToFolder(g_graphicsContext.GetMediaDir(), "media");
       strPath = URIUtils::AddFileToFolder(strPath, themeXPR);
     }
@@ -140,8 +145,8 @@ bool CTextureBundleXPR::OpenBundle()
 
   strPath = CSpecialProtocol::TranslatePathConvertCase(strPath);
 
-#ifndef _LINUX
-  CStdStringW strPathW;
+#ifndef TARGET_POSIX
+  std::wstring strPathW;
   g_charsetConverter.utf8ToW(CSpecialProtocol::TranslatePath(strPath), strPathW, false);
   m_hFile = _wfopen(strPathW.c_str(), L"rb");
 #else
@@ -194,7 +199,7 @@ bool CTextureBundleXPR::OpenBundle()
   n = (HeaderSize - sizeof(XPR_HEADER)) / sizeof(DiskFileHeader_t);
   for (unsigned i = 0; i < n; ++i)
   {
-    std::pair<CStdString, FileHeader_t> entry;
+    std::pair<std::string, FileHeader_t> entry;
     entry.first = Normalize(FileHeader[i].Name);
     entry.second.Offset = Endian_SwapLE32(FileHeader[i].Offset);
     entry.second.UnpackedSize = Endian_SwapLE32(FileHeader[i].UnpackedSize);
@@ -224,7 +229,7 @@ void CTextureBundleXPR::Cleanup()
   m_FileHeaders.clear();
 }
 
-bool CTextureBundleXPR::HasFile(const CStdString& Filename)
+bool CTextureBundleXPR::HasFile(const std::string& Filename)
 {
   if (m_hFile == NULL && !OpenBundle())
     return false;
@@ -240,35 +245,34 @@ bool CTextureBundleXPR::HasFile(const CStdString& Filename)
       return false;
   }
 
-  CStdString name = Normalize(Filename);
+  std::string name = Normalize(Filename);
   return m_FileHeaders.find(name) != m_FileHeaders.end();
 }
 
-void CTextureBundleXPR::GetTexturesFromPath(const CStdString &path, std::vector<CStdString> &textures)
+void CTextureBundleXPR::GetTexturesFromPath(const std::string &path, std::vector<std::string> &textures)
 {
-  if (path.GetLength() > 1 && path[1] == ':')
+  if (path.size() > 1 && path[1] == ':')
     return;
 
   if (m_hFile == NULL && !OpenBundle())
     return;
 
-  CStdString testPath = Normalize(path);
+  std::string testPath = Normalize(path);
   if (!URIUtils::HasSlashAtEnd(testPath))
     testPath += "\\";
-  int testLength = testPath.GetLength();
-  std::map<CStdString, FileHeader_t>::iterator it;
-  for (it = m_FileHeaders.begin(); it != m_FileHeaders.end(); it++)
+  std::map<std::string, FileHeader_t>::iterator it;
+  for (it = m_FileHeaders.begin(); it != m_FileHeaders.end(); ++it)
   {
-    if (it->first.Left(testLength).Equals(testPath))
+    if (StringUtils::StartsWithNoCase(it->first, testPath))
       textures.push_back(it->first);
   }
 }
 
-bool CTextureBundleXPR::LoadFile(const CStdString& Filename, CAutoTexBuffer& UnpackedBuf)
+bool CTextureBundleXPR::LoadFile(const std::string& Filename, CAutoTexBuffer& UnpackedBuf)
 {
-  CStdString name = Normalize(Filename);
+  std::string name = Normalize(Filename);
 
-  std::map<CStdString, FileHeader_t>::iterator file = m_FileHeaders.find(name);
+  std::map<std::string, FileHeader_t>::iterator file = m_FileHeaders.find(name);
   if (file == m_FileHeaders.end())
     return false;
 
@@ -278,13 +282,13 @@ bool CTextureBundleXPR::LoadFile(const CStdString& Filename, CAutoTexBuffer& Unp
 
   if (!buffer || !UnpackedBuf.Set((BYTE*)XPhysicalAlloc(file->second.UnpackedSize, MAXULONG_PTR, 128, PAGE_READWRITE)))
   { // failed due to lack of memory
-#ifndef _LINUX
+#ifndef TARGET_POSIX
     MEMORYSTATUSEX stat;
     stat.dwLength = sizeof(MEMORYSTATUSEX);
     GlobalMemoryStatusEx(&stat);
-    CLog::Log(LOGERROR, "Out of memory loading texture: %s (need %lu bytes, have %"PRIu64" bytes)", name.c_str(),
+    CLog::Log(LOGERROR, "Out of memory loading texture: %s (need %lu bytes, have %" PRIu64" bytes)", name.c_str(),
               file->second.UnpackedSize + file->second.PackedSize, stat.ullAvailPhys);
-#elif defined(TARGET_DARWIN) || defined(__FreeBSD__)
+#elif defined(TARGET_DARWIN) || defined(TARGET_FREEBSD)
     CLog::Log(LOGERROR, "Out of memory loading texture: %s (need %d bytes)", name.c_str(),
               file->second.UnpackedSize + file->second.PackedSize);
 #else
@@ -337,7 +341,7 @@ bool CTextureBundleXPR::LoadFile(const CStdString& Filename, CAutoTexBuffer& Unp
   return success;
 }
 
-bool CTextureBundleXPR::LoadTexture(const CStdString& Filename, CBaseTexture** ppTexture,
+bool CTextureBundleXPR::LoadTexture(const std::string& Filename, CBaseTexture** ppTexture,
                                      int &width, int &height)
 {
   DWORD ResDataOffset;
@@ -407,7 +411,7 @@ PackedLoadError:
   return false;
 }
 
-int CTextureBundleXPR::LoadAnim(const CStdString& Filename, CBaseTexture*** ppTextures,
+int CTextureBundleXPR::LoadAnim(const std::string& Filename, CBaseTexture*** ppTextures,
                               int &width, int &height, int& nLoops, int** ppDelays)
 {
   DWORD ResDataOffset;
@@ -502,10 +506,11 @@ void CTextureBundleXPR::SetThemeBundle(bool themeBundle)
 
 // normalize to how it's stored within the bundle
 // lower case + using \\ rather than /
-CStdString CTextureBundleXPR::Normalize(const CStdString &name)
+std::string CTextureBundleXPR::Normalize(const std::string &name)
 {
-  CStdString newName(name);
-  newName.Normalize();
-  newName.Replace('/','\\');
+  std::string newName(name);
+  StringUtils::Trim(newName);
+  StringUtils::ToLower(newName);
+  StringUtils::Replace(newName, '/','\\');
   return newName;
 }

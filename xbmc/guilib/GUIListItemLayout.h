@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -45,8 +45,8 @@ public:
   void SetInvalid() { m_invalidated = true; };
   void FreeResources(bool immediately = false);
 
-//#ifdef PRE_SKIN_VERSION_9_10_COMPATIBILITY
-  void CreateListControlLayouts(float width, float height, bool focused, const CLabelInfo &labelInfo, const CLabelInfo &labelInfo2, const CTextureInfo &texture, const CTextureInfo &textureFocus, float texHeight, float iconWidth, float iconHeight, const CStdString &nofocusCondition, const CStdString &focusCondition);
+//#ifdef GUILIB_PYTHON_COMPATIBILITY
+  void CreateListControlLayouts(float width, float height, bool focused, const CLabelInfo &labelInfo, const CLabelInfo &labelInfo2, const CTextureInfo &texture, const CTextureInfo &textureFocus, float texHeight, float iconWidth, float iconHeight, const std::string &nofocusCondition, const std::string &focusCondition);
 //#endif
 
   void SetWidth(float width);
@@ -70,7 +70,7 @@ protected:
   bool m_focused;
   bool m_invalidated;
 
-  unsigned int m_condition;
+  INFO::InfoPtr m_condition;
   CGUIInfoBool m_isPlaying;
 };
 

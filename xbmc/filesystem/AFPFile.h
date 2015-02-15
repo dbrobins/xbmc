@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2011-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2011-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 #define FILEAFP_H_
 
 
-#ifdef _LINUX
+#ifdef TARGET_POSIX
 
 #include "IFile.h"
 #include "URL.h"
@@ -37,8 +37,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-
-CStdString URLEncode(CStdString str);
 
 class CAfpConnection : public CCriticalSection
 {
@@ -59,7 +57,7 @@ public:
   struct afp_server     *GetServer()    {return m_pAfpServer;}
   struct afp_volume     *GetVolume()    {return m_pAfpVol;};
   struct afp_url        *GetUrl()       {return m_pAfpUrl;};
-  CStdString            GetPath(const CURL &url);
+  std::string           GetPath(const CURL &url);
   DllLibAfp             *GetImpl()      {return m_pLibAfp;}
   
   const char            *GetConnectedIp() const { if(m_pAfpUrl) return m_pAfpUrl->servername;else return "";}
@@ -79,7 +77,7 @@ private:
   bool                  initLib(void);
   bool                  connectVolume(const char *volumename, struct afp_volume *&pVolume);
   void                  disconnectVolume(void);
-  CStdString            getAuthenticatedPath(const CURL &url);
+  CURL                  getAuthenticatedPath(const CURL &url);
 
   int                   m_OpenConnections;
   int                   m_IdleTimeout;
@@ -102,14 +100,14 @@ public:
   virtual ~CAFPFile();
   virtual void          Close();
   virtual int64_t       Seek(int64_t iFilePosition, int iWhence = SEEK_SET);
-  virtual unsigned int  Read(void* lpBuf, int64_t uiBufSize);
+  virtual ssize_t       Read(void* lpBuf, size_t uiBufSize);
   virtual bool          Open(const CURL& url);
   virtual bool          Exists(const CURL& url);
   virtual int           Stat(const CURL& url, struct __stat64* buffer);
   virtual int           Stat(struct __stat64* buffer);
   virtual int64_t       GetLength();
   virtual int64_t       GetPosition();
-  virtual int           Write(const void* lpBuf, int64_t uiBufSize);
+  virtual ssize_t       Write(const void* lpBuf, size_t uiBufSize);
 
   virtual bool          OpenForWrite(const CURL& url, bool bOverWrite = false);
   virtual bool          Delete(const CURL& url);
@@ -123,7 +121,7 @@ public:
                         };
 
 protected:
-  bool                  IsValidFile(const CStdString& strFileName);
+  bool                  IsValidFile(const std::string& strFileName);
 
   CURL                  m_url;
   int64_t               m_fileSize;
@@ -132,5 +130,5 @@ protected:
   struct afp_volume    *m_pAfpVol;  
 };
 }
-#endif // _LINUX
+#endif // TARGET_POSIX
 #endif // FILEAFP_H_

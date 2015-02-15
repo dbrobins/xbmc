@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@
 
 #include "cores/IPlayer.h"
 #include "threads/Thread.h"
+#include <string>
+#include <vector>
 
 class CGUIDialogOK;
 
@@ -33,10 +35,8 @@ public:
   CExternalPlayer(IPlayerCallback& callback);
   virtual ~CExternalPlayer();
   virtual bool Initialize(TiXmlElement* pConfig);
-  virtual void RegisterAudioCallback(IAudioCallback* pCallback) {}
-  virtual void UnRegisterAudioCallback()                        {}
   virtual bool OpenFile(const CFileItem& file, const CPlayerOptions &options);
-  virtual bool CloseFile();
+  virtual bool CloseFile(bool reopen = false);
   virtual bool IsPlaying() const;
   virtual void Pause();
   virtual bool IsPaused() const;
@@ -46,7 +46,7 @@ public:
   virtual void SwitchToNextLanguage();
   virtual void ToggleSubtitles();
   virtual bool CanSeek();
-  virtual void Seek(bool bPlus, bool bLargeStep);
+  virtual void Seek(bool bPlus, bool bLargeStep, bool bChapterOverride);
   virtual void SeekPercentage(float iPercent);
   virtual float GetPercentage();
   virtual void SetVolume(float volume) {}
@@ -55,10 +55,9 @@ public:
   virtual void SetBrightness(bool bPlus) {}
   virtual void SetHue(bool bPlus) {}
   virtual void SetSaturation(bool bPlus) {}
-  virtual void GetAudioInfo(CStdString& strAudioInfo);
-  virtual void GetVideoInfo(CStdString& strVideoInfo);
-  virtual void GetGeneralInfo( CStdString& strVideoInfo);
-  virtual void Update(bool bPauseDrawing)                       {}
+  virtual void GetAudioInfo(std::string& strAudioInfo);
+  virtual void GetVideoInfo(std::string& strVideoInfo);
+  virtual void GetGeneralInfo(std::string& strVideoInfo);
   virtual void SwitchToNextAudioLanguage();
   virtual bool CanRecord() { return false; }
   virtual bool IsRecording() { return false; }
@@ -76,18 +75,20 @@ public:
   virtual void ShowOSD(bool bOnoff);
   virtual void DoAudioWork()                                    {}
   
-  virtual CStdString GetPlayerState();
-  virtual bool SetPlayerState(CStdString state);
+  virtual std::string GetPlayerState();
+  virtual bool SetPlayerState(const std::string& state);
   
-#if defined(_WIN32)
+#if defined(TARGET_WINDOWS)
   virtual BOOL ExecuteAppW32(const char* strPath, const char* strSwitches);
   //static void CALLBACK AppFinished(void* closure, BOOLEAN TimerOrWaitFired);
-#elif defined(_LINUX)
+#elif defined(TARGET_ANDROID)
+  virtual BOOL ExecuteAppAndroid(const char* strSwitches,const char* strPath);
+#elif defined(TARGET_POSIX)
   virtual BOOL ExecuteAppLinux(const char* strSwitches);
 #endif
 
 private:
-  void GetCustomRegexpReplacers(TiXmlElement *pRootElement, CStdStringArray& settings);
+  void GetCustomRegexpReplacers(TiXmlElement *pRootElement, std::vector<std::string>& settings);
   virtual void Process();
 
   bool m_bAbortRequest;
@@ -97,22 +98,22 @@ private:
   int m_speed;
   int m_totalTime;
   int m_time;
-  CStdString m_launchFilename;
+  std::string m_launchFilename;
   HWND m_hwndXbmc; 
-#if defined(_WIN32)
+#if defined(TARGET_WINDOWS)
   POINT m_ptCursorpos;
   PROCESS_INFORMATION m_processInfo;
 #endif 
   CGUIDialogOK* m_dialog;
   int m_xPos;
   int m_yPos;
-  CStdString m_filename;
-  CStdString m_args;
+  std::string m_filename;
+  std::string m_args;
   bool m_hideconsole;
   bool m_hidexbmc;
   bool m_islauncher;
   bool m_playOneStackItem;
   WARP_CURSOR m_warpcursor;
   int m_playCountMinTime;
-  CStdStringArray m_filenameReplacers;
+  std::vector<std::string> m_filenameReplacers;
 };

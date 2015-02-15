@@ -6,8 +6,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,7 +33,8 @@
 class CLabelInfo
 {
 public:
-  CLabelInfo()
+  CLabelInfo():
+    scrollSuffix(" | ")
   {
     font = NULL;
     align = XBFONT_LEFT;
@@ -41,7 +42,6 @@ public:
     width = 0;
     angle = 0;
     scrollSpeed = CScrollInfo::defaultSpeed;
-    scrollSuffix = " | ";
   };
   bool UpdateColors()
   {
@@ -52,6 +52,7 @@ public:
     changed |= selectedColor.Update();
     changed |= disabledColor.Update();
     changed |= focusedColor.Update();
+    changed |= invalidColor.Update();
 
     return changed;
   };
@@ -61,6 +62,7 @@ public:
   CGUIInfoColor selectedColor;
   CGUIInfoColor disabledColor;
   CGUIInfoColor focusedColor;
+  CGUIInfoColor invalidColor;
   uint32_t align;
   float offsetX;
   float offsetY;
@@ -68,7 +70,7 @@ public:
   float angle;
   CGUIFont *font;
   int scrollSpeed; 
-  CStdString scrollSuffix;
+  std::string scrollSuffix;
 };
 
 /*!
@@ -83,7 +85,8 @@ public:
   enum COLOR { COLOR_TEXT = 0,
                COLOR_SELECTED,
                COLOR_FOCUSED,
-               COLOR_DISABLED };
+               COLOR_DISABLED,
+               COLOR_INVALID };
   
   /*! \brief allowed overflow handling techniques for labels, as defined by the skin
    */
@@ -114,18 +117,26 @@ public:
   
   /*! \brief Set the text to be displayed in the label
    Updates the label control and recomputes final position and size
-   \param text CStdString to set as this labels text
-   \sa SetTextW
+   \param text std::string to set as this labels text
+   \sa SetTextW, SetStyledText
    */
-  bool SetText(const CStdString &label);
+  bool SetText(const std::string &label);
 
   /*! \brief Set the text to be displayed in the label
    Updates the label control and recomputes final position and size
-   \param text CStdStringW to set as this labels text
-   \sa SetText
+   \param text std::wstring to set as this labels text
+   \sa SetText, SetStyledText
    */
-  bool SetTextW(const CStdStringW &label);
-  
+  bool SetTextW(const std::wstring &label);
+
+  /*! \brief Set styled text to be displayed in the label
+   Updates the label control and recomputes final position and size
+   \param text styled text to set.
+   \param colors colors referenced in the styled text.
+   \sa SetText, SetTextW
+   */
+  bool SetStyledText(const vecText &text, const vecColors &colors);
+
   /*! \brief Set the color to use for the label
    Sets the color to be used for this label.  Takes effect at the next render
    \param color color to be used for the label
@@ -178,11 +189,11 @@ public:
   float GetMaxWidth() const;
   
   /*! \brief Calculates the width of some text
-   \param text CStdStringW of text whose width we want
+   \param text std::wstring of text whose width we want
    \return width of the given text
    \sa GetTextWidth
    */
-  float CalcTextWidth(const CStdStringW &text) const { return m_textLayout.GetTextWidth(text); };
+  float CalcTextWidth(const std::wstring &text) const { return m_textLayout.GetTextWidth(text); };
 
   const CLabelInfo& GetLabelInfo() const { return m_label; };
   CLabelInfo &GetLabelInfo() { return m_label; };

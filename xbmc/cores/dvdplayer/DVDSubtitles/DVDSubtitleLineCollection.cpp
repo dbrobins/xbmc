@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,7 +29,6 @@ CDVDSubtitleLineCollection::CDVDSubtitleLineCollection()
   m_pTail = NULL;
 
   m_iSize = 0;
-  m_fLastPts = DVD_NOPTS_VALUE;
 }
 
 CDVDSubtitleLineCollection::~CDVDSubtitleLineCollection()
@@ -80,9 +79,6 @@ CDVDOverlay* CDVDSubtitleLineCollection::Get(double iPts)
 {
   CDVDOverlay* pOverlay = NULL;
 
-  if (iPts < m_fLastPts)
-    Reset();
-
   if (m_pCurrent)
   {
     while (m_pCurrent && m_pCurrent->pOverlay->iPTSStopTime < iPts)
@@ -96,7 +92,6 @@ CDVDOverlay* CDVDSubtitleLineCollection::Get(double iPts)
 
       // advance to the next overlay
       m_pCurrent = m_pCurrent->pNext;
-      m_fLastPts = iPts;
     }
   }
   return pOverlay;
@@ -124,5 +119,4 @@ void CDVDSubtitleLineCollection::Clear()
   m_pHead    = NULL;
   m_pCurrent = NULL;
   m_iSize    = 0;
-  m_fLastPts = DVD_NOPTS_VALUE;
 }

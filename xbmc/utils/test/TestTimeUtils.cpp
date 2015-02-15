@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,36 +26,38 @@
 TEST(TestTimeUtils, CurrentHostCounter)
 {
   std::cout << "CurrentHostCounter(): " <<
-    testing::PrintToString(CurrentHostCounter()) << "\n";
+    testing::PrintToString(CurrentHostCounter()) << std::endl;
 }
 
 TEST(TestTimeUtils, CurrentHostFrequency)
 {
   std::cout << "CurrentHostFrequency(): " <<
-    testing::PrintToString(CurrentHostFrequency()) << "\n";
+    testing::PrintToString(CurrentHostFrequency()) << std::endl;
 }
 
 TEST(TestTimeUtils, GetFrameTime)
 {
   std::cout << "GetFrameTime(): " <<
-    testing::PrintToString(CTimeUtils::GetFrameTime()) << "\n";
+    testing::PrintToString(CTimeUtils::GetFrameTime()) << std::endl;
 
-  std::cout << "Calling UpdateFrameTime()\n";
+  std::cout << "Calling UpdateFrameTime()" << std::endl;
   CTimeUtils::UpdateFrameTime(true);
   std::cout << "GetFrameTime(): " <<
-    testing::PrintToString(CTimeUtils::GetFrameTime()) << "\n";
+    testing::PrintToString(CTimeUtils::GetFrameTime()) << std::endl;
 }
 
 TEST(TestTimeUtils, GetLocalTime)
 {
   CDateTime cdatetime, cdatetime2;
-  time_t time;
+  time_t timer;
 
-  cdatetime = CTimeUtils::GetLocalTime(time);
+  time(&timer);
+
+  cdatetime = CTimeUtils::GetLocalTime(timer);
   std::cout << "cdatetime.GetAsLocalizedDateTime(): " <<
-    cdatetime.GetAsLocalizedDateTime() << "\n";
+    cdatetime.GetAsLocalizedDateTime() << std::endl;
 
-  cdatetime2 = time;
+  cdatetime2 = timer;
   std::cout << "time: " <<
-    cdatetime2.GetAsLocalizedDateTime() << "\n";
+    cdatetime2.GetAsLocalizedDateTime() << std::endl;
 }

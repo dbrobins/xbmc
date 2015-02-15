@@ -2,8 +2,8 @@
 #define __EVENT_SERVER_H__
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -63,7 +63,7 @@ namespace EVENTSERVER
     void StopServer(bool bWait);
 
     // get events
-    unsigned short GetButtonCode(std::string& strMapName, bool& isAxis, float& amount);
+    unsigned int GetButtonCode(std::string& strMapName, bool& isAxis, float& amount);
     bool ExecuteNextAction();
     bool GetMousePos(float &x, float &y);
     int GetNumberOfClients();

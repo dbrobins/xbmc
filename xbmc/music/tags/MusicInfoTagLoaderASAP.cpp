@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,9 +17,11 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+#include <cstdlib>
 
 #include "MusicInfoTagLoaderASAP.h"
 #include "utils/URIUtils.h"
+#include "utils/StringUtils.h"
 #include "MusicInfoTag.h"
 
 using namespace MUSIC_INFO;
@@ -32,25 +34,22 @@ CMusicInfoTagLoaderASAP::~CMusicInfoTagLoaderASAP()
 {
 }
 
-bool CMusicInfoTagLoaderASAP::Load(const CStdString &strFile, CMusicInfoTag &tag, EmbeddedArt *art)
+bool CMusicInfoTagLoaderASAP::Load(const std::string &strFile, CMusicInfoTag &tag, EmbeddedArt *art)
 {
   tag.SetLoaded(false);
 
   if (!m_dll.Load())
     return false;
 
-  CStdString strFileToLoad = strFile;
+  std::string strFileToLoad = strFile;
   int song = -1;
-  CStdString strExtension;
-  URIUtils::GetExtension(strFile, strExtension);
-  strExtension.MakeLower();
-  if (strExtension == ".asapstream")
+  std::string strExtension = URIUtils::GetExtension(strFile);
+  if (StringUtils::EqualsNoCase(strExtension, ".asapstream"))
   {
-    CStdString strFileName = URIUtils::GetFileName(strFile);
-    int iStart = strFileName.ReverseFind('-') + 1;
+    std::string strFileName = URIUtils::GetFileName(strFile);
+    size_t iStart = strFileName.rfind('-') + 1;
     song = atoi(strFileName.substr(iStart, strFileName.size() - iStart - 11).c_str()) - 1;
-    CStdString strPath = strFile;
-    URIUtils::GetDirectory(strPath, strFileToLoad);
+    strFileToLoad = URIUtils::GetDirectory(strFile);
     URIUtils::RemoveSlashAtEnd(strFileToLoad);
   }
 
@@ -69,7 +68,8 @@ bool CMusicInfoTagLoaderASAP::Load(const CStdString &strFile, CMusicInfoTag &tag
     tag.SetDuration(songInfo.duration / 1000);
   if (songInfo.year > 0)
   {
-    SYSTEMTIME dateTime = { songInfo.year, songInfo.month, 0, songInfo.day, 0, 0, 0, 0 };
+    SYSTEMTIME dateTime = { (WORD)songInfo.year, (WORD)songInfo.month, 0, 
+                            (WORD)songInfo.day, 0, 0, 0, 0 };
     tag.SetReleaseDate(dateTime);
   }
   tag.SetLoaded(true);

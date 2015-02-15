@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2010-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2010-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@
 	
 	BOOL animating;
   BOOL xbmcAlive;
+  BOOL readyToRun;
   BOOL pause;
   NSConditionLock* animationThreadLock;
   NSThread* animationThread;
@@ -55,6 +56,7 @@
 }
 @property (readonly, nonatomic, getter=isAnimating) BOOL animating;
 @property (readonly, nonatomic, getter=isXBMCAlive) BOOL xbmcAlive;
+@property (readonly, nonatomic, getter=isReadyToRun) BOOL readyToRun;
 @property (readonly, nonatomic, getter=isPause) BOOL pause;
 @property (readonly, getter=getCurrentScreen) UIScreen *currentScreen;
 @property BOOL framebufferResizeRequested;

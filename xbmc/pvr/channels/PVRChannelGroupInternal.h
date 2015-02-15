@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
  */
 
 #include "PVRChannelGroup.h"
+#include "utils/Observer.h"
 
 namespace PVR
 {
@@ -29,7 +30,7 @@ namespace PVR
 
   /** XBMC's internal group, the group containing all channels */
 
-  class CPVRChannelGroupInternal : public CPVRChannelGroup
+  class CPVRChannelGroupInternal : public CPVRChannelGroup, public Observer
   {
     friend class CPVRChannelGroups;
     friend class CPVRDatabase;
@@ -45,6 +46,8 @@ namespace PVR
 
     virtual ~CPVRChannelGroupInternal(void);
 
+    virtual void Notify(const Observable &obs, const ObservableMessage msg);
+
     /**
      * @brief The amount of channels in this container.
      * @return The amount of channels in this container.
@@ -52,18 +55,10 @@ namespace PVR
     int GetNumHiddenChannels() const { return m_iHiddenChannels; }
 
     /*!
-     * @brief Add or update a channel in this table.
-     * @param channel The channel to update.
-     * @return True if the channel was updated and persisted.
-     */
-    bool UpdateChannel(const CPVRChannel &channel);
-
-    /*!
      * @brief Add a channel to this internal group.
      * @param iChannelNumber The channel number to use for this channel or 0 to add it to the back.
-     * @param bSortAndRenumber Set to false to not to sort the group after adding a channel
      */
-    bool InsertInGroup(CPVRChannel &channel, int iChannelNumber = 0, bool bSortAndRenumber = true);
+    bool InsertInGroup(CPVRChannel &channel, int iChannelNumber = 0);
 
     /*!
      * @brief Callback for add-ons to update a channel.
@@ -80,7 +75,7 @@ namespace PVR
     /*!
      * @see CPVRChannelGroup::AddToGroup
      */
-    bool AddToGroup(CPVRChannel &channel, int iChannelNumber = 0, bool bSortAndRenumber = true);
+    bool AddToGroup(CPVRChannel &channel, int iChannelNumber = 0);
 
     /*!
      * @see CPVRChannelGroup::RemoveFromGroup
@@ -121,9 +116,9 @@ namespace PVR
 
     /*!
      * @brief Load all channels from the clients.
-     * @return The amount of channels that were loaded.
+     * @return True when updated succesfully, false otherwise.
      */
-    int LoadFromClients(void);
+    bool LoadFromClients(void);
 
     /*!
      * @brief Check if this group is the internal group containing all channels.
@@ -160,9 +155,9 @@ namespace PVR
      * Load the channels from the database.
      * If no channels are stored in the database, then the channels will be loaded from the clients.
      *
-     * @return The amount of channels that were added.
+     * @return True when loaded successfully, false otherwise.
      */
-    int Load(void);
+    bool Load(void);
 
     /*!
      * @brief Update the vfs paths of all channels.

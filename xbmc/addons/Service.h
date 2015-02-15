@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -41,11 +41,17 @@ namespace ADDON
 
     CService(const cp_extension_t *ext);
     CService(const AddonProps &props);
+    virtual AddonPtr Clone() const;
 
     bool Start();
     bool Stop();
     TYPE GetServiceType() { return m_type; }
     START_OPTION GetStartOption() { return m_startOption; }
+    virtual void OnDisabled();
+    virtual void OnEnabled();
+    virtual bool OnPreInstall();
+    virtual void OnPostInstall(bool restart, bool update);
+    virtual void OnPreUnInstall();
 
   protected:
     void BuildServiceType();

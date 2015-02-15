@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -45,23 +45,40 @@ CFileAndroidApp::~CFileAndroidApp(void)
 
 bool CFileAndroidApp::Open(const CURL& url)
 {
-
   m_url = url;
   m_appname =  URIUtils::GetFileName(url.Get());
-  m_appname = m_appname.Left(m_appname.size() - 4);
+  m_appname = m_appname.substr(0, m_appname.size() - 4);
 
-  return m_appname.size() > 0;
+  std::vector<androidPackage> applications = CXBMCApp::GetApplications();
+  for(std::vector<androidPackage>::iterator i = applications.begin(); i != applications.end(); ++i)
+  {
+    if ((*i).packageName == m_appname)
+      return true;
+  }
+
+  return false;
 }
 
 bool CFileAndroidApp::Exists(const CURL& url)
 {
-  return true;
+  std::string appname =  URIUtils::GetFileName(url.Get());
+  appname = appname.substr(0, appname.size() - 4);
+
+  std::vector<androidPackage> applications = CXBMCApp::GetApplications();
+  for(std::vector<androidPackage>::iterator i = applications.begin(); i != applications.end(); ++i)
+  {
+    if ((*i).packageName == appname)
+      return true;
+  }
+
+  return false;
 }
 
-unsigned int CFileAndroidApp::Read(void* lpBuf, int64_t uiBufSize)
+ssize_t CFileAndroidApp::Read(void* lpBuf, size_t uiBufSize)
 {
-  CXBMCApp::GetIcon(m_appname, lpBuf, uiBufSize);
-  return uiBufSize;
+  if(CXBMCApp::GetIcon(m_appname, lpBuf, uiBufSize))
+    return uiBufSize; // FIXME: not full buffer may be used
+  return -1;
 }
 
 void CFileAndroidApp::Close()

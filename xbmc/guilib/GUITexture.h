@@ -9,8 +9,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@
 #include "TextureManager.h"
 #include "Geometry.h"
 #include "system.h" // HAS_GL, HAS_DX, etc
+#include "GUIInfoTypes.h"
 
 typedef uint32_t color_t;
 
@@ -71,13 +72,14 @@ class CTextureInfo
 {
 public:
   CTextureInfo();
-  CTextureInfo(const CStdString &file);
+  CTextureInfo(const std::string &file);
   CTextureInfo& operator=(const CTextureInfo &right);
   bool       useLarge;
-  CRect      border;      // scaled  - unneeded if we get rid of scale on load
-  int        orientation; // orientation of the texture (0 - 7 == EXIForientation - 1)
-  CStdString diffuse;     // diffuse overlay texture
-  CStdString filename;    // main texture file
+  CRect      border;          // scaled  - unneeded if we get rid of scale on load
+  int        orientation;     // orientation of the texture (0 - 7 == EXIForientation - 1)
+  std::string diffuse;         // diffuse overlay texture
+  CGUIInfoColor diffuseColor; // diffuse color
+  std::string filename;        // main texture file
 };
 
 class CGUITextureBase
@@ -101,10 +103,11 @@ public:
   bool SetPosition(float x, float y);
   bool SetWidth(float width);
   bool SetHeight(float height);
-  bool SetFileName(const CStdString &filename);
+  bool SetFileName(const std::string &filename);
+  void SetUseCache(const bool useCache = true);
   bool SetAspectRatio(const CAspectRatio &aspect);
 
-  const CStdString& GetFileName() const { return m_info.filename; };
+  const std::string& GetFileName() const { return m_info.filename; };
   float GetTextureWidth() const { return m_frameWidth; };
   float GetTextureHeight() const { return m_frameHeight; };
   float GetWidth() const { return m_width; };
@@ -125,7 +128,7 @@ protected:
   bool AllocateOnDemand();
   bool UpdateAnimFrame();
   void Render(float left, float top, float bottom, float right, float u1, float v1, float u2, float v2, float u3, float v3);
-  void OrientateTexture(CRect &rect, float width, float height, int orientation);
+  static void OrientateTexture(CRect &rect, float width, float height, int orientation);
 
   // functions that our implementation classes handle
   virtual void Allocate() {}; ///< called after our textures have been allocated
@@ -144,7 +147,7 @@ protected:
 
   CRect m_vertex;       // vertex coords to render
   bool m_invalid;       // if true, we need to recalculate
-
+  bool m_use_cache;
   unsigned char m_alpha;
 
   float m_frameWidth, m_frameHeight;          // size in pixels of the actual frame within the texture

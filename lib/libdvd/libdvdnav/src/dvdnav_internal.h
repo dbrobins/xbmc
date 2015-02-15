@@ -13,28 +13,17 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA
- *
- * $Id: dvdnav_internal.h 1135 2008-09-06 21:55:51Z rathann $
- *
+ * You should have received a copy of the GNU General Public License along
+ * with libdvdnav; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef DVDNAV_INTERNAL_H_INCLUDED
-#define DVDNAV_INTERNAL_H_INCLUDED
+#ifndef LIBDVDNAV_DVDNAV_INTERNAL_H
+#define LIBDVDNAV_DVDNAV_INTERNAL_H
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-
-/* Uncomment for VM command tracing */
-/* #define TRACE */
-
-#include "decoder.h"
-#include "dvdnav.h"
-#include "vm.h"
-#include "vmcmd.h"
 
 #ifdef WIN32
 
@@ -45,7 +34,7 @@ typedef CRITICAL_SECTION pthread_mutex_t;
 #define pthread_mutex_init(a, b) InitializeCriticalSection(a)
 #define pthread_mutex_lock(a)    EnterCriticalSection(a)
 #define pthread_mutex_unlock(a)  LeaveCriticalSection(a)
-#define pthread_mutex_destroy(a)
+#define pthread_mutex_destroy(a) DeleteCriticalSection(a)
 
 #ifndef HAVE_GETTIMEOFDAY
 /* replacement gettimeofday implementation */
@@ -71,7 +60,7 @@ static inline int _private_gettimeofday( struct timeval *tv, void *tz )
 #endif /* WIN32 */
 
 /* where should libdvdnav write its messages (stdout/stderr) */
-#define MSG_OUT stdout
+#define MSG_OUT stderr
 
 /* Maximum length of an error string */
 #define MAX_ERR_LEN 255
@@ -86,6 +75,14 @@ static inline int _private_gettimeofday( struct timeval *tv, void *tz )
 #ifndef DVD_VIDEO_LB_LEN
 #define DVD_VIDEO_LB_LEN 2048
 #endif
+
+typedef enum {
+  DSI_ILVU_PRE   = 1 << 15, /* set during the last 3 VOBU preceeding an interleaved block. */
+  DSI_ILVU_BLOCK = 1 << 14, /* set for all VOBU in an interleaved block */
+  DSI_ILVU_FIRST = 1 << 13, /* set for the first VOBU for a given angle or scene within a ILVU, or the first VOBU in the preparation (PREU) sequence */
+  DSI_ILVU_LAST  = 1 << 12, /* set for the last VOBU for a given angle or scene within a ILVU, or the last VOBU in the preparation (PREU) sequence */
+  DSI_ILVU_MASK  = 0xf000
+} DSI_ILVU;
 
 typedef struct read_cache_s read_cache_t;
 
@@ -135,6 +132,45 @@ typedef struct {
 #endif
 } ATTRIBUTE_PACKED spu_status_t;
 #endif
+
+/*
+ * Describes a given time, and the closest sector, vobu and tmap index
+ */
+typedef struct {
+  uint64_t            time;
+  uint32_t            sector;
+  uint32_t            vobu_idx;
+  int32_t             tmap_idx;
+} dvdnav_pos_data_t;
+
+/*
+ * Encapsulates cell data
+ */
+typedef struct {
+  int32_t             idx;
+  dvdnav_pos_data_t   *bgn;
+  dvdnav_pos_data_t   *end;
+} dvdnav_cell_data_t;
+
+/*
+ * Encapsulates common variables used by internal functions of jump_to_time
+ */
+typedef struct {
+  vobu_admap_t        *admap;
+  int32_t             admap_len;
+  vts_tmap_t          *tmap;
+  int32_t             tmap_len;
+  int32_t             tmap_interval;
+} dvdnav_jump_args_t;
+
+/*
+ * Utility constants for jump_to_time
+ */
+#define TMAP_IDX_EDGE_BGN  -1
+#define TMAP_IDX_EDGE_END  -2
+#define JUMP_MODE_TIME_AFTER 1
+#define JUMP_MODE_TIME_DEFAULT 0
+#define JUMP_MODE_TIME_BEFORE -1
 
 typedef struct dvdnav_vobu_s {
   int32_t vobu_start;  /* Logical Absolute. MAX needed is 0x300000 */
@@ -186,6 +222,7 @@ struct dvdnav_s {
 /* converts a dvd_time_t to PTS ticks */
 int64_t dvdnav_convert_time(dvd_time_t *time);
 
+/* XBMC added functions */
 /*
  * Get current playback state
  */
@@ -195,8 +232,7 @@ dvdnav_status_t dvdnav_get_state(dvdnav_t *this, dvd_state_t *save_state);
  * Resume playback state
  */
 dvdnav_status_t dvdnav_set_state(dvdnav_t *this, dvd_state_t *save_state);
-
-
+/* end XBMC */
 
 /** USEFUL MACROS **/
 
@@ -215,4 +251,4 @@ dvdnav_status_t dvdnav_set_state(dvdnav_t *this, dvd_state_t *save_state);
 #define printerr(str) \
 	do { if (this) strncpy(this->err_str, str, MAX_ERR_LEN - 1); } while (0)
 
-#endif /* DVDNAV_INTERNAL_H_INCLUDED */
+#endif /* LIBDVDNAV_DVDNAV_INTERNAL_H */

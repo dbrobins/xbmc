@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,9 +19,10 @@
  *
  */
 
-#include "utils/StdString.h"
+#include <string>
 
 class CFileItem;
+class CURL;
 
 namespace PLAYLIST
 {
@@ -30,9 +31,10 @@ namespace PLAYLIST
   class CPlayListFactory
   {
   public:
-    static CPlayList* Create(const CStdString& filename);
+    static CPlayList* Create(const std::string& filename);
     static CPlayList* Create(const CFileItem& item);
-    static bool IsPlaylist(const CStdString& filename);
+    static bool IsPlaylist(const CURL& url);
+    static bool IsPlaylist(const std::string& filename);
     static bool IsPlaylist(const CFileItem& item);
   };
 }

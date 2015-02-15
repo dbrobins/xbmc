@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,15 +21,17 @@
 #ifndef LIBRARY_LOADER
 #define LIBRARY_LOADER
 
+#include <string>
+
 #include "system.h"
-#ifdef _LINUX
+#ifdef TARGET_POSIX
 #include "PlatformDefs.h"
 #endif
 
 class LibraryLoader
 {
 public:
-  LibraryLoader(const char* libraryFile);
+  LibraryLoader(const std::string& libraryFile);
   virtual ~LibraryLoader();
 
   virtual bool Load() = 0;
@@ -41,17 +43,19 @@ public:
   virtual HMODULE GetHModule() = 0;
   virtual bool HasSymbols() = 0;
 
-  char* GetName(); // eg "mplayer.dll"
-  char* GetFileName(); // "special://xbmcbin/system/mplayer/players/mplayer.dll"
-  char* GetPath(); // "special://xbmcbin/system/mplayer/players/"
+  const char *GetName() const; // eg "mplayer.dll"
+  const char *GetFileName() const; // "special://xbmcbin/system/mplayer/players/mplayer.dll"
+  const char *GetPath() const; // "special://xbmcbin/system/mplayer/players/"
 
   int IncrRef();
   int DecrRef();
   int GetRef();
 
 private:
-  char* m_sFileName;
-  char* m_sPath;
+  LibraryLoader(const LibraryLoader&);
+  LibraryLoader& operator=(const LibraryLoader&);
+  std::string m_fileName;
+  std::string m_path;
   int   m_iRefCount;
 };
 

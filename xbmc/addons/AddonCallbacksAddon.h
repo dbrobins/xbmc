@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -38,16 +38,18 @@ public:
   static void AddOnLog(void *addonData, const addon_log_t addonLogLevel, const char *strMessage);
   static bool GetAddonSetting(void *addonData, const char *strSettingName, void *settingValue);
   static void QueueNotification(void *addonData, const queue_msg_t type, const char *strMessage);
-  static char *UnknownToUTF8(const char *strSource);
-  static const char *GetLocalizedString(const void* addonData, long dwCode);
-  static const char *GetDVDMenuLanguage(const void* addonData);
+  static bool WakeOnLan(const char *mac);
+  static char* UnknownToUTF8(const char *strSource);
+  static char* GetLocalizedString(const void* addonData, long dwCode);
+  static char* GetDVDMenuLanguage(const void* addonData);
+  static void FreeString(const void* addonData, char* str);
 
   // file operations
   static void* OpenFile(const void* addonData, const char* strFileName, unsigned int flags);
   static void* OpenFileForWrite(const void* addonData, const char* strFileName, bool bOverwrite);
-  static unsigned int ReadFile(const void* addonData, void* file, void* lpBuf, int64_t uiBufSize);
+  static ssize_t ReadFile(const void* addonData, void* file, void* lpBuf, size_t uiBufSize);
   static bool ReadFileString(const void* addonData, void* file, char *szLine, int iLineLength);
-  static int WriteFile(const void* addonData, void* file, const void* lpBuf, int64_t uiBufSize);
+  static ssize_t WriteFile(const void* addonData, void* file, const void* lpBuf, size_t uiBufSize);
   static void FlushFile(const void* addonData, void* file);
   static int64_t SeekFile(const void* addonData, void* file, int64_t iFilePosition, int iWhence);
   static int TruncateFile(const void* addonData, void* file, int64_t iSize);

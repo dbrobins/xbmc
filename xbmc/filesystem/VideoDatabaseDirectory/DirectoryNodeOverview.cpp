@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,21 +24,22 @@
 #include "FileItem.h"
 #include "guilib/LocalizeStrings.h"
 #include "video/VideoDbUrl.h"
+#include "utils/StringUtils.h"
 
 using namespace XFILE::VIDEODATABASEDIRECTORY;
 using namespace std;
 
 
 Node OverviewChildren[] = {
-                            { NODE_TYPE_MOVIES_OVERVIEW,            1, 342 },
-                            { NODE_TYPE_TVSHOWS_OVERVIEW,           2, 20343 },
-                            { NODE_TYPE_MUSICVIDEOS_OVERVIEW,       3, 20389 },
-                            { NODE_TYPE_RECENTLY_ADDED_MOVIES,      4, 20386 },
-                            { NODE_TYPE_RECENTLY_ADDED_EPISODES,    5, 20387 },
-                            { NODE_TYPE_RECENTLY_ADDED_MUSICVIDEOS, 6, 20390 },
+                            { NODE_TYPE_MOVIES_OVERVIEW,            "movies",                   342 },
+                            { NODE_TYPE_TVSHOWS_OVERVIEW,           "tvshows",                  20343 },
+                            { NODE_TYPE_MUSICVIDEOS_OVERVIEW,       "musicvideos",              20389 },
+                            { NODE_TYPE_RECENTLY_ADDED_MOVIES,      "recentlyaddedmovies",      20386 },
+                            { NODE_TYPE_RECENTLY_ADDED_EPISODES,    "recentlyaddedepisodes",    20387 },
+                            { NODE_TYPE_RECENTLY_ADDED_MUSICVIDEOS, "recentlyaddedmusicvideos", 20390 },
                           };
 
-CDirectoryNodeOverview::CDirectoryNodeOverview(const CStdString& strName, CDirectoryNode* pParent)
+CDirectoryNodeOverview::CDirectoryNodeOverview(const std::string& strName, CDirectoryNode* pParent)
   : CDirectoryNode(NODE_TYPE_OVERVIEW, strName, pParent)
 {
 
@@ -47,16 +48,16 @@ CDirectoryNodeOverview::CDirectoryNodeOverview(const CStdString& strName, CDirec
 NODE_TYPE CDirectoryNodeOverview::GetChildType() const
 {
   for (unsigned int i = 0; i < sizeof(OverviewChildren) / sizeof(Node); ++i)
-    if (GetID() == OverviewChildren[i].id)
+    if (GetName() == OverviewChildren[i].id)
       return OverviewChildren[i].node;
 
   return NODE_TYPE_NONE;
 }
 
-CStdString CDirectoryNodeOverview::GetLocalizedName() const
+std::string CDirectoryNodeOverview::GetLocalizedName() const
 {
   for (unsigned int i = 0; i < sizeof(OverviewChildren) / sizeof(Node); ++i)
-    if (GetID() == OverviewChildren[i].id)
+    if (GetName() == OverviewChildren[i].id)
       return g_localizeStrings.Get(OverviewChildren[i].label);
   return "";
 }
@@ -71,34 +72,34 @@ bool CDirectoryNodeOverview::GetContent(CFileItemList& items) const
   vector<pair<const char*, int> > vec;
   if (hasMovies)
   {
-    if (g_settings.m_bMyVideoNavFlatten)
-      vec.push_back(make_pair("1/2", 342));
+    if (CSettings::Get().GetBool("myvideos.flatten"))
+      vec.push_back(make_pair("movies/titles", 342));
     else
-      vec.push_back(make_pair("1", 342));   // Movies
+      vec.push_back(make_pair("movies", 342));   // Movies
   }
   if (hasTvShows)
   {
-    if (g_settings.m_bMyVideoNavFlatten)
-      vec.push_back(make_pair("2/2", 20343));
+    if (CSettings::Get().GetBool("myvideos.flatten"))
+      vec.push_back(make_pair("tvshows/titles", 20343));
     else
-      vec.push_back(make_pair("2", 20343)); // TV Shows
+      vec.push_back(make_pair("tvshows", 20343)); // TV Shows
   }
   if (hasMusicVideos)
   {
-    if (g_settings.m_bMyVideoNavFlatten)
-      vec.push_back(make_pair("3/2", 20389));
+    if (CSettings::Get().GetBool("myvideos.flatten"))
+      vec.push_back(make_pair("musicvideos/titles", 20389));
     else
-      vec.push_back(make_pair("3", 20389)); // Music Videos
+      vec.push_back(make_pair("musicvideos", 20389)); // Music Videos
   }
   {
     if (hasMovies)
-      vec.push_back(make_pair("4", 20386));  // Recently Added Movies
+      vec.push_back(make_pair("recentlyaddedmovies", 20386));  // Recently Added Movies
     if (hasTvShows)
-      vec.push_back(make_pair("5", 20387)); // Recently Added Episodes
+      vec.push_back(make_pair("recentlyaddedepisodes", 20387)); // Recently Added Episodes
     if (hasMusicVideos)
-      vec.push_back(make_pair("6", 20390)); // Recently Added Music Videos
+      vec.push_back(make_pair("recentlyaddedmusicvideos", 20390)); // Recently Added Music Videos
   }
-  CStdString path = BuildPath();
+  std::string path = BuildPath();
   for (unsigned int i = 0; i < vec.size(); ++i)
   {
     CFileItemPtr pItem(new CFileItem(path + vec[i].first + "/", true));

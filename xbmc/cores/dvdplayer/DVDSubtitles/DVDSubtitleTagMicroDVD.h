@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,9 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+
 #include <stdio.h>
+#include <string.h>
 
 #define FLAG_BOLD   0
 #define FLAG_ITALIC 1
@@ -33,6 +35,10 @@ class CDVDOverlayText;
 class CDVDSubtitleTagMicroDVD
 {
 public:
+  CDVDSubtitleTagMicroDVD()
+  {
+    memset(&m_flag, 0, sizeof(m_flag));
+  }
   void ConvertLine(CDVDOverlayText* pOverlay, const char* line, int len);
 
 private:

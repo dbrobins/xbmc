@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@
 #include "FileItem.h"
 #include "guilib/LocalizeStrings.h"
 #include "utils/URIUtils.h"
+#include "utils/StringUtils.h"
+#include "URL.h"
 
 using namespace MUSIC_INFO;
 using namespace XFILE;
@@ -34,24 +36,23 @@ CMusicFileDirectory::~CMusicFileDirectory(void)
 {
 }
 
-bool CMusicFileDirectory::GetDirectory(const CStdString& strPath1, CFileItemList &items)
+bool CMusicFileDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
-  CStdString strPath=strPath1;
+  std::string strPath=url.Get();
 
-  CStdString strFileName;
+  std::string strFileName;
   strFileName = URIUtils::GetFileName(strPath);
   URIUtils::RemoveExtension(strFileName);
 
-  int iStreams = GetTrackCount(strPath1);
+  int iStreams = GetTrackCount(strPath);
 
   URIUtils::AddSlashAtEnd(strPath);
 
   for (int i=0; i<iStreams; ++i)
   {
-    CStdString strLabel;
-    strLabel.Format("%s - %s %02.2i", strFileName.c_str(),g_localizeStrings.Get(554).c_str(),i+1);
+    std::string strLabel = StringUtils::Format("%s - %s %02.2i", strFileName.c_str(), g_localizeStrings.Get(554).c_str(), i+1);
     CFileItemPtr pItem(new CFileItem(strLabel));
-    strLabel.Format("%s%s-%i.%s", strPath.c_str(),strFileName.c_str(),i+1,m_strExt.c_str());
+    strLabel = StringUtils::Format("%s%s-%i.%s", strPath.c_str(), strFileName.c_str(), i+1, m_strExt.c_str());
     pItem->SetPath(strLabel);
 
     if (m_tag.Loaded())
@@ -64,14 +65,15 @@ bool CMusicFileDirectory::GetDirectory(const CStdString& strPath1, CFileItemList
   return true;
 }
 
-bool CMusicFileDirectory::Exists(const char* strPath)
+bool CMusicFileDirectory::Exists(const CURL& url)
 {
   return true;
 }
 
-bool CMusicFileDirectory::ContainsFiles(const CStdString& strPath)
+bool CMusicFileDirectory::ContainsFiles(const CURL &url)
 {
-  if (GetTrackCount(strPath) > 1)
+  const std::string pathToUrl(url.Get());
+  if (GetTrackCount(pathToUrl) > 1)
     return true;
 
   return false;

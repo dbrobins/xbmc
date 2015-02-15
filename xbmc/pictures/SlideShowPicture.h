@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,8 +21,8 @@
 
 #include "threads/CriticalSection.h"
 #include "guilib/gui3d.h"
-#include "utils/StdString.h"
 #include "guilib/DirtyRegion.h"
+#include <string>
 
 typedef uint32_t color_t;
 
@@ -52,6 +52,10 @@ public:
   void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
   void Render();
   void Close();
+  void Reset(DISPLAY_EFFECT dispEffect = EFFECT_RANDOM, TRANSISTION_EFFECT transEffect = FADEIN_FADEOUT);
+  DISPLAY_EFFECT DisplayEffect() const { return m_displayEffect; }
+  bool DisplayEffectNeedChange(DISPLAY_EFFECT newDispEffect) const;
+  bool IsStarted() const { return m_iCounter > 0; }
   bool IsFinished() const { return m_bIsFinished;};
   bool DrawNextImage() const { return m_bDrawNextImage;};
 
@@ -79,7 +83,9 @@ public:
 
   bool m_bIsComic;
   bool m_bCanMoveHorizontally;
+  bool m_bCanMoveVertically;
 private:
+  void SetTexture_Internal(int iSlideNumber, CBaseTexture* pTexture, DISPLAY_EFFECT dispEffect = EFFECT_RANDOM, TRANSISTION_EFFECT transEffect = FADEIN_FADEOUT);
   void UpdateVertices(float cur_x[4], float cur_y[4], const float new_x[4], const float new_y[4], CDirtyRegionList &dirtyregions);
   void Render(float *x, float *y, CBaseTexture* pTexture, color_t color);
   CBaseTexture *m_pImage;
@@ -91,7 +97,7 @@ private:
   bool m_bIsFinished;
   bool m_bDrawNextImage;
   bool m_bIsDirty;
-  CStdString m_strFileName;
+  std::string m_strFileName;
   float m_fWidth;
   float m_fHeight;
   color_t m_alpha;

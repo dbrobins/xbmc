@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2012 Team XBMC
+ *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -38,7 +38,7 @@ namespace PERIPHERALS
     bool PerformDeviceScan(PeripheralScanResults &results);
 
   private:
-    bool PerformDeviceScan(const GUID *guid, const PeripheralType type, PeripheralScanResults &results);
-    bool GetProductAndVendorId(const PeripheralType type, const CStdString &strDeviceLocation, int *iVendorId, int *iProductId);
+    bool PerformDeviceScan(const GUID *guid, const PeripheralType defaultType, PeripheralScanResults &results);
+    bool GetProductAndVendorId(const PeripheralType type, const std::string &strDeviceLocation, int *iVendorId, int *iProductId);
   };
 }

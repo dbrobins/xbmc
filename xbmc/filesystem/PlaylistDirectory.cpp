@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,14 +36,12 @@ CPlaylistDirectory::~CPlaylistDirectory()
 
 }
 
-bool CPlaylistDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
+bool CPlaylistDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
-  CURL url(strPath);
-
   int playlistTyp=PLAYLIST_NONE;
-  if (url.GetProtocol()=="playlistmusic")
+  if (url.IsProtocol("playlistmusic"))
     playlistTyp=PLAYLIST_MUSIC;
-  else if (url.GetProtocol()=="playlistvideo")
+  else if (url.IsProtocol("playlistvideo"))
     playlistTyp=PLAYLIST_VIDEO;
 
   if (playlistTyp==PLAYLIST_NONE)

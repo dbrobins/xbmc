@@ -35,7 +35,7 @@ extern "C"
 const std::string PresetLoader::PROJECTM_FILE_EXTENSION(".prjm");
 const std::string PresetLoader::MILKDROP_FILE_EXTENSION(".milk");
 
-PresetLoader::PresetLoader(std::string dirname = std::string()) :m_dirname(dirname), m_dir(0), m_ratingsSum(0)
+PresetLoader::PresetLoader(std::string dirname) :m_dirname(dirname), m_dir(0), m_ratingsSum(0)
 {
   // Do one scan
 	if (m_dirname != std::string())
@@ -130,7 +130,7 @@ void PresetLoader::rescan()
 }
 
 
-std::auto_ptr<Preset> PresetLoader::loadPreset(unsigned int index,  PresetInputs & presetInputs, PresetOutputs & presetOutputs) const
+std::unique_ptr<Preset> PresetLoader::loadPreset(unsigned int index,  PresetInputs & presetInputs, PresetOutputs & presetOutputs) const
 {
 
   // Check that index isn't insane
@@ -138,7 +138,7 @@ std::auto_ptr<Preset> PresetLoader::loadPreset(unsigned int index,  PresetInputs
   assert(index < m_entries.size());
 
   // Return a new autopointer to a preset
-  return std::auto_ptr<Preset>(new Preset(m_entries[index], m_presetNames[index], presetInputs, presetOutputs));
+  return std::unique_ptr<Preset>(new Preset(m_entries[index], m_presetNames[index], presetInputs, presetOutputs));
 }
 
 void PresetLoader::handleDirectoryError()

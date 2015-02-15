@@ -1,26 +1,30 @@
 /*
-* DAAP Support for XBMC
-* Copyright (c) 2004 Forza (Chris Barnett)
-* Portions Copyright (c) by the authors of libOpenDAAP
-*
-* This program is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program; if not, write to the Free Software
-* Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-*/
+ * DAAP Support for XBMC
+ *      Copyright (c) 2004 Forza (Chris Barnett)
+ *      Portions Copyright (c) by the authors of libOpenDAAP
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ */
 
 #include "DAAPFile.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 #include <sys/stat.h>
 
 #include "lib/libXDAAP/private.h"
@@ -76,7 +80,7 @@ void CDaapClient::Release()
   }
 }
 
-DAAP_SClientHost* CDaapClient::GetHost(const CStdString &strHost)
+DAAP_SClientHost* CDaapClient::GetHost(const std::string &strHost)
 {
   try
   {
@@ -164,9 +168,9 @@ bool CDAAPFile::Open(const CURL& url)
   m_url = url;
 
   CLog::Log(LOGDEBUG, "CDAAPFile::Open(%s)", url.GetFileName().c_str());
-  CStdString host = url.GetHostName();
+  std::string host = url.GetHostName();
   if (url.HasPort())
-    host.Format("%s:%i",url.GetHostName(),url.GetPort());
+    host = StringUtils::Format("%s:%i", url.GetHostName().c_str(), url.GetPort());
   m_thisHost = g_DaapClient.GetHost(host);
   if (!m_thisHost)
     return false;
@@ -184,7 +188,7 @@ bool CDAAPFile::Open(const CURL& url)
 
   //m_curl.SetRequestHeader(HEADER_VERSION, "3.0");
   m_curl.SetRequestHeader(HEADER_REQUESTID, requestid);
-  m_curl.SetRequestHeader(HEADER_VALIDATE, CStdString(hash));
+  m_curl.SetRequestHeader(HEADER_VALIDATE, std::string(hash));
   m_curl.SetRequestHeader(HEADER_ACCESS_INDEX, 2);
 
   m_url.SetProtocol("http");
@@ -199,7 +203,7 @@ bool CDAAPFile::Open(const CURL& url)
 
 
 //*********************************************************************************************
-unsigned int CDAAPFile::Read(void *lpBuf, int64_t uiBufSize)
+ssize_t CDAAPFile::Read(void *lpBuf, size_t uiBufSize)
 {
   return m_curl.Read(lpBuf, uiBufSize);
 }
@@ -222,7 +226,7 @@ int64_t CDAAPFile::Seek(int64_t iFilePosition, int iWhence)
   GenerateHash(m_thisHost->version_major, (unsigned char*)(m_hashurl.c_str()), 2, (unsigned char*)hash, requestid);
 
   m_curl.SetRequestHeader(HEADER_REQUESTID, requestid);
-  m_curl.SetRequestHeader(HEADER_VALIDATE, CStdString(hash));
+  m_curl.SetRequestHeader(HEADER_VALIDATE, std::string(hash));
 
   return m_curl.Seek(iFilePosition, iWhence);
 }

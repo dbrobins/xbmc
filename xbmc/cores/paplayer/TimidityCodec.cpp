@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 #include "Util.h"
 #include "utils/log.h"
 #include "filesystem/SpecialProtocol.h"
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
 #include "../DllLoader/Win32DllLoader.h"
 #endif
 
@@ -34,7 +34,7 @@ static const char * DEFAULT_SOUNDFONT_FILE = "special://masterprofile/timidity/s
 
 TimidityCodec::TimidityCodec()
 {
-  m_CodecName = "MID";
+  m_CodecName = "mid";
   m_mid = 0;
   m_iTrack = -1;
   m_iDataPos = -1;
@@ -47,7 +47,7 @@ TimidityCodec::~TimidityCodec()
   DeInit();
 }
 
-bool TimidityCodec::Init(const CStdString &strFile, unsigned int filecache)
+bool TimidityCodec::Init(const std::string &strFile, unsigned int filecache)
 {
   // We do not need to init/load Timidity more than once
   //
@@ -60,14 +60,14 @@ bool TimidityCodec::Init(const CStdString &strFile, unsigned int filecache)
   // This forces the shared lib loader to load a per-instance copy of MID_CODEC.
   if ( !m_loader )
   {
-#ifdef _LINUX
+#ifdef TARGET_POSIX
     m_loader_name = CUtil::GetNextFilename("special://temp/libtimidity-%03d.so", 999);
-    XFILE::CFile::Cache(DLL_PATH_MID_CODEC, m_loader_name);
+    XFILE::CFile::Copy(DLL_PATH_MID_CODEC, m_loader_name);
 
     m_loader = new SoLoader(m_loader_name.c_str());
 #else
     m_loader_name = CUtil::GetNextFilename("special://temp/libtimidity-%03d.dll", 999);
-    XFILE::CFile::Cache(DLL_PATH_MID_CODEC, m_loader_name);
+    XFILE::CFile::Copy(DLL_PATH_MID_CODEC, m_loader_name);
 
     m_loader = new Win32DllLoader(m_loader_name);
 #endif
@@ -97,7 +97,7 @@ bool TimidityCodec::Init(const CStdString &strFile, unsigned int filecache)
     if ( m_dll.Init( DEFAULT_SOUNDFONT_FILE ) == 0 )
     {
       CLog::Log(LOGERROR,"TimidityCodec: cannot init codec: %s", m_dll.ErrorMsg() );
-      CLog::Log(LOGERROR,"Failed to initialize MIDI codec. Please make sure you configured MIDI playback according to http://wiki.xbmc.org/?title=HOW-TO:_Setup_XBMC_for_karaoke" );
+      CLog::Log(LOGERROR,"Failed to initialize MIDI codec. Please make sure you configured MIDI playback according to http://kodi.wiki/view/HOW-TO:Setup_XBMC_for_karaoke" );
       return false;
     }
   }
@@ -106,12 +106,11 @@ bool TimidityCodec::Init(const CStdString &strFile, unsigned int filecache)
   if ( m_mid )
     m_dll.FreeMID( m_mid );
 
-  CStdString file = strFile;
   CURL url(strFile);
   if (!url.IsLocal())
   {
-    CStdString file = CUtil::GetNextFilename("special://temp/midi%03d.mid",999);
-    XFILE::CFile::Cache(strFile,file);
+    std::string file = CUtil::GetNextFilename("special://temp/midi%03d.mid",999);
+    XFILE::CFile::Copy(strFile,file);
     url.Parse(file);
   }
 
@@ -180,7 +179,7 @@ bool TimidityCodec::CanInit()
       || XFILE::CFile::Exists( DEFAULT_SOUNDFONT_FILE );
 }
 
-bool TimidityCodec::IsSupportedFormat(const CStdString& strExt)
+bool TimidityCodec::IsSupportedFormat(const std::string& strExt)
 {
   if (strExt == "mid" || strExt == "kar")
     return true;

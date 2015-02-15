@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include "music/Song.h"
 #include "music/Artist.h"
 #include "music/Album.h"
+#include "FileItem.h"
 
 class CFileItem;
 class CFileItemList;
@@ -35,18 +36,20 @@ public:
   CGUIDialogMusicInfo(void);
   virtual ~CGUIDialogMusicInfo(void);
   virtual bool OnMessage(CGUIMessage& message);
-  void SetAlbum(const CAlbum& album, const CStdString &path);
-  void SetArtist(const CArtist& artist, const CStdString &path);
+  virtual bool OnAction(const CAction &action);
+  void SetAlbum(const CAlbum& album, const std::string &path);
+  void SetArtist(const CArtist& artist, const std::string &path);
   bool NeedRefresh() const;
   bool HasUpdatedThumb() const { return m_hasUpdatedThumb; };
 
   virtual bool HasListItems() const { return true; };
   virtual CFileItemPtr GetCurrentListItem(int offset = 0);
   const CFileItemList& CurrentDirectory() const { return *m_albumSongs; };
+  static void AddItemPathToFileBrowserSources(VECSOURCES &sources, const CFileItem &item);
 protected:
   virtual void OnInitWindow();
   void Update();
-  void SetLabel(int iControl, const CStdString& strLabel);
+  void SetLabel(int iControl, const std::string& strLabel);
   void OnGetThumb();
   void OnGetFanart();
   void SetSongs(const VECSONGS &songs);

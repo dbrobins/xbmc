@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include "DVDSubtitleLineCollection.h"
 
 #include <string>
+#include <stdio.h>
 
 class CDVDStreamInfo;
 
@@ -42,12 +43,15 @@ class CDVDSubtitleParserCollection
   : public CDVDSubtitleParser
 {
 public:
-  CDVDSubtitleParserCollection(const std::string& strFile)
-  {
-    m_filename = strFile;
-  }
+  CDVDSubtitleParserCollection(const std::string& strFile) : m_filename(strFile) {}
   virtual ~CDVDSubtitleParserCollection() { }
-  virtual CDVDOverlay* Parse(double iPts) { return m_collection.Get(iPts); }
+  virtual CDVDOverlay* Parse(double iPts)
+  {
+    CDVDOverlay* o = m_collection.Get(iPts);
+    if(o == NULL)
+      return o;
+    return o->Clone();
+  }
   virtual void         Reset()            { m_collection.Reset(); }
   virtual void         Dispose()          { m_collection.Clear(); }
 

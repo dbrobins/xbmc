@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include "utils/URIUtils.h"
 #include "URL.h"
 #include "utils/XBMCTinyXML.h"
+#include "utils/StringUtils.h"
 #include "FileItem.h"
 
 using namespace XFILE;
@@ -48,11 +49,10 @@ CRTVDirectory::~CRTVDirectory(void)
 }
 
 //*********************************************************************************************
-bool CRTVDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
+bool CRTVDirectory::GetDirectory(const CURL& url2, CFileItemList &items)
 {
-  CURL url(strPath);
-
-  CStdString strRoot = strPath;
+  CURL url(url2);
+  std::string strRoot = url.Get();
   URIUtils::AddSlashAtEnd(strRoot);
 
   // Host name is "*" so we try to discover all ReplayTVs.  This requires some trickery but works.
@@ -93,16 +93,16 @@ bool CRTVDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
     }
     else
     {
-      CStdString strURL, strRTV;
-      int pos;
+      std::string strURL, strRTV;
+      size_t pos;
 
       // Isolate the IP from the URL and replace the "*" with the real IP
       // of the ReplayTV.  E.g., rtv://*/Video/192.168.1.100/ becomes
       // rtv://192.168.1.100/Video/ .  This trickery makes things work.
-      strURL = strRoot.TrimRight('/');
-      pos = strURL.ReverseFind('/');
-      strRTV = strURL.Left(pos + 1);
-      strRTV.Replace("*", strURL.Mid(pos + 1));
+      strURL = StringUtils::TrimRight(strRoot, "/");
+      pos = strURL.rfind('/');
+      strRTV = strURL.substr(0, pos + 1);
+      StringUtils::Replace(strRTV, "*", strURL.substr(pos + 1));
       CURL tmpURL(strRTV);
 
       // Force the newly constructed share into the right variables to
@@ -113,8 +113,7 @@ bool CRTVDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
   }
 
   // Allow for ReplayTVs on ports other than 80
-  CStdString strHostAndPort;
-  strHostAndPort = url.GetHostName();
+  std::string strHostAndPort = url.GetHostName();
   if (url.HasPort())
   {
     char buffer[10];
@@ -149,7 +148,7 @@ bool CRTVDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
     const TiXmlNode *pChild = pRootElement->FirstChild();
     while (pChild > 0)
     {
-      CStdString strTagName = pChild->Value();
+      std::string strTagName = pChild->ValueStr();
 
       if ( !strcmpi(strTagName.c_str(), "ITEM") )
       {
@@ -186,25 +185,29 @@ bool CRTVDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
 //        }
 
         // RECORDED
-        if (recordedNode)
+        if (recordedNode && recordedNode->FirstChild())
         {
-          CStdString strRecorded = recordedNode->FirstChild()->Value();
-          int iYear, iMonth, iDay;
+          std::string strRecorded = recordedNode->FirstChild()->ValueStr();
 
-          iYear = atoi(strRecorded.Left(4).c_str());
-          iMonth = atoi(strRecorded.Mid(5, 2).c_str());
-          iDay = atoi(strRecorded.Mid(8, 2).c_str());
-          dtDateTime.wYear = iYear;
-          dtDateTime.wMonth = iMonth;
-          dtDateTime.wDay = iDay;
+          if (strRecorded.size() >= 19)
+          {
+            /* TODO:STRING_CLEANUP */
+            int iYear, iMonth, iDay;
+            iYear = atoi(strRecorded.substr(0, 4).c_str());
+            iMonth = atoi(strRecorded.substr(5, 2).c_str());
+            iDay = atoi(strRecorded.substr(8, 2).c_str());
+            dtDateTime.wYear = iYear;
+            dtDateTime.wMonth = iMonth;
+            dtDateTime.wDay = iDay;
 
-          int iHour, iMin, iSec;
-          iHour = atoi(strRecorded.Mid(11, 2).c_str());
-          iMin = atoi(strRecorded.Mid(14, 2).c_str());
-          iSec = atoi(strRecorded.Mid(17, 2).c_str());
-          dtDateTime.wHour = iHour;
-          dtDateTime.wMinute = iMin;
-          dtDateTime.wSecond = iSec;
+            int iHour, iMin, iSec;
+            iHour = atoi(strRecorded.substr(11, 2).c_str());
+            iMin = atoi(strRecorded.substr(14, 2).c_str());
+            iSec = atoi(strRecorded.substr(17, 2).c_str());
+            dtDateTime.wHour = iHour;
+            dtDateTime.wMinute = iMin;
+            dtDateTime.wSecond = iSec;
+          }
         }
 
         // PATH
@@ -252,7 +255,7 @@ bool CRTVDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
         CFileItemPtr pItem(new CFileItem(szName));
         pItem->m_dateTime=dtDateTime;
         pItem->SetPath(strRoot + szPath);
-        // Hack to show duration of show in minutes as KB in XMBC because
+        // Hack to show duration of show in minutes as KB in XBMC because
         // it doesn't currently permit showing duration in minutes.
         // E.g., a 30 minute show will show as 29.3 KB in XBMC.
         pItem->m_dwSize = dwFileSize * 1000;

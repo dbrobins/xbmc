@@ -1,3 +1,0 @@
-; filename                        source of the file
-
-libcec-1.8.1.zip                  http://mirrors.xbmc.org/build-deps/win32/

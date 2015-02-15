@@ -2,7 +2,6 @@
  * device.h: DVD device access
  *****************************************************************************
  * Copyright (C) 1998-2002 VideoLAN
- * $Id$
  *
  * Authors: Stéphane Borel <stef@via.ecp.fr>
  *          Sam Hocevar <sam@zoy.org>
@@ -18,28 +17,37 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111, USA.
+ * You should have received a copy of the GNU General Public License along
+ * with libdvdcss; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *****************************************************************************/
+
+#ifndef DVDCSS_DEVICE_H
+#define DVDCSS_DEVICE_H
+
+#include "config.h"
 
 /*****************************************************************************
  * iovec structure: vectored data entry
  *****************************************************************************/
-#if defined( WIN32 ) && !defined( SYS_CYGWIN )
+#ifndef HAVE_SYS_UIO_H
 #   include <io.h>                                                 /* read() */
-#else
-#   include <sys/types.h>
-#   include <sys/uio.h>                                      /* struct iovec */
-#endif
-
-#if defined( WIN32 ) && !defined( SYS_CYGWIN )
 struct iovec
 {
     void *iov_base;     /* Pointer to data. */
     size_t iov_len;     /* Length of data.  */
 };
+#else
+#   include <sys/types.h>
+#   include <sys/uio.h>                                      /* struct iovec */
 #endif
+
+#include "dvdcss/dvdcss.h"
+
+#if !defined(WIN32) && !defined(__OS2__)
+#   define DVDCSS_RAW_OPEN
+#endif
+
 
 /*****************************************************************************
  * Device reading prototypes
@@ -52,7 +60,6 @@ int  _dvdcss_close      ( dvdcss_t );
 /*****************************************************************************
  * Device reading prototypes, raw-device specific
  *****************************************************************************/
-#ifndef WIN32
 int _dvdcss_raw_open     ( dvdcss_t, char const * );
-#endif
 
+#endif /* DVDCSS_DEVICE_H */

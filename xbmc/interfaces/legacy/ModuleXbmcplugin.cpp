@@ -121,6 +121,11 @@ namespace XBMCAddon
     {
       XFILE::CPluginDirectory::SetProperty(handle, key, value);
     }
+    
+    bool getHideWatched(int handle, const char* content)
+    {
+      return XFILE::CPluginDirectory::GetHideWatched(handle, content);
+    }
 
   }
 }

@@ -556,8 +556,8 @@ bool CPluginDirectory::Resolve(CFileItem& item) const
 
 int CPluginDirectory::GetWatchedMode(int handle, const char *content)
 {
-  CSingleLock lock(m_handleLock);
-  CPluginDirectory *dir = dirFromHandle(handle);
+  std::unique_lock<CCriticalSection> lock(GetScriptsLock());
+  CPluginDirectory *dir = GetScriptFromHandle(handle);
   if (!dir)
     return WatchedModeAll;
 	return CMediaSettings::GetInstance().GetWatchedMode((!content || !content[0]) ? dir->m_listItems->GetContent() : content);
